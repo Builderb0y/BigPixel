@@ -1,0 +1,28 @@
+.root {
+	-fx-base: #2F373F;
+	-fx-background: -fx-base;
+	-fx-control-inner-background: #1F2327;
+}
+
+.tree-cell:filled:selected:focused,
+.tree-cell:filled:selected {
+    -fx-background-color: #00477F;
+    -fx-text-fill: white;
+}
+
+.checkerboards {
+	-fx-background-image: url(/assets/themes/dark_checkerboard.png);
+    -fx-background-repeat: repeat;
+}
+
+.popout-borders {
+	-fx-border-color: #4F575F #000000 #000000 #4F575F;
+	-fx-border-insets: 4;
+	-fx-border-width: 2;
+}
+
+.popin-borders {
+	-fx-border-color: #000000 #4F575F #4F575F #000000;
+	-fx-border-insets: 4;
+	-fx-border-width: 2;
+}

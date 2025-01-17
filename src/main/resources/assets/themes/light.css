@@ -1,0 +1,28 @@
+.root {
+	-fx-base: #EFF3F7;
+	-fx-background: -fx-base;
+	-fx-control-inner-background: #FFFFFF;
+}
+
+.tree-cell:filled:selected:focused,
+.tree-cell:filled:selected {
+    -fx-background-color: derive(-fx-accent, 90%);
+    -fx-text-fill: black;
+}
+
+.checkerboards {
+	-fx-background-image: url(/assets/themes/light_checkerboard.png);
+	-fx-background-repeat: repeat;
+}
+
+.popout-borders {
+	-fx-border-color: #FFFFFF #CFD3D7 #CFD3D7 #FFFFFF;
+	-fx-border-insets: 4;
+	-fx-border-width: 2;
+}
+
+.popin-borders {
+	-fx-border-color: #CFD3D7 #FFFFFF #FFFFFF #CFD3D7;
+	-fx-border-insets: 4;
+	-fx-border-width: 2;
+}

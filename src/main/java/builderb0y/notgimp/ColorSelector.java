@@ -1,0 +1,312 @@
+package builderb0y.notgimp;
+
+import javafx.beans.Observable;
+import javafx.beans.value.ObservableValue;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.scene.control.*;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.PixelFormat;
+import javafx.scene.image.PixelWriter;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.*;
+import javafx.util.converter.FloatStringConverter;
+
+import builderb0y.notgimp.ColorHelper.ColorComponent;
+import builderb0y.notgimp.tools.ColorPickerTool;
+
+public class ColorSelector {
+
+	public static final Border INSET_BORDER = new Border(
+		new BorderStroke(
+			null,
+			BorderStrokeStyle.NONE,
+			CornerRadii.EMPTY,
+			BorderWidths.EMPTY,
+			new Insets(2.0D, 4.0D, 2.0D, 4.0D)
+		)
+	);
+
+	public OpenImage openImage;
+	public GridPane mainPane = new GridPane();
+	public CanvasHelper gradient = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 257.0D);
+	public ColorHelper currentColor = new ColorHelper();
+	public CanvasHelper rectangle = new CanvasHelper().checkerboard().popIn().fixedSize(96, 96);
+	public CheckBox fractionalDisplay = new CheckBox("/256");
+	public Button colorPickerButton = new Button();
+	public ColorSlider
+		red   = new ColorSlider(this, ColorComponent.RED),
+		green = new ColorSlider(this, ColorComponent.GREEN),
+		blue  = new ColorSlider(this, ColorComponent.BLUE),
+		hue   = new ColorSlider(this, ColorComponent.HUE),
+		dark  = new ColorSlider(this, ColorComponent.DARK),
+		light = new ColorSlider(this, ColorComponent.LIGHT),
+		alpha = new ColorSlider(this, ColorComponent.ALPHA);
+	public SavedColor[] savedColors = new SavedColor[10];
+	public HBox savedColorBox = new HBox();
+
+	public ColorSelector(OpenImage openImage) {
+		this.openImage = openImage;
+		for (int index = 0; index < 10; index++) {
+			this.savedColors[index] = new SavedColor(index);
+			this.savedColorBox.getChildren().add(this.savedColors[index].canvas.getRootPane());
+		}
+		this.mainPane.add(this.savedColorBox, 1, 0, 3, 1);
+		EventHandler<MouseEvent> handler = new RateLimitedMouseEventHandler(
+			(MouseEvent event) -> {
+				this.currentColor.setComponent(this.hue.component.horizontal(), Math.clamp(((float)(int)(event.getX())) / 256.0F, 0.0F, 1.0F));
+				this.currentColor.setComponent(this.hue.component.vertical(), Math.clamp(1.0F - ((float)(int)(event.getY())) / 256.0F, 0.0F, 1.0F));
+				this.currentColor.markDirty();
+			}
+		);
+		this.gradient.canvas.setOnMousePressed(handler);
+		this.gradient.canvas.setOnMouseDragged(handler);
+		this.gradient.canvas.setOnMouseReleased(handler);
+		this.mainPane.add(this.gradient.getRootPane(), 1, 1, 1, 2);
+		this.mainPane.add(this.rectangle.getRootPane(), 2, 1);
+		this.colorPickerButton.setGraphic(new ImageView(ColorPickerTool.TYPE.icon()));
+		this.colorPickerButton.setOnAction((ActionEvent event) -> this.openImage.mainWindow.currentTool.set(ColorPickerTool.TYPE));
+		AnchorPane colorPickerButtonPane = new AnchorPane(this.fractionalDisplay, this.colorPickerButton);
+		AnchorPane.setLeftAnchor(this.fractionalDisplay, 4.0D);
+		AnchorPane.setBottomAnchor(this.fractionalDisplay, 4.0D);
+		AnchorPane.setRightAnchor(this.colorPickerButton, 4.0D);
+		AnchorPane.setBottomAnchor(this.colorPickerButton, 4.0D);
+		this.mainPane.add(colorPickerButtonPane, 2, 2);
+		this.currentColor.any.addListener((Observable observable) -> this.redrawGradient());
+	}
+
+	public void init() {
+		this.redrawGradient();
+	}
+
+	public void redrawGradient() {
+		//gradient
+		PixelWriter writer = this.gradient.canvas.getGraphicsContext2D().getPixelWriter();
+		ColorHelper helper = new ColorHelper(this.currentColor);
+		ColorComponent primaryComponent = ColorComponent.HUE;
+		byte[] pixels = new byte[257 * 257 * 4];
+		for (int y = 0; y <= 256; y++) {
+			helper.setComponent(primaryComponent.vertical(), (256 - y) / 256.0F);
+			for (int x = 0; x <= 256; x++) {
+				helper.setComponent(primaryComponent.horizontal(), x / 256.0F);
+				int baseIndex = (y * 257 + x) << 2;
+				float alpha = helper.alpha.get();
+				pixels[baseIndex    ] = (byte)(HDRImage.clamp(helper.blue .get() * alpha));
+				pixels[baseIndex | 1] = (byte)(HDRImage.clamp(helper.green.get() * alpha));
+				pixels[baseIndex | 2] = (byte)(HDRImage.clamp(helper.red  .get() * alpha));
+				pixels[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+			}
+		}
+		int invertX = ((int)(this.currentColor.getComponent(primaryComponent.horizontal()).get() * 256.0F));
+		int invertY = ((int)(256.0F - this.currentColor.getComponent(primaryComponent.vertical()).get() * 256.0F));
+		for (int x = 0; x <= 256; x++) {
+			int baseIndex = (invertY * 257 + x) << 2;
+			pixels[baseIndex    ] = (byte)(~pixels[baseIndex    ]);
+			pixels[baseIndex | 1] = (byte)(~pixels[baseIndex | 1]);
+			pixels[baseIndex | 2] = (byte)(~pixels[baseIndex | 2]);
+			pixels[baseIndex | 3] = -1;
+		}
+		for (int y = 0; y <= 256; y++) {
+			int baseIndex = (y * 257 + invertX) << 2;
+			pixels[baseIndex    ] = (byte)(~pixels[baseIndex    ]);
+			pixels[baseIndex | 1] = (byte)(~pixels[baseIndex | 1]);
+			pixels[baseIndex | 2] = (byte)(~pixels[baseIndex | 2]);
+			pixels[baseIndex | 3] = -1;
+		}
+		writer.setPixels(0, 0, 257, 257, PixelFormat.getByteBgraPreInstance(), pixels, 0, 257 << 2);
+
+		//rectangle
+		writer = this.rectangle.canvas.getGraphicsContext2D().getPixelWriter();
+		for (int y = 0; y <= 96; y++) {
+			for (int x = 0; x <= 96; x++) {
+				int baseIndex = (y * 96 + x) << 2;
+				float alpha = this.currentColor.alpha.get();
+				pixels[baseIndex    ] = (byte)(HDRImage.clamp(this.currentColor.blue .get() * alpha));
+				pixels[baseIndex | 1] = (byte)(HDRImage.clamp(this.currentColor.green.get() * alpha));
+				pixels[baseIndex | 2] = (byte)(HDRImage.clamp(this.currentColor.red  .get() * alpha));
+				pixels[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+			}
+		}
+		writer.setPixels(0, 0, 96, 96, PixelFormat.getByteBgraPreInstance(), pixels, 0, 96 << 2);
+	}
+
+	public class ColorSlider {
+
+		public ColorComponent component;
+		public Label label = new Label();
+		public CanvasHelper bar = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 16.0D);
+		public TextField numberBox = new TextField();
+
+		public ColorSlider(ColorSelector selector, ColorComponent component) {
+			this.component = component;
+			this.label.setText(component.name + ':');
+			EventHandler<MouseEvent> mouseHandler = new RateLimitedMouseEventHandler(
+				(MouseEvent event) -> {
+					ColorSelector.this.currentColor.setComponent(
+						component,
+						Math.clamp(((float)(int)(event.getX())) / 256.0F, 0.0F, 1.0F)
+					);
+					ColorSelector.this.currentColor.markDirty();
+				}
+			);
+			this.bar.canvas.setOnMousePressed(mouseHandler);
+			this.bar.canvas.setOnMouseDragged(mouseHandler);
+			this.bar.canvas.setOnMouseReleased(mouseHandler);
+			ColorSelector.this.currentColor.getComponent(component).addListener(
+				(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
+					((TextFormatter)(this.numberBox.getTextFormatter())).setValue(newValue);
+				}
+			);
+			this.numberBox.textFormatterProperty().bind(
+				ColorSelector.this.fractionalDisplay.selectedProperty().map((Boolean fractional) -> {
+					return new TextFormatter<>(
+						new FloatStringConverter() {
+
+							@Override
+							public Float fromString(String string) {
+								Float value = super.fromString(string);
+								if (fractional) value /= 256.0F;
+								value = Math.clamp(value, 0.0F, 1.0F);
+								ColorSelector.this.currentColor.setComponent(component, value);
+								ColorSelector.this.currentColor.markDirty();
+								return value;
+							}
+
+							@Override
+							public String toString(Float value) {
+								if (fractional) value *= 256.0F;
+								return super.toString(value);
+							}
+						},
+						ColorSelector.this.currentColor.getComponent(component).getValue()
+					);
+				})
+			);
+			this.numberBox.setPrefWidth(96.0D);
+			EventHandler<ScrollEvent> eventHandler = (ScrollEvent event) -> {
+				float value = (float)(this.numberBox.getTextFormatter().getValue());
+				value *= 256.0F;
+				float floorValue = (float)(Math.floor(value));
+				if (floorValue == value) value += (float)(Math.signum(event.getDeltaY()));
+				else value = Math.round(value);
+				value /= 256.0F;
+				value = Math.clamp(value, 0.0F, 1.0F);
+				ColorSelector.this.currentColor.setComponent(component, value);
+				ColorSelector.this.currentColor.markDirty();
+			};
+			this.bar.canvas.setOnScroll(eventHandler);
+			this.numberBox.setOnScroll(eventHandler);
+			this.addToGrid(selector.mainPane, component.ordinal() + 3);
+			ColorSelector.this.currentColor.any.addListener((Observable observable) -> this.redraw());
+			this.redraw();
+		}
+
+		public void addToGrid(GridPane pane, int row) {
+			BorderPane labelPane = new BorderPane();
+			labelPane.setLeft(this.label);
+			labelPane.setBorder(INSET_BORDER);
+			pane.add(labelPane, 0, row);
+
+			pane.add(this.bar.getRootPane(), 1, row);
+
+			BorderPane numberBoxPane = new BorderPane(this.numberBox);
+			numberBoxPane.setBorder(INSET_BORDER);
+			pane.add(numberBoxPane, 2, row);
+		}
+
+		public void redraw() {
+			PixelWriter writer = this.bar.canvas.getGraphicsContext2D().getPixelWriter();
+			ColorHelper helper = new ColorHelper(ColorSelector.this.currentColor);
+			byte[] colors = new byte[257 * 4];
+			for (int x = 0; x <= 256; x++) {
+				helper.setComponent(this.component, x / 256.0F);
+				int baseIndex = x << 2;
+				float alpha = helper.alpha.get();
+				colors[baseIndex    ] = (byte)(HDRImage.clamp(helper.blue .get() * alpha));
+				colors[baseIndex | 1] = (byte)(HDRImage.clamp(helper.green.get() * alpha));
+				colors[baseIndex | 2] = (byte)(HDRImage.clamp(helper.red  .get() * alpha));
+				colors[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+			}
+			float component = ColorSelector.this.currentColor.getComponent(this.component).get();
+			helper.setComponent(this.component, component);
+			int invertIndex = ((int)(component * 256.0F)) << 2;
+			colors[invertIndex    ] = (byte)(HDRImage.clamp(1.0F - helper.blue .get()));
+			colors[invertIndex | 1] = (byte)(HDRImage.clamp(1.0F - helper.green.get()));
+			colors[invertIndex | 2] = (byte)(HDRImage.clamp(1.0F - helper.red  .get()));
+			colors[invertIndex | 3] = -1;
+			writer.setPixels(0, 0, 257, 18, PixelFormat.getByteBgraPreInstance(), colors, 0, 0);
+		}
+	}
+
+	public class SavedColor {
+
+		public CanvasHelper canvas = new CanvasHelper().checkerboard().fixedSize(16.0D, 16.0D);
+		public ColorHelper color = new ColorHelper();
+
+		public SavedColor(int index) {
+			switch (index) {
+				case 0  -> this.color.setRGBA(0.0F, 0.0F, 0.0F, 1.0F);
+				case 1  -> this.color.setRGBA(1.0F, 1.0F, 1.0F, 1.0F);
+				case 2  -> this.color.setRGBA(1.0F, 0.0F, 0.0F, 1.0F);
+				case 3  -> this.color.setRGBA(1.0F, 1.0F, 0.0F, 1.0F);
+				case 4  -> this.color.setRGBA(0.0F, 1.0F, 0.0F, 1.0F);
+				case 5  -> this.color.setRGBA(0.0F, 1.0F, 1.0F, 1.0F);
+				case 6  -> this.color.setRGBA(0.0F, 0.0F, 1.0F, 1.0F);
+				case 7  -> this.color.setRGBA(1.0F, 0.0F, 1.0F, 1.0F);
+				default -> this.color.setRGBA(0.0F, 0.0F, 0.0F, 0.0F);
+			}
+
+			this.canvas.pop(this.canvas.canvas.pressedProperty());
+			this.canvas.canvas.setOnMouseClicked((MouseEvent event) -> {
+				if (event.getButton() == MouseButton.PRIMARY) {
+					this.apply();
+				}
+				else if (event.getButton() == MouseButton.SECONDARY) {
+					this.save();
+				}
+			});
+			this.redraw();
+		}
+
+		public void save() {
+			this.color.setFrom(ColorSelector.this.currentColor);
+			this.redraw();
+		}
+
+		public void apply() {
+			ColorSelector.this.currentColor.setFrom(this.color);
+			ColorSelector.this.currentColor.markDirty();
+		}
+
+		public void redraw() {
+			PixelWriter writer = this.canvas.canvas.getGraphicsContext2D().getPixelWriter();
+			byte[] pixels = new byte[16 * 16 * 4];
+			for (int y = 0; y < 16; y++) {
+				for (int x = 0; x < 16; x++) {
+					int baseIndex = (y * 16 + x) << 2;
+					float alpha = this.color.alpha.get();
+					pixels[baseIndex    ] = (byte)(HDRImage.clamp(this.color.blue .get() * alpha));
+					pixels[baseIndex | 1] = (byte)(HDRImage.clamp(this.color.green.get() * alpha));
+					pixels[baseIndex | 2] = (byte)(HDRImage.clamp(this.color.red  .get() * alpha));
+					pixels[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+				}
+			}
+			writer.setPixels(0, 0, 16, 16, PixelFormat.getByteBgraPreInstance(), pixels, 0, 16 << 2);
+		}
+	}
+
+	public static float clamp(float x) {
+		return x > 0.0F ? x > 1.0F ? 1.0F : x : 0.0F;
+	}
+
+	public static float mix(float a, float b, float f) {
+		return (b - a) * f + a;
+	}
+
+	public static float unmix(float a, float b, float f) {
+		return (f - a) / (b - a);
+	}
+}
