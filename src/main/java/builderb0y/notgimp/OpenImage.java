@@ -1,6 +1,8 @@
 package builderb0y.notgimp;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import javafx.beans.Observable;
@@ -150,6 +152,19 @@ public class OpenImage {
 				if (found != null) return found;
 			}
 			return null;
+		}
+	}
+
+	public Map<String, Layer> collectLayers() {
+		Map<String, Layer> layers = new HashMap<>();
+		addLayers(layers, this.layerTree.getRoot());
+		return layers;
+	}
+
+	public static void addLayers(Map<String, Layer> map, TreeItem<Layer> layer) {
+		map.put(layer.getValue().name, layer.getValue());
+		for (TreeItem<Layer> child : layer.getChildren()) {
+			addLayers(map, child);
 		}
 	}
 

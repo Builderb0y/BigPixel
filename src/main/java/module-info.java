@@ -5,6 +5,8 @@ module builderb0y.notgimp {
 	requires net.synedra.validatorfx;
 	requires org.jetbrains.annotations;
 	requires java.desktop;
+	requires jdk.incubator.vector;
+	requires jdk.jfr;
 
 	exports builderb0y.notgimp;
 	exports builderb0y.notgimp.tools;

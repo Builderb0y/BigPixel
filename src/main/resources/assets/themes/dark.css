@@ -4,6 +4,10 @@
 	-fx-control-inner-background: #1F2327;
 }
 
+.text {
+	-fx-tab-size: 4;
+}
+
 .tree-cell:filled:selected:focused,
 .tree-cell:filled:selected {
     -fx-background-color: #00477F;

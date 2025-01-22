@@ -4,6 +4,10 @@
 	-fx-control-inner-background: #FFFFFF;
 }
 
+.text {
+	-fx-tab-size: 4;
+}
+
 .tree-cell:filled:selected:focused,
 .tree-cell:filled:selected {
     -fx-background-color: derive(-fx-accent, 90%);

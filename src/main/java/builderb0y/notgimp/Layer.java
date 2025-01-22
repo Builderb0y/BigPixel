@@ -7,6 +7,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.IntVector;
 
 import static builderb0y.notgimp.HDRImage.*;
 
@@ -19,6 +21,10 @@ public class Layer {
 	public ImageView thumbnailView;
 	public LayerSources sources;
 	public History history;
+
+	public Layer(OpenImage openImage, String name, int width, int height) {
+		this(openImage, name, new HDRImage(width, height));
+	}
 
 	public Layer(OpenImage openImage, String name, HDRImage image) {
 		this.openImage = openImage;
@@ -42,6 +48,19 @@ public class Layer {
 		this.sources = new LayerSources(this, from.sources);
 		this.history = new History(this);
 		this.postConstruct();
+	}
+
+	public void postConstruct() {
+		if (this.image.width >= this.image.height) {
+			this.thumbnailView.setFitWidth(32.0D);
+		}
+		else {
+			this.thumbnailView.setFitHeight(32.0D);
+		}
+		this.thumbnailView.setPreserveRatio(true);
+		this.redrawThumbnail();
+		this.image.value.addListener((Observable observable) -> this.redrawThumbnail());
+		this.sources.init();
 	}
 
 	public void beginUsingTool() {
@@ -76,21 +95,19 @@ public class Layer {
 		this.name = name;
 	}
 
-	public void postConstruct() {
-		if (this.image.width >= this.image.height) {
-			this.thumbnailView.setFitWidth(32.0D);
-		}
-		else {
-			this.thumbnailView.setFitHeight(32.0D);
-		}
-		this.thumbnailView.setPreserveRatio(true);
-		this.redrawThumbnail();
-		this.image.value.addListener((Observable observable) -> this.redrawThumbnail());
-		this.sources.init();
+	public FloatVector getPixelWrapped(int x, int y) {
+		return FloatVector.fromArray(
+			FloatVector.SPECIES_128,
+			this.image.pixels,
+			this.image.baseIndex(
+				Math.floorMod(x, this.image.width),
+				this.image.height - Math.floorMod(y, this.image.height) - 1
+			)
+		);
 	}
 
-	public Layer(OpenImage openImage, String name, int width, int height) {
-		this(openImage, name, new HDRImage(width, height));
+	public FloatVector getPixelWrapped(IntVector coord) {
+		return this.getPixelWrapped(coord.lane(0), coord.lane(1));
 	}
 
 	public void redrawThumbnail() {

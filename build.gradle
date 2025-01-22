@@ -17,11 +17,12 @@ ext {
 	junitVersion = '5.10.2'
 }
 
-sourceCompatibility = '21'
-targetCompatibility = '21'
+sourceCompatibility = '22'
+targetCompatibility = '22'
 
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
+	options.compilerArgs.addAll([ '--enable-preview', '-parameters' ])
 }
 
 application {
@@ -34,12 +35,10 @@ javafx {
 }
 
 dependencies {
-	/*
 	implementation('org.controlsfx:controlsfx:11.2.1')
 	implementation('net.synedra:validatorfx:0.5.0') {
 		exclude(group: 'org.openjfx')
 	}
-	*/
 
 	testImplementation("org.junit.jupiter:junit-jupiter-api:${ junitVersion }")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${ junitVersion }")

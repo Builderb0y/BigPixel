@@ -27,8 +27,6 @@ import static builderb0y.notgimp.HDRImage.*;
 
 public class ZoomableImage {
 
-	public static final Timer TIMER = new Timer(true);
-
 	public static final double[] ZOOMS = {
 		1.0D / 64.0D,
 		1.0D / 48.0D,
@@ -60,7 +58,7 @@ public class ZoomableImage {
 	public double offsetX, offsetY;
 	public int zoomIndex = 11; //1.0
 	public ChangeListener<Number> centerer;
-	public boolean canRedraw = true, redrawQueued;
+	public RateLimiter redrawer;
 
 	public ZoomableImage(OpenImage openImage) {
 		this.openImage = openImage;
@@ -68,6 +66,7 @@ public class ZoomableImage {
 		this.centerer = (ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> this.center();
 		this.display.canvas. widthProperty().addListener(this.centerer);
 		this.display.canvas.heightProperty().addListener(this.centerer);
+		this.redrawer = new RateLimiter(20L, this::doRedraw);
 	}
 
 	public double zoom() {
@@ -203,10 +202,10 @@ public class ZoomableImage {
 	}
 
 	public void redraw() {
-		if (!this.canRedraw) {
-			this.redrawQueued = true;
-			return;
-		}
+		this.redrawer.run();
+	}
+
+	public void doRedraw() {
 		HDRImage image = this.openImage.showingLayerProperty.getValue().image;
 		Canvas canvas = this.display.canvas;
 		PixelWriter writer = canvas.getGraphicsContext2D().getPixelWriter();
@@ -235,9 +234,9 @@ public class ZoomableImage {
 					alpha = image.pixels[baseIndex | ALPHA_OFFSET];
 				}
 				int baseIndex = (y * width + x) << 2;
-				pixels[baseIndex    ] = (byte)(clamp(blue));
-				pixels[baseIndex | 1] = (byte)(clamp(green));
-				pixels[baseIndex | 2] = (byte)(clamp(red));
+				pixels[baseIndex    ] = (byte)(clamp(blue * alpha));
+				pixels[baseIndex | 1] = (byte)(clamp(green * alpha));
+				pixels[baseIndex | 2] = (byte)(clamp(red * alpha));
 				pixels[baseIndex | 3] = (byte)(clamp(alpha));
 			}
 		});
@@ -269,24 +268,6 @@ public class ZoomableImage {
 			setGrayscaleSafe(pixels, x2, y, width, height, ((x2 ^ y) & 8) == 0 ? 0.0F : 1.0F);
 		}
 		writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);
-		this.canRedraw = false;
-		TIMER.schedule(new TimerTask() {
-
-			@Override
-			public void run() {
-				Platform.runLater(() -> {
-					ZoomableImage.this.canRedraw = true;
-					if (ZoomableImage.this.redrawQueued) {
-						ZoomableImage.this.redrawQueued = false;
-						ZoomableImage.this.redraw();
-					}
-				});
-			}
-		}, 20L);
-	}
-
-	public static float mix(float a, float b, float f) {
-		return (b - a) * f + a;
 	}
 
 	public static void setGrayscaleSafe(byte[] pixels, int x, int y, int width, int height, float grayscale) {

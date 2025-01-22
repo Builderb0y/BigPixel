@@ -34,9 +34,9 @@ public class Tools {
 
 	public Tools(LayerSources sources) {
 		this.sources = sources;
-		this.toolSelection.add(this.freehandButton, 0, 0);
+		this.toolSelection.add(this.rectButton, 0, 0);
 		this.toolSelection.add(this.lineButton, 1, 0);
-		this.toolSelection.add(this.rectButton, 2, 0);
+		this.toolSelection.add(this.freehandButton, 2, 0);
 		this.toolSelection.add(this.moveButton, 0, 1);
 	}
 

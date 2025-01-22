@@ -1,7 +1,9 @@
 package builderb0y.notgimp;
 
 import java.io.File;
+import java.lang.constant.ClassDesc;
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -53,5 +55,14 @@ public class Util {
 			}
 		}
 		return new File(path + '.' + extension);
+	}
+
+	public static <T> T[] fill(T[] array, T element) {
+		Arrays.fill(array, element);
+		return array;
+	}
+
+	public static ClassDesc desc(Class<?> clazz) {
+		return ClassDesc.ofDescriptor(clazz.descriptorString());
 	}
 }

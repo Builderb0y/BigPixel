@@ -103,49 +103,6 @@ public class MainWindow {
 		infoPane = new HBox();
 	public SimpleObjectProperty<String>
 		styleSheetName = new SimpleObjectProperty<>("assets/themes/light.css");
-	public ObservableValue<Stylesheet>
-		parsedStylesheet = this.styleSheetName.map((String name) -> {
-			try {
-				return new CssParser().parse(MainWindow.class.getClassLoader().getResource(name));
-			}
-			catch (Exception exception) {
-				exception.printStackTrace();
-				return null;
-			}
-		});
-	public static record CheckerboardColors(Color light, Color dark) {
-
-		public static final CheckerboardColors DEFAULT = new CheckerboardColors(Color.LIGHTGRAY, Color.GRAY);
-	}
-	/*
-	public ObservableValue<CheckerboardColors>
-		checkerboardColors = this.parsedStylesheet.map((Stylesheet stylesheet) -> {
-			Color light = null, dark = null;
-			for (Rule rule : stylesheet.getRules()) {
-				for (Selector selector : rule.getSelectors()) {
-					if (selector instanceof SimpleSelector simple) {
-						for (StyleClass styleClass : simple.getStyleClassSet()) {
-							if (styleClass.getStyleClassName().equals("canvasses")) {
-								for (Declaration declaration : rule.getDeclarations()) {
-									if (declaration.getProperty().equals("-checkerboard-light")) {
-										light = (Color)(declaration.getParsedValue().getValue());
-									}
-									else if (declaration.getProperty().equals("-checkerboard-dark")) {
-										dark = (Color)(declaration.getParsedValue().getValue());
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			if (light != null && dark != null) {
-				return new CheckerboardColors(light, dark);
-			}
-			return null;
-		})
-		.orElse(CheckerboardColors.DEFAULT);
-	*/
 
 	public MainWindow(Stage stage) {
 		this.stage = stage;
@@ -201,7 +158,7 @@ public class MainWindow {
 		this.viewDarkThemeMenuItem.setOnAction((ActionEvent event) -> {
 			this.styleSheetName.set("assets/themes/dark.css");
 		});
-		this.rootPane.getStylesheets().add("assets/themes/light.css");
+		this.rootPane.getStylesheets().add("assets/themes/dark.css");
 		this.styleSheetName.addListener((ObservableValue<? extends String> observable, String oldValue, String newValue) -> {
 			this.rootPane.getStylesheets().remove(oldValue);
 			this.rootPane.getStylesheets().add(newValue);
@@ -307,6 +264,7 @@ public class MainWindow {
 			}
 		});
 		this.stage.setScene(scene);
+		this.stage.getIcons().add(new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/icon.png")));
 		this.stage.show();
 	}
 
