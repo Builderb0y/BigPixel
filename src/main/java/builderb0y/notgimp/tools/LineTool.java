@@ -8,15 +8,16 @@ import javafx.scene.input.MouseButton;
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
+import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class LineTool extends Tool<LineTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("line", 9.0D, 9.0D, Tools::lineTool);
+	public static final ToolType TYPE = new ToolType("line", 9.0D, 9.0D);
 
 	public Spinner<Double> radius;
 
-	public LineTool() {
-		super(TYPE);
+	public LineTool(ManualLayerSource source) {
+		super(TYPE, source);
 		this.radius = Util.setupSpinner(new Spinner<>(0.0D, Double.MAX_VALUE, 0.0D, 0.5D));
 		this.radius.valueProperty().addListener(
 			(ObservableValue<? extends Double> observable, Double oldValue, Double newValue) -> {
@@ -27,24 +28,40 @@ public class LineTool extends Tool<LineTool.Work> {
 		);
 	}
 
+	public static int square(int n) { return n * n; }
+	public static int square(int a, int b) { return a * a + b * b; }
+	public static double square(double n) { return n * n; }
+
 	@Override
-	public void mouseDown(Layer layer, int x, int y, MouseButton button) {
+	public void mouseDown(int x, int y, MouseButton button) {
 		Work work = this.work;
 		if (work != null) {
-			if (x == work.x1 && y == work.y1) {
-				work.moving2 = false;
-			}
-			else if (x == this.work.x2 && y == this.work.y2) {
-				work.moving2 = true;
+			work.prevX = x;
+			work.prevY = y;
+			int dist1 = square(x - work.x1, y - work.y1);
+			int dist2 = square(x - work.x2, y - work.y2);
+			double maxDist = Math.max(square(this.radius.getValue()), 0.25D);
+			if (dist1 < maxDist) {
+				if (dist2 < maxDist) {
+					work.moving2 = dist2 <= dist1;
+				}
+				else {
+					work.moving2 = false;
+				}
 			}
 			else {
-				this.enter(layer);
-				this.work = new Work(layer, x, y);
+				if (dist2 < maxDist) {
+					work.moving2 = true;
+				}
+				else {
+					this.enter();
+					this.work = new Work(x, y);
+				}
 			}
 		}
 		else {
-			layer.beginUsingTool();
-			this.work = new Work(layer, x, y);
+			this.source.beginUsingTool();
+			this.work = new Work(x, y);
 		}
 		this.redraw();
 	}
@@ -53,13 +70,15 @@ public class LineTool extends Tool<LineTool.Work> {
 	public void mouseDragged(int x, int y, MouseButton button) {
 		Work work = this.work;
 		if (work.moving2) {
-			work.x2 = x;
-			work.y2 = y;
+			work.x2 += x - work.prevX;
+			work.y2 += y - work.prevY;
 		}
 		else {
-			work.x1 = x;
-			work.y1 = y;
+			work.x1 += x - work.prevX;
+			work.y1 += y - work.prevY;
 		}
+		work.prevX = x;
+		work.prevY = y;
 		this.redraw();
 	}
 
@@ -70,12 +89,12 @@ public class LineTool extends Tool<LineTool.Work> {
 
 	public void redraw() {
 		Work work = this.work;
-		Layer layer = work.layer;
-		layer.beforeToolChanged();
+		Layer layer = this.layer();
+		layer.sources.manualSource.beforeToolChanged();
 		double radius = this.radius.getValue();
 		int width = layer.image.width;
 		int height = layer.image.height;
-		ColorHelper color = layer.openImage.colorPicker.currentColor;
+		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
 		if (radius == 0.0D) {
 			if (work.x1 == work.x2 && work.y1 == work.y2) {
 				if (work.x1 >= 0 && work.x1 < width && work.y1 >= 0 && work.y1 < height) {
@@ -173,19 +192,17 @@ public class LineTool extends Tool<LineTool.Work> {
 		}
 	}
 
-	public static class Work extends Tool.Work {
+	public static class Work {
 
 		public int x1, y1, x2, y2;
+		public int prevX, prevY;
 		public boolean moving2;
 
-		public Work(Layer layer) {
-			super(layer);
-		}
+		public Work() {}
 
-		public Work(Layer layer, int x, int y) {
-			this(layer);
-			this.x1 = this.x2 = x;
-			this.y1 = this.y2 = y;
+		public Work(int x, int y) {
+			this.x1 = this.x2 = this.prevX = x;
+			this.y1 = this.y2 = this.prevY = y;
 			this.moving2 = true;
 		}
 	}

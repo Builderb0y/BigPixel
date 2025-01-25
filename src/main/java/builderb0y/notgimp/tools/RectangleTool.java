@@ -8,15 +8,16 @@ import javafx.scene.input.MouseButton;
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
+import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class RectangleTool extends Tool<RectangleTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("rectangle", 9.0D, 9.0D, Tools::rectangleTool);
+	public static final ToolType TYPE = new ToolType("rectangle", 9.0D, 9.0D);
 
 	public Spinner<Integer> thickness;
 
-	public RectangleTool() {
-		super(TYPE);
+	public RectangleTool(ManualLayerSource source) {
+		super(TYPE, source);
 		this.thickness = Util.setupSpinner(new Spinner<>(0, Integer.MAX_VALUE, 1));
 		this.thickness.valueProperty().addListener(
 			(ObservableValue<? extends Integer> observable, Integer oldValue, Integer newValue) -> {
@@ -28,7 +29,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 	}
 
 	@Override
-	public void mouseDown(Layer layer, int x, int y, MouseButton button) {
+	public void mouseDown(int x, int y, MouseButton button) {
 		Work work = this.work;
 		if (work != null) {
 			BoundaryPosition moving = BoundaryPosition.get(
@@ -37,8 +38,8 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 				work.x2, work.y2
 			);
 			if (moving == BoundaryPosition.OUTSIDE) {
-				this.enter(layer);
-				this.work = new Work(layer, x, y);
+				this.enter();
+				this.work = new Work(x, y);
 			}
 			else {
 				work.moving = moving;
@@ -47,8 +48,8 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 			}
 		}
 		else {
-			layer.beginUsingTool();
-			this.work = new Work(layer, x, y);
+			this.source.beginUsingTool();
+			this.work = new Work(x, y);
 		}
 		this.redraw();
 	}
@@ -73,7 +74,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 				work.prevX = x;
 				work.prevY = y;
 			}
-			case OUTSIDE      -> throw new IllegalStateException(work.moving.toString());
+			case OUTSIDE -> throw new IllegalStateException(work.moving.toString());
 		}
 		this.redraw();
 	}
@@ -85,8 +86,8 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 
 	public void redraw() {
 		Work work = this.work;
-		Layer layer = work.layer;
-		layer.beforeToolChanged();
+		Layer layer = this.layer();
+		this.source.beforeToolChanged();
 		int
 			thickness = this.thickness.getValue(),
 			width = layer.image.width,
@@ -103,7 +104,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 			drawMinY = Math.max(rectMinY, 0),
 			drawMaxX = Math.min(rectMaxX, width - 1),
 			drawMaxY = Math.min(rectMaxY, height - 1);
-		ColorHelper color = work.layer.openImage.colorPicker.currentColor;
+		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
 		if (thickness == 0 || Math.min(rectMaxX - rectMinX + 1, rectMaxY - rectMinY + 1) < thickness << 1) {
 			for (int y = drawMinY; y <= drawMaxY; y++) {
 				for (int x = drawMinX; x <= drawMaxX; x++) {
@@ -158,18 +159,15 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 		}
 	}
 
-	public static class Work extends Tool.Work {
+	public static class Work {
 
 		public int x1, x2, y1, y2;
 		public int prevX, prevY;
 		public BoundaryPosition moving;
 
-		public Work(Layer layer) {
-			super(layer);
-		}
+		public Work() {}
 
-		public Work(Layer layer, int x, int y) {
-			this(layer);
+		public Work(int x, int y) {
 			this.x1 = this.x2 = x;
 			this.y1 = this.y2 = y;
 			this.moving = BoundaryPosition.CORNER_X2_Y2;

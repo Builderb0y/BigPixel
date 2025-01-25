@@ -1,7 +1,5 @@
 package builderb0y.notgimp.tools;
 
-import java.util.function.Function;
-
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.Cursor;
 import javafx.scene.ImageCursor;
@@ -12,52 +10,58 @@ import javafx.scene.input.MouseButton;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.LayerSources;
 import builderb0y.notgimp.NotGimp;
+import builderb0y.notgimp.sources.ManualLayerSource;
 
-public abstract class Tool<W extends Tool.Work> {
+public abstract class Tool<W> {
 
 	public final ToolType type;
+	public final ManualLayerSource source;
 	public @Nullable W work;
 	public SimpleStringProperty labelText;
 
-	public Tool(ToolType type) {
+	public Tool(ToolType type, ManualLayerSource source) {
 		this.type = type;
+		this.source = source;
 		this.labelText = new SimpleStringProperty();
 		this.updateLabelText();
 	}
 
-	public abstract void mouseDown(Layer layer, int x, int y, MouseButton button);
+	public Layer layer() {
+		return this.source.sources.layer;
+	}
+
+	public abstract void mouseDown(int x, int y, MouseButton button);
 
 	public abstract void mouseDragged(int x, int y, MouseButton button);
 
 	public abstract void colorChanged();
 
-	public void keyPressed(Layer layer, KeyCode key) {
+	public void keyPressed(KeyCode key) {
 		if (key == KeyCode.ENTER) {
-			this.enter(layer);
+			this.enter();
 		}
 		else if (key == KeyCode.ESCAPE) {
-			this.escape(layer);
+			this.escape();
 		}
 	}
 
-	public void enter(Layer layer) {
-		if (this.work != null) layer.history.save(this.labelText.get());
-		layer.finishUsingTool();
+	public void enter() {
+		if (this.work != null) this.layer().history.save(this.labelText.get());
+		this.source.finishUsingTool();
 		this.work = null;
 		this.updateLabelText();
 	}
 
-	public void escape(Layer layer) {
+	public void escape() {
 		if (this.work != null) {
 			this.work = null;
 			this.updateLabelText();
 		}
 		else {
-			layer.openImage.mainWindow.currentTool.set(null);
+			this.source.currentTool.set(null);
 		}
-		layer.cancelToolAction();
+		this.source.cancelToolAction();
 	}
 
 	public boolean getSelection(Selection selection) {
@@ -68,40 +72,19 @@ public abstract class Tool<W extends Tool.Work> {
 
 	public abstract void updateLabelText();
 
-	public static class Work {
-
-		public Layer layer;
-
-		public Work(Layer layer) {
-			this.layer = layer;
-		}
-	}
-
 	public static class Selection {
 
 		public int minX, minY, maxX, maxY;
 	}
 
-	public static record ToolType(String name, Image icon, Cursor cursor, Function<Tools, Tool<?>> getter) {
+	public static record ToolType(String name, Image icon, Cursor cursor) {
 
-		public ToolType(String name, Image icon, double x, double y, Function<Tools, Tool<?>> getter) {
-			this(name, icon, new ImageCursor(icon, x, y), getter);
+		public ToolType(String name, Image icon, double x, double y) {
+			this(name, icon, new ImageCursor(icon, x, y));
 		}
 
-		public ToolType(String name, double x, double y, Function<Tools, Tool<?>> getter) {
-			this(name, new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/tools/" + name + ".png")), x, y, getter);
-		}
-
-		public Tool<?> getTool(Tools tools) {
-			return this.getter.apply(tools);
-		}
-
-		public Tool<?> getTool(LayerSources sources) {
-			return this.getTool(sources.tools);
-		}
-
-		public Tool<?> getTool(Layer layer) {
-			return this.getTool(layer.sources);
+		public ToolType(String name, double x, double y) {
+			this(name, new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/tools/" + name + ".png")), x, y);
 		}
 
 		@Override

@@ -13,33 +13,32 @@ public class SquareInsnTree extends InsnTree {
 	public final InsnTree operand;
 
 	public SquareInsnTree(InsnTree operand) {
-		if (operand.type == VectorType.VOID) {
+		VectorType type = operand.type();
+		if (type == VectorType.VOID) {
 			throw new IllegalArgumentException("Can't square void");
 		}
-		if (operand.type.isBig()) {
-			throw new IllegalArgumentException("Big number not coerced");
-		}
-		super(operand.type);
+		super(type);
 		this.operand = operand;
 	}
 
 	@Override
 	public void emitBytecode(Context context) {
 		this.operand.emitBytecode(context);
-		if (this.type.isReallyDoubleWidth()) context.codeBuilder.dup2();
+		VectorType type = this.type();
+		if (type.isReallyDoubleWidth()) context.codeBuilder.dup2();
 		else context.codeBuilder.dup();
-		switch (this.type.shape) {
+		switch (type.shape) {
 			case UNIT -> {
-				switch (this.type.componentType) {
+				switch (type.componentType) {
 					case INT -> context.codeBuilder.imul();
 					case LONG -> context.codeBuilder.lmul();
 					case FLOAT -> context.codeBuilder.fmul();
 					case DOUBLE -> context.codeBuilder.dmul();
-					default -> throw new IllegalStateException(this.type.toString());
+					default -> throw new IllegalStateException(type.toString());
 				}
 			}
 			case VEC2, VEC3, VEC4 -> {
-				ClassDesc vecType = Util.desc(this.type.holderClass());
+				ClassDesc vecType = Util.desc(type.holderClass());
 				context.codeBuilder.invokevirtual(
 					vecType,
 					"mul",

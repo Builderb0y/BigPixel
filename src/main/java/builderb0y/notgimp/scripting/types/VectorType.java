@@ -45,16 +45,12 @@ public enum VectorType {
 	BOOLEAN3(ComponentType.BOOLEAN, GroupShape.VEC3),
 	BOOLEAN4(ComponentType.BOOLEAN, GroupShape.VEC4),
 
-	//used for constants only.
-	BIGINT(ComponentType.BIGINT, GroupShape.UNIT),
-	BIGDEC(ComponentType.BIGDEC, GroupShape.UNIT),
-
 	VOID(ComponentType.VOID, GroupShape.UNIT),
 
 	;
 
 	public static final VectorType[] VALUES = values();
-	public static final Map<String, VectorType> nameLookup = Arrays.stream(VALUES).filter(VectorType::isNotBig).collect(Collectors.toMap((VectorType model) -> model.name, Function.identity()));
+	public static final Map<String, VectorType> nameLookup = Arrays.stream(VALUES).collect(Collectors.toMap((VectorType model) -> model.name, Function.identity()));
 	public static record Key(ComponentType componentType, GroupShape shape) {}
 	public static final Map<Key, VectorType> typeLookup = Arrays.stream(VALUES).collect(Collectors.toMap((VectorType type) -> new Key(type.componentType, type.shape), Function.identity()));
 
@@ -114,8 +110,6 @@ public enum VectorType {
 					case 4 -> BOOLEAN4;
 					default -> throw new IllegalArgumentException(type.toString());
 				};
-				case "java.math.BigInteger" -> BIGINT;
-				case "java.math.BigDecimal" -> BIGDEC;
 				case "void" -> VOID;
 				default -> throw new IllegalArgumentException(type.toString());
 			};
@@ -135,14 +129,6 @@ public enum VectorType {
 			*/
 		}
 		throw new IllegalArgumentException(type.toString());
-	}
-
-	public boolean isBig() {
-		return this == BIGINT || this == BIGDEC;
-	}
-
-	public boolean isNotBig() {
-		return this != BIGINT && this != BIGDEC;
 	}
 
 	public boolean isReallyDoubleWidth() {

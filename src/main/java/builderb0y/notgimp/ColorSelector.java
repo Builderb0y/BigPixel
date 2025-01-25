@@ -16,7 +16,9 @@ import javafx.scene.layout.*;
 import javafx.util.converter.FloatStringConverter;
 
 import builderb0y.notgimp.ColorHelper.ColorComponent;
+import builderb0y.notgimp.sources.ManualLayerSource;
 import builderb0y.notgimp.tools.ColorPickerTool;
+import builderb0y.notgimp.tools.Tool;
 
 public class ColorSelector {
 
@@ -30,7 +32,7 @@ public class ColorSelector {
 		)
 	);
 
-	public OpenImage openImage;
+	public MainWindow mainWindow;
 	public GridPane mainPane = new GridPane();
 	public CanvasHelper gradient = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 257.0D);
 	public ColorHelper currentColor = new ColorHelper();
@@ -38,37 +40,26 @@ public class ColorSelector {
 	public CheckBox fractionalDisplay = new CheckBox("/256");
 	public Button colorPickerButton = new Button();
 	public ColorSlider
-		red   = new ColorSlider(this, ColorComponent.RED),
-		green = new ColorSlider(this, ColorComponent.GREEN),
-		blue  = new ColorSlider(this, ColorComponent.BLUE),
-		hue   = new ColorSlider(this, ColorComponent.HUE),
-		dark  = new ColorSlider(this, ColorComponent.DARK),
-		light = new ColorSlider(this, ColorComponent.LIGHT),
-		alpha = new ColorSlider(this, ColorComponent.ALPHA);
+		red   = this.new ColorSlider(ColorComponent.RED),
+		green = this.new ColorSlider(ColorComponent.GREEN),
+		blue  = this.new ColorSlider(ColorComponent.BLUE),
+		hue   = this.new ColorSlider(ColorComponent.HUE),
+		dark  = this.new ColorSlider(ColorComponent.DARK),
+		light = this.new ColorSlider(ColorComponent.LIGHT),
+		alpha = this.new ColorSlider(ColorComponent.ALPHA);
 	public SavedColor[] savedColors = new SavedColor[10];
 	public HBox savedColorBox = new HBox();
 
-	public ColorSelector(OpenImage openImage) {
-		this.openImage = openImage;
+	public ColorSelector(MainWindow mainWindow) {
+		this.mainWindow = mainWindow;
 		for (int index = 0; index < 10; index++) {
 			this.savedColors[index] = new SavedColor(index);
 			this.savedColorBox.getChildren().add(this.savedColors[index].canvas.getRootPane());
 		}
 		this.mainPane.add(this.savedColorBox, 1, 0, 3, 1);
-		EventHandler<MouseEvent> handler = new RateLimitedMouseEventHandler(
-			(MouseEvent event) -> {
-				this.currentColor.setComponent(this.hue.component.horizontal(), Math.clamp(((float)(int)(event.getX())) / 256.0F, 0.0F, 1.0F));
-				this.currentColor.setComponent(this.hue.component.vertical(), Math.clamp(1.0F - ((float)(int)(event.getY())) / 256.0F, 0.0F, 1.0F));
-				this.currentColor.markDirty();
-			}
-		);
-		this.gradient.canvas.setOnMousePressed(handler);
-		this.gradient.canvas.setOnMouseDragged(handler);
-		this.gradient.canvas.setOnMouseReleased(handler);
 		this.mainPane.add(this.gradient.getRootPane(), 1, 1, 1, 2);
 		this.mainPane.add(this.rectangle.getRootPane(), 2, 1);
 		this.colorPickerButton.setGraphic(new ImageView(ColorPickerTool.TYPE.icon()));
-		this.colorPickerButton.setOnAction((ActionEvent event) -> this.openImage.mainWindow.currentTool.set(ColorPickerTool.TYPE));
 		AnchorPane colorPickerButtonPane = new AnchorPane(this.fractionalDisplay, this.colorPickerButton);
 		AnchorPane.setLeftAnchor(this.fractionalDisplay, 4.0D);
 		AnchorPane.setBottomAnchor(this.fractionalDisplay, 4.0D);
@@ -79,6 +70,37 @@ public class ColorSelector {
 	}
 
 	public void init() {
+		this.currentColor.any.addListener((Observable observable) -> {
+			OpenImage openImage = this.mainWindow.getCurrentImage();
+			if (openImage != null) {
+				Tool<?> tool = openImage.getSelectedLayer().sources.getCurrentTool();
+				if (tool != null) tool.colorChanged();
+			}
+		});
+		EventHandler<MouseEvent> handler = new RateLimitedMouseEventHandler(
+			(MouseEvent event) -> {
+				this.currentColor.setComponent(this.hue.component.horizontal(), Math.clamp(((float)(int)(event.getX())) / 256.0F, 0.0F, 1.0F));
+				this.currentColor.setComponent(this.hue.component.vertical(), Math.clamp(1.0F - ((float)(int)(event.getY())) / 256.0F, 0.0F, 1.0F));
+				this.currentColor.markDirty();
+			}
+		);
+		this.gradient.canvas.setOnMousePressed(handler);
+		this.gradient.canvas.setOnMouseDragged(handler);
+		this.gradient.canvas.setOnMouseReleased(handler);
+		this.colorPickerButton.setOnAction((ActionEvent event) -> {
+			OpenImage image = this.mainWindow.getCurrentImage();
+			if (image != null) {
+				ManualLayerSource manual = image.getSelectedLayer().sources.manualSource;
+				manual.currentTool.set(manual.colorPickerTool);
+			}
+		});
+		this.red.init();
+		this.green.init();
+		this.blue.init();
+		this.hue.init();
+		this.dark.init();
+		this.light.init();
+		this.alpha.init();
 		this.redrawGradient();
 	}
 
@@ -140,9 +162,14 @@ public class ColorSelector {
 		public CanvasHelper bar = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 16.0D);
 		public TextField numberBox = new TextField();
 
-		public ColorSlider(ColorSelector selector, ColorComponent component) {
+		public ColorSlider(ColorComponent component) {
 			this.component = component;
-			this.label.setText(component.name + ':');
+			this.label.setText(component.name.charAt(0) + ":");
+			this.numberBox.setPrefWidth(96.0D);
+		}
+
+		public void init() {
+			this.addToGrid(ColorSelector.this.mainPane, component.ordinal() + 3);
 			EventHandler<MouseEvent> mouseHandler = new RateLimitedMouseEventHandler(
 				(MouseEvent event) -> {
 					ColorSelector.this.currentColor.setComponent(
@@ -185,7 +212,6 @@ public class ColorSelector {
 					);
 				})
 			);
-			this.numberBox.setPrefWidth(96.0D);
 			EventHandler<ScrollEvent> eventHandler = (ScrollEvent event) -> {
 				float value = (float)(this.numberBox.getTextFormatter().getValue());
 				value *= 256.0F;
@@ -199,7 +225,6 @@ public class ColorSelector {
 			};
 			this.bar.canvas.setOnScroll(eventHandler);
 			this.numberBox.setOnScroll(eventHandler);
-			this.addToGrid(selector.mainPane, component.ordinal() + 3);
 			ColorSelector.this.currentColor.any.addListener((Observable observable) -> this.redraw());
 			this.redraw();
 		}

@@ -1,27 +1,30 @@
 package builderb0y.notgimp;
 
 import java.util.Arrays;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.stream.IntStream;
 
-import javafx.application.Platform;
 import javafx.beans.Observable;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TreeItem;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
-import org.jetbrains.annotations.Nullable;
 
+import builderb0y.notgimp.RateLimiter.PeriodicRateLimiter;
+import builderb0y.notgimp.sources.LayerSource;
+import builderb0y.notgimp.sources.ManualLayerSource;
+import builderb0y.notgimp.tools.ColorPickerTool;
 import builderb0y.notgimp.tools.Tool;
 import builderb0y.notgimp.tools.Tool.Selection;
-import builderb0y.notgimp.tools.Tool.ToolType;
 
 import static builderb0y.notgimp.HDRImage.*;
 
@@ -56,7 +59,8 @@ public class ZoomableImage {
 	public OpenImage openImage;
 	public CanvasHelper display;
 	public double offsetX, offsetY;
-	public int zoomIndex = 11; //1.0
+	public IntegerProperty zoomIndex = new SimpleIntegerProperty(11); //1.0
+	public ObservableValue<Double> zoom = this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]);
 	public ChangeListener<Number> centerer;
 	public RateLimiter redrawer;
 
@@ -64,50 +68,12 @@ public class ZoomableImage {
 		this.openImage = openImage;
 		this.display = new CanvasHelper().checkerboard().resizeable((Canvas canvas) -> this.redraw());
 		this.centerer = (ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> this.center();
-		this.display.canvas. widthProperty().addListener(this.centerer);
-		this.display.canvas.heightProperty().addListener(this.centerer);
-		this.redrawer = new RateLimiter(20L, this::doRedraw);
-	}
-
-	public double zoom() {
-		return ZOOMS[this.zoomIndex];
-	}
-
-	public void setPosition(double posX, double posY) {
-		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
-		double zoom = this.zoom();
-		if (posX + image.width  / zoom < 0) posX = image.width  / -zoom;
-		if (posY + image.height / zoom < 0) posY = image.height / -zoom;
-		if (posX > this.display.canvas.getWidth ()) posX = this.display.canvas.getWidth ();
-		if (posY > this.display.canvas.getHeight()) posY = this.display.canvas.getHeight();
-		this.offsetX = posX;
-		this.offsetY = posY;
-	}
-
-	public void center() {
-		//hacky code to only center once.
-		if (this.centerer == null) return;
-		Canvas canvas = this.display.canvas;
-		if (canvas.getWidth() == 0.0D || canvas.getHeight() == 0.0D) return;
-		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
-		int zoomIndex = Arrays.binarySearch(
-			ZOOMS,
-			Math.max(
-				image.width  / canvas.getWidth(),
-				image.height / canvas.getHeight()
-			)
-		);
-		if (zoomIndex < 0) zoomIndex = Math.min(~zoomIndex, ZOOMS.length - 1);
-
-		this.zoomIndex = zoomIndex;
-		this.offsetX = (canvas.getWidth () - image.width  / ZOOMS[zoomIndex]) * 0.5D;
-		this.offsetY = (canvas.getHeight() - image.height / ZOOMS[zoomIndex]) * 0.5D;
-		canvas. widthProperty().removeListener(this.centerer);
-		canvas.heightProperty().removeListener(this.centerer);
-		this.centerer = null;
+		this.redrawer = new PeriodicRateLimiter(20L, this::doRedraw);
 	}
 
 	public void init() {
+		this.display.canvas. widthProperty().addListener(this.centerer);
+		this.display.canvas.heightProperty().addListener(this.centerer);
 		Canvas canvas = this.display.canvas;
 		this.openImage.wrap.addListener(Util.change((Boolean wrap) -> this.redraw()));
 		this.openImage.showingImage.addListener((Observable observable) -> {
@@ -115,16 +81,21 @@ public class ZoomableImage {
 			this.redraw();
 		});
 		canvas.setOnScroll((ScrollEvent event) -> {
-			int oldZoomIndex = this.zoomIndex;
+			int oldZoomIndex = this.zoomIndex.get();
+			int newZoomIndex;
 			if (event.getDeltaY() > 0.0D) {
-				this.zoomIndex = Math.max(this.zoomIndex - 1, 0);
+				newZoomIndex = Math.max(oldZoomIndex - 1, 0);
 			}
 			else if (event.getDeltaY() < 0.0D) {
-				this.zoomIndex = Math.min(this.zoomIndex + 1, ZOOMS.length - 1);
+				newZoomIndex = Math.min(oldZoomIndex + 1, ZOOMS.length - 1);
 			}
-			if (this.zoomIndex != oldZoomIndex) {
+			else {
+				return;
+			}
+			if (newZoomIndex != oldZoomIndex) {
+				this.zoomIndex.set(newZoomIndex);
 				double oldZoom = ZOOMS[oldZoomIndex];
-				double newZoom = ZOOMS[this.zoomIndex];
+				double newZoom = ZOOMS[newZoomIndex];
 				this.setPosition(
 					(this.offsetX - event.getX()) * (oldZoom / newZoom) + event.getX(),
 					(this.offsetY - event.getY()) * (oldZoom / newZoom) + event.getY()
@@ -133,9 +104,13 @@ public class ZoomableImage {
 			}
 		});
 		this.display.getRootPane().cursorProperty().bind(
-			this.openImage.mainWindow.currentTool.map(
-				(@Nullable ToolType type) -> type != null ? type.cursor() : null
-			)
+			this
+			.openImage
+			.layerTree
+			.getSelectionModel()
+			.selectedItemProperty()
+			.flatMap((TreeItem<Layer> item) -> item.getValue().sources.manualSource.currentTool)
+			.map((Tool<?> tool) -> tool instanceof ColorPickerTool || tool.source.isSelected() ? tool.type.cursor() : null)
 		);
 		EventHandler<MouseEvent> handler = new EventHandler<>() {
 
@@ -168,28 +143,25 @@ public class ZoomableImage {
 				}
 				else if (event.getButton() == MouseButton.PRIMARY || event.getButton() == MouseButton.SECONDARY) {
 					Layer layer = ZoomableImage.this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue();
-					ToolType type = ZoomableImage.this.openImage.mainWindow.currentTool.get();
-					if (type != null) {
-						Tool<?> tool = type.getTool(layer);
-						if (tool != null) {
-							double zoom = ZoomableImage.this.zoom();
-							int x = (int)(Math.floor((event.getX() - ZoomableImage.this.offsetX) * zoom));
-							int y = (int)(Math.floor((event.getY() - ZoomableImage.this.offsetY) * zoom));
-							if (ZoomableImage.this.openImage.wrap.get()) {
-								x = Math.floorMod(x, layer.image.width);
-								y = Math.floorMod(y, layer.image.height);
-							}
-							if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
+					Tool<?> tool = layer.sources.getCurrentTool();
+					if (tool != null) {
+						double zoom = ZoomableImage.this.zoom.getValue();
+						int x = (int)(Math.floor((event.getX() - ZoomableImage.this.offsetX) * zoom));
+						int y = (int)(Math.floor((event.getY() - ZoomableImage.this.offsetY) * zoom));
+						if (ZoomableImage.this.openImage.wrap.get()) {
+							x = Math.floorMod(x, layer.image.width);
+							y = Math.floorMod(y, layer.image.height);
+						}
+						if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
+							this.toolX = x;
+							this.toolY = y;
+							tool.mouseDown(x, y, event.getButton());
+						}
+						else if (event.getEventType() == MouseEvent.MOUSE_DRAGGED) {
+							if (this.toolX != x || this.toolY != y) {
 								this.toolX = x;
 								this.toolY = y;
-								tool.mouseDown(layer, x, y, event.getButton());
-							}
-							else if (event.getEventType() == MouseEvent.MOUSE_DRAGGED) {
-								if (this.toolX != x || this.toolY != y) {
-									this.toolX = x;
-									this.toolY = y;
-									tool.mouseDragged(x, y, event.getButton());
-								}
+								tool.mouseDragged(x, y, event.getButton());
 							}
 						}
 					}
@@ -199,6 +171,40 @@ public class ZoomableImage {
 		canvas.setOnMousePressed(handler);
 		canvas.setOnMouseDragged(handler);
 		canvas.setOnMouseReleased(handler);
+	}
+
+	public void setPosition(double posX, double posY) {
+		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
+		double zoom = this.zoom.getValue();
+		if (posX + image.width  / zoom < 0) posX = image.width  / -zoom;
+		if (posY + image.height / zoom < 0) posY = image.height / -zoom;
+		if (posX > this.display.canvas.getWidth ()) posX = this.display.canvas.getWidth ();
+		if (posY > this.display.canvas.getHeight()) posY = this.display.canvas.getHeight();
+		this.offsetX = posX;
+		this.offsetY = posY;
+	}
+
+	public void center() {
+		//hacky code to only center once.
+		if (this.centerer == null) return;
+		Canvas canvas = this.display.canvas;
+		if (canvas.getWidth() == 0.0D || canvas.getHeight() == 0.0D) return;
+		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
+		int zoomIndex = Arrays.binarySearch(
+			ZOOMS,
+			Math.max(
+				image.width  / canvas.getWidth(),
+				image.height / canvas.getHeight()
+			)
+		);
+		if (zoomIndex < 0) zoomIndex = Math.min(~zoomIndex, ZOOMS.length - 1);
+
+		this.zoomIndex.set(zoomIndex);
+		this.offsetX = (canvas.getWidth () - image.width  / ZOOMS[zoomIndex]) * 0.5D;
+		this.offsetY = (canvas.getHeight() - image.height / ZOOMS[zoomIndex]) * 0.5D;
+		canvas. widthProperty().removeListener(this.centerer);
+		canvas.heightProperty().removeListener(this.centerer);
+		this.centerer = null;
 	}
 
 	public void redraw() {
@@ -212,12 +218,11 @@ public class ZoomableImage {
 		if (writer.getPixelFormat() != PixelFormat.getByteBgraPreInstance()) {
 			throw new IllegalStateException("Pixel format changed");
 		}
-		double zoom = this.zoom();
+		double zoom = this.zoom.getValue();
 		int width = (int)(canvas.getWidth());
 		int height = (int)(canvas.getHeight());
 		byte[] pixels = new byte[width * height * 4];
 		IntStream.range(0, height).parallel().forEach((int y) -> {
-			//CheckerboardColors checkerboardColors = this.openImage.mainWindow.checkerboardColors.getValue();
 			for (int x = 0; x < width; x++) {
 				int mappedX = (int)(Math.floor((x - this.offsetX) * zoom));
 				int mappedY = (int)(Math.floor((y - this.offsetY) * zoom));
@@ -228,16 +233,16 @@ public class ZoomableImage {
 				float red = 0.0F, green = 0.0F, blue = 0.0F, alpha = 0.0F;
 				if (mappedX >= 0 && mappedX < image.width && mappedY >= 0 && mappedY < image.height) {
 					int baseIndex =    image.baseIndex(mappedX, mappedY);
-					red   = image.pixels[baseIndex | RED_OFFSET];
+					red   = image.pixels[baseIndex |   RED_OFFSET];
 					green = image.pixels[baseIndex | GREEN_OFFSET];
-					blue  = image.pixels[baseIndex | BLUE_OFFSET];
+					blue  = image.pixels[baseIndex |  BLUE_OFFSET];
 					alpha = image.pixels[baseIndex | ALPHA_OFFSET];
 				}
 				int baseIndex = (y * width + x) << 2;
-				pixels[baseIndex    ] = (byte)(clamp(blue * alpha));
+				pixels[baseIndex    ] = (byte)(clamp(blue  * alpha));
 				pixels[baseIndex | 1] = (byte)(clamp(green * alpha));
-				pixels[baseIndex | 2] = (byte)(clamp(red * alpha));
-				pixels[baseIndex | 3] = (byte)(clamp(alpha));
+				pixels[baseIndex | 2] = (byte)(clamp(red   * alpha));
+				pixels[baseIndex | 3] = (byte)(clamp(        alpha));
 			}
 		});
 		int
@@ -245,10 +250,10 @@ public class ZoomableImage {
 			y1 = 0,
 			x2 = image.width,
 			y2 = image.height;
-		ToolType type = this.openImage.mainWindow.currentTool.get();
-		if (type != null) {
+		if (this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().sources.getCurrentSource() instanceof ManualLayerSource manual) {
 			Selection selection = new Selection();
-			if (type.getTool(this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue()).getSelection(selection)) {
+			Tool<?> tool = manual.currentTool.get();
+			if (tool != null && tool.getSelection(selection)) {
 				x1 = selection.minX;
 				y1 = selection.minY;
 				x2 = selection.maxX + 1;

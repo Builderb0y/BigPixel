@@ -17,21 +17,22 @@ public class InvokeInsnTree extends InsnTree {
 		super(type);
 		this.arguments = arguments;
 		this.method = method;
+		VectorType[] paramTypes = InsnTree.flattenTypes(arguments);
 		int length = method.paramTypes().length;
 		if (Modifier.isStatic(method.access())) {
 			for (int index = 0; index < length; index++) {
-				if (!method.paramTypes()[index].isAssignableFrom(arguments[index].type.holderClass())) {
-					throw new IllegalArgumentException(STR."Expected \{Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]"))}, got \{Arrays.stream(arguments).map(tree -> tree.type.toString()).collect(Collectors.joining(", ", "[", "]"))}");
+				if (!method.paramTypes()[index].isAssignableFrom(paramTypes[index].holderClass())) {
+					throw new IllegalArgumentException(STR."Expected \{Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]"))}, got \{Arrays.toString(paramTypes)}");
 				}
 			}
 		}
 		else {
-			if (!method.owner().isAssignableFrom(arguments[0].type.holderClass())) {
-				throw new IllegalArgumentException(STR."Expected receiver to be of type \{method.owner().getSimpleName()} but it was \{arguments[0].type.holderClass().getSimpleName()}");
+			if (!method.owner().isAssignableFrom(paramTypes[0].holderClass())) {
+				throw new IllegalArgumentException(STR."Expected receiver to be of type \{method.owner().getSimpleName()} but it was \{paramTypes[0].holderClass().getSimpleName()}");
 			}
 			for (int index = 0; index < length; index++) {
-				if (!method.paramTypes()[index].isAssignableFrom(arguments[index + 1].type.holderClass())) {
-					throw new IllegalArgumentException(STR."Expected \{Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]"))}, got \{Arrays.stream(arguments, 1, arguments.length).map(tree -> tree.type.toString()).collect(Collectors.joining(", ", "[", "]"))}");
+				if (!method.paramTypes()[index].isAssignableFrom(paramTypes[index + 1].holderClass())) {
+					throw new IllegalArgumentException(STR."Expected \{Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]"))}, got \{Arrays.toString(paramTypes)}");
 				}
 			}
 		}

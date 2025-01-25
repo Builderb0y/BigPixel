@@ -5,23 +5,27 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.ColorSelector;
+import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.sources.ManualLayerSource;
 
-public class ColorPickerTool extends Tool<Tool.Work> {
+public class ColorPickerTool extends Tool<Void> {
 
-	public static final ToolType TYPE = new ToolType("color_picker", 1.0D, 23.0D, Tools::colorPickerTool);
+	public static final ToolType TYPE = new ToolType("color_picker", 1.0D, 23.0D);
 
-	public ColorPickerTool() {
-		super(TYPE);
+	public ColorPickerTool(ManualLayerSource source) {
+		super(TYPE, source);
 	}
 
 	@Override
-	public void mouseDown(Layer layer, int x, int y, MouseButton button) {
-		ColorHelper color = layer.openImage.colorPicker.currentColor;
-		color.setRed  (ColorSelector.clamp(layer.image.getRed  (x, y)));
-		color.setGreen(ColorSelector.clamp(layer.image.getGreen(x, y)));
-		color.setBlue (ColorSelector.clamp(layer.image.getBlue (x, y)));
-		color.setAlpha(ColorSelector.clamp(layer.image.getAlpha(x, y)));
+	public void mouseDown(int x, int y, MouseButton button) {
+		Layer layer = this.layer();
+		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
+		int baseIndex = layer.image.baseIndex(x, y);
+		color.setRed  (ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage.  RED_OFFSET]));
+		color.setGreen(ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage.GREEN_OFFSET]));
+		color.setBlue (ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage. BLUE_OFFSET]));
+		color.setAlpha(ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]));
 		color.markDirty();
 	}
 
@@ -36,13 +40,13 @@ public class ColorPickerTool extends Tool<Tool.Work> {
 	}
 
 	@Override
-	public void enter(Layer layer) {
+	public void enter() {
 		//no-op.
 	}
 
 	@Override
-	public void escape(Layer layer) {
-		layer.openImage.mainWindow.currentTool.set(null);
+	public void escape() {
+		this.source.currentTool.set(null);
 	}
 
 	@Override

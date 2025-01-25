@@ -496,6 +496,11 @@ public class ExpressionReader {
 		return new CursorPos(this.cursor, this.line, this.column);
 	}
 
+	public CursorPos getCursorAfterWhitespace() throws ScriptParsingException {
+		this.skipWhitespace();
+		return this.getCursor();
+	}
+
 	public void setCursor(CursorPos position) {
 		this.cursor = position.cursor;
 		this.line   = position.line  ;

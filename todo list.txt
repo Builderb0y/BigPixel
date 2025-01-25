@@ -1,10 +1,10 @@
 constant expressions support for color chooser, so "1/2" is a valid input.
 actually implement a parser/compiler for code-generated images, based on the one for big globe, but more C-family syntax this time. and hopefully slightly simpler.
 	all layers can reference all other layers for combining in arbitrary ways, the tree structure is just for organization.
-customizeable theme.
+custom theme.
 histogram.
 tools:
 	ellipse (+ filled variant)
-animations?
+animations.
 multi-window support.
-ability to re-arrange layers.
+fill bucket tool.

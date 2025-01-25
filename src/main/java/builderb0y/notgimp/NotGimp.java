@@ -12,6 +12,7 @@ public class NotGimp extends Application {
 	public void start(Stage stage) {
 		MainWindow mainWindow = new MainWindow(stage);
 		mainWindow.init();
+		mainWindow.show();
 		List<String> toOpen = this.getParameters().getRaw();
 		if (!toOpen.isEmpty()) {
 			for (String fileName : toOpen) {

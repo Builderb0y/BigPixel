@@ -1,43 +1,36 @@
 package builderb0y.notgimp.scripting.parsing;
 
 import java.lang.reflect.Parameter;
+import java.util.Arrays;
 
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.scripting.tree.*;
+import builderb0y.notgimp.scripting.tree.condition.ConditionTree;
 import builderb0y.notgimp.scripting.types.VectorType;
-import builderb0y.notgimp.scripting.types.VectorType.GroupShape;
 import builderb0y.notgimp.scripting.util.MethodInfo;
 
 public class ScriptHandlers {
 
-	public static @Nullable InsnTree cast(InsnTree actual, VectorType expected) {
-		if (actual.type == expected) {
-			return actual;
-		}
-		else if (actual instanceof ConstantInsnTree constant && constant.value instanceof Number && expected.shape == GroupShape.UNIT) {
-			if (expected.componentType.isFloatingPoint() == actual.type.componentType.isFloatingPoint()) {
-				return new ConstantInsnTree(expected, constant.value);
-			}
-			else {
+	public static InsnTree @Nullable [] multiCast(InsnTree[] arguments, VectorType... types) {
+		int length = arguments.length;
+		InsnTree[] result = arguments;
+		int fromIndex = 0;
+		for (int argIndex = 0; argIndex < length; argIndex++) {
+			VectorType[] to = Arrays.copyOfRange(types, fromIndex, fromIndex + arguments[argIndex].types().length);
+			InsnTree replacement = arguments[argIndex].cast(to);
+			if (replacement == null) {
+				System.out.println("Can't cast " + arguments[argIndex] + " to " + Arrays.toString(to));
 				return null;
 			}
-		}
-		else {
-			return null;
-		}
-	}
-
-	public static InsnTree[] multiCast(InsnTree[] arguments, VectorType... types) {
-		int length = arguments.length;
-		if (types.length != length) return null;
-		InsnTree[] result = arguments;
-		for (int index = 0; index < length; index++) {
-			InsnTree replacement = cast(arguments[index], types[index]);
-			if (replacement == null) return null;
-			if (replacement == arguments[index]) continue;
+			fromIndex += arguments[argIndex].types().length;
+			if (replacement == arguments[argIndex]) continue;
 			if (result == arguments) result = result.clone();
-			result[index] = replacement;
+			result[argIndex] = replacement;
+		}
+		if (fromIndex != types.length) {
+			System.out.println(STR."fromIndex: \{fromIndex}, length: \{types.length}");
+			return null;
 		}
 		return result;
 	}
@@ -65,6 +58,11 @@ public class ScriptHandlers {
 			return (ExpressionParser<?> parser, String name) -> {
 				return new LoadInsnTree(type, name);
 			};
+		}
+
+		public static VariableHandler constant(VectorType type, Object value) {
+			ConstantInsnTree tree = new ConstantInsnTree(type, value);
+			return (ExpressionParser<?> parser, String name) -> tree;
 		}
 	}
 
@@ -97,7 +95,9 @@ public class ScriptHandlers {
 
 		public abstract InsnTree getStaticFunction(ExpressionParser<?> parser, VectorType type, String name, InsnTree[] params) throws ScriptParsingException;
 
-		public static StaticFunctionHandler invoker(MethodInfo method, VectorType returnType, VectorType... paramTypes) {
+		public static StaticFunctionHandler invoker(MethodInfo method) {
+			VectorType returnType = method.vectorReturnType();
+			VectorType[] paramTypes = method.vectorParamTypes();
 			return (ExpressionParser<?> parser, VectorType type, String name, InsnTree[] params) -> {
 				InsnTree[] castArgs = multiCast(params, paramTypes);
 				if (castArgs == null) return null;
@@ -113,11 +113,32 @@ public class ScriptHandlers {
 
 		public static KeywordHandler returner(VectorType type) {
 			return (ExpressionParser<?> parser, String name, boolean statement) -> {
+				if (!statement) return null;
 				InsnTree result = parser.nextExpression();
-				if (result.type != type) {
-					throw new ScriptParsingException(STR."Can't return \{result.type} from method expecting \{type}", parser.reader);
+				parser.reader.expectOperatorAfterWhitespace(";");
+				if (result.type() != type) {
+					throw new ScriptParsingException(STR."Can't return \{result.type()} from method expecting \{type}", parser.reader);
 				}
 				return new ReturnInsnTree(result);
+			};
+		}
+
+		public static KeywordHandler makeIf() {
+			return (ExpressionParser<?> parser, String name, boolean statement) -> {
+				if (!statement) return null;
+				parser.reader.expectAfterWhitespace('(');
+				InsnTree condition = parser.nextExpression();
+				parser.reader.expectAfterWhitespace(')');
+				ConditionTree conditionTree = condition.toCondition();
+				if (name.equals("unless")) conditionTree = conditionTree.not();
+				InsnTree body = parser.nextStatement();
+				if (parser.reader.hasIdentifierAfterWhitespace("else")) {
+					InsnTree falseBranch = parser.nextStatement();
+					return new IfElseInsnTree(conditionTree, body, falseBranch, true);
+				}
+				else {
+					return new IfInsnTree(conditionTree, body);
+				}
 			};
 		}
 	}

@@ -23,6 +23,9 @@ public class History implements Comparable<History> {
 		this.layer = layer;
 		this.uniquifier = historyCount++;
 		ALL_HISTORIES.add(this);
+	}
+
+	public void init() {
 		this.save("Initial image");
 	}
 

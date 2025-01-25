@@ -3,15 +3,13 @@ package builderb0y.notgimp;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener.Change;
-import javafx.css.CssParser;
-import javafx.css.Stylesheet;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -20,12 +18,12 @@ import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabDragPolicy;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.KeyCode;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.DataFormat;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
@@ -34,15 +32,16 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.ColorSelector.SavedColor;
 import builderb0y.notgimp.HDRImage.SaveProgress;
+import builderb0y.notgimp.sources.ManualLayerSource;
 import builderb0y.notgimp.tools.Tool;
-import builderb0y.notgimp.tools.Tool.ToolType;
 
 public class MainWindow {
 
 	public Stage
 		stage;
 	public BorderPane
-		rootPane = new BorderPane();
+		rootPane = new BorderPane(),
+		leftPane = new BorderPane();
 	public MenuBar
 		menuBar  = new MenuBar();
 	public Menu
@@ -60,43 +59,27 @@ public class MainWindow {
 		viewDarkThemeMenuItem = new MenuItem("Dark theme");
 	public TabPane
 		openImages = new TabPane();
-	public SimpleObjectProperty<@Nullable ToolType>
-		currentTool = new SimpleObjectProperty<>();
+	public ColorSelector
+		colorPicker = new ColorSelector(this);
 	public CheckBox
 		tilingCheckbox = new CheckBox("Tile view");
 	public Label
-		imageSizeLabel = new Label();
-	public static record LabelComponents(Tab tab, TreeItem<Layer> layer, ToolType type) {
-
-		public static final SimpleStringProperty
-			empty  = new SimpleStringProperty(""),
-			noTool = new SimpleStringProperty("No tool active");
-	}
+		imageSizeLabel = new Label(),
+		zoomLabel = new Label();
 	public ObservableValue<String>
-		toolInfoText = new MultiBinding<LabelComponents>(this.currentTool, this.openImages.getSelectionModel().selectedItemProperty()) {
-
-			@Override
-			public LabelComponents computeValue() {
-				Tab tab = MainWindow.this.openImages.getSelectionModel().getSelectedItem();
-				if (tab != null) {
-					TreeItem<Layer> layer = ((OpenImage)(tab.getUserData())).layerTree.getSelectionModel().getSelectedItem();
-					if (layer != null) {
-						ToolType type = MainWindow.this.currentTool.get();
-						return new LabelComponents(tab, layer, type);
-					}
-				}
-				return new LabelComponents(tab, null, null);
-			}
-		}
-		.flatMap((LabelComponents components) -> {
-			if (components.type != null) {
-				return components.type.getTool(components.layer.getValue()).labelText;
-			}
-			if (components.layer != null) {
-				return LabelComponents.noTool;
-			}
-			return LabelComponents.empty;
-		});
+		toolInfoText = (
+			this
+			.openImages
+			.getSelectionModel()
+			.selectedItemProperty()
+			.map(Tab::getUserData)
+			.map(OpenImage.class::cast)
+			.flatMap(image -> image.layerTree.getSelectionModel().selectedItemProperty())
+			.flatMap(item -> item.getValue().sources.tabPane.getSelectionModel().selectedItemProperty())
+			.flatMap((Tab tab) -> tab.getUserData() instanceof ManualLayerSource source ? source.currentTool : null)
+			.flatMap(tool -> tool.labelText)
+			.orElse("")
+		);
 	public Label
 		toolInfoLabel = new Label();
 	public HBox
@@ -106,7 +89,42 @@ public class MainWindow {
 
 	public MainWindow(Stage stage) {
 		this.stage = stage;
-		this.openImages.getSelectionModel().clearSelection();
+		this.fileMenu.getItems().addAll(
+			this.fileNewMenuItem,
+			this.fileOpenMenuItem,
+			this.fileExportMenuItem,
+			this.fileExportAsMenuItem
+		);
+		this.editMenu.getItems().addAll(
+			this.editUndoMenuItem,
+			this.editRedoMenuItem
+		);
+		this.viewMenu.getItems().addAll(this.viewLightThemeMenuItem, this.viewDarkThemeMenuItem);
+		this.menuBar.getMenus().addAll(this.fileMenu, this.editMenu, this.viewMenu);
+		this.leftPane.setTop(this.menuBar);
+		this.leftPane.setBottom(this.colorPicker.mainPane);
+		this.rootPane.setLeft(this.leftPane);
+		this.openImages.setTabDragPolicy(TabDragPolicy.REORDER);
+		this.openImages.setTabMinHeight(48.0D);
+		this.openImages.setTabMaxHeight(48.0D);
+		this.rootPane.setCenter(this.openImages);
+		this.toolInfoLabel.textProperty().bind(this.toolInfoText);
+		this.tilingCheckbox.setPadding(new Insets(4.0D));
+		this.imageSizeLabel.setPadding(new Insets(4.0D));
+		this.zoomLabel.setPadding(new Insets(4.0D));
+		this.toolInfoLabel.setPadding(new Insets(4.0D));
+		this.infoPane.getChildren().addAll(
+			this.tilingCheckbox,
+			new Separator(Orientation.VERTICAL),
+			this.imageSizeLabel,
+			this.zoomLabel,
+			new Separator(Orientation.VERTICAL),
+			this.toolInfoLabel
+		);
+		this.rootPane.setBottom(this.infoPane);
+	}
+
+	public void init() {
 		this.fileNewMenuItem.setOnAction(this::fileNew);
 		this.fileOpenMenuItem.setOnAction(this::fileOpen);
 		this.fileExportMenuItem.setOnAction(this::fileExport);
@@ -130,12 +148,6 @@ public class MainWindow {
 				this.unbind(fileValue);
 			}
 		}));
-		this.fileMenu.getItems().addAll(
-			this.fileNewMenuItem,
-			this.fileOpenMenuItem,
-			this.fileExportMenuItem,
-			this.fileExportAsMenuItem
-		);
 		ObservableValue<History.Entry> currentAction = (
 			this
 			.openImages
@@ -146,12 +158,14 @@ public class MainWindow {
 			.flatMap((OpenImage image) -> image.layerTree.getSelectionModel().selectedItemProperty())
 			.flatMap((TreeItem<Layer> item) -> item.getValue().history.currentEntry)
 		);
-		this.editUndoMenuItem.textProperty().bind(currentAction.map((History.Entry entry) -> entry.name).map("Undo "::concat).orElse("Nothing to undo"));
-		this.editRedoMenuItem.textProperty().bind(currentAction.map((History.Entry entry) -> entry.next).map((History.Entry entry) -> entry.name).map("Redo "::concat).orElse("Nothing to redo"));
-		this.editMenu.getItems().addAll(
-			this.editUndoMenuItem,
-			this.editRedoMenuItem
-		);
+		ObservableValue<String> undoText = currentAction.map((History.Entry entry) -> entry.prev).map((History.Entry entry) -> entry.next.name).map("Undo "::concat);
+		ObservableValue<String> redoText = currentAction.map((History.Entry entry) -> entry.next).map((History.Entry entry) -> entry.name).map("Redo "::concat);
+		this.editUndoMenuItem.textProperty().bind(undoText.orElse("Nothing to undo"));
+		this.editRedoMenuItem.textProperty().bind(redoText.orElse("Nothing to redo"));
+		this.editUndoMenuItem.disableProperty().bind(undoText.map((String _) -> Boolean.FALSE).orElse(Boolean.TRUE));
+		this.editRedoMenuItem.disableProperty().bind(redoText.map((String _) -> Boolean.FALSE).orElse(Boolean.TRUE));
+		this.editUndoMenuItem.setOnAction((ActionEvent event) -> this.getCurrentImage().getSelectedLayer().history.undo());
+		this.editRedoMenuItem.setOnAction((ActionEvent event) -> this.getCurrentImage().getSelectedLayer().history.redo());
 		this.viewLightThemeMenuItem.setOnAction((ActionEvent event) -> {
 			this.styleSheetName.set("assets/themes/light.css");
 		});
@@ -186,10 +200,7 @@ public class MainWindow {
 				}
 			}
 		});
-		this.viewMenu.getItems().addAll(this.viewLightThemeMenuItem, this.viewDarkThemeMenuItem);
-		this.menuBar.getMenus().addAll(this.fileMenu, this.editMenu, this.viewMenu);
-		this.rootPane.setTop(this.menuBar);
-		this.openImages.setTabDragPolicy(TabDragPolicy.REORDER);
+		this.colorPicker.init();
 		this.openImages.getTabs().addListener((Change<? extends Tab> change) -> {
 			while (change.next()) {
 				for (Tab tab : change.getRemoved()) {
@@ -197,10 +208,10 @@ public class MainWindow {
 				}
 			}
 		});
-		this.rootPane.setCenter(this.openImages);
 		this.imageSizeLabel.textProperty().bind(
 			this.openImages.getSelectionModel().selectedItemProperty().map((Tab tab) -> {
-				TreeItem<Layer> root = ((OpenImage)tab.getUserData()).layerTree.getRoot();
+				OpenImage openImage = (OpenImage)(tab.getUserData());
+				TreeItem<Layer> root = openImage.layerTree.getRoot();
 				if (root != null) {
 					HDRImage image = root.getValue().image;
 					return "" + image.width + 'x' + image.height;
@@ -211,30 +222,48 @@ public class MainWindow {
 			})
 			.orElse("No image loaded")
 		);
-		this.toolInfoLabel.textProperty().bind(this.toolInfoText);
-		this.tilingCheckbox.setPadding(new Insets(4.0D));
-		this.imageSizeLabel.setPadding(new Insets(4.0D));
-		this.toolInfoLabel.setPadding(new Insets(4.0D));
-		this.infoPane.getChildren().addAll(
-			this.tilingCheckbox,
-			new Separator(Orientation.VERTICAL),
-			this.imageSizeLabel,
-			new Separator(Orientation.VERTICAL),
-			this.toolInfoLabel
+		this.zoomLabel.textProperty().bind(
+			this.openImages.getSelectionModel().selectedItemProperty().flatMap((Tab tab) -> {
+				OpenImage openImage = (OpenImage)(tab.getUserData());
+				return openImage.imageDisplay.zoom;
+			})
+			.map((Double zoom) -> "(" + (1.0D / zoom) + "x zoom)")
+			.orElse("")
 		);
-		this.rootPane.setBottom(this.infoPane);
-		stage.titleProperty().bind(this.openImages.getSelectionModel().selectedItemProperty().map(Tab::getText).orElse("Not Gimp"));
+		this.stage.titleProperty().bind(this.openImages.getSelectionModel().selectedItemProperty().map(Tab::getText).orElse("Not Gimp"));
 	}
 
-	public void init() {
+	public void show() {
 		Scene scene = new Scene(this.rootPane, 1536, 896);
 		scene.setOnKeyPressed((KeyEvent event) -> {
 			boolean shift = event.isShiftDown();
 			if (event.isControlDown()) {
-				if (event.getCode() == KeyCode.Z) {
-					History history = ((OpenImage)(this.openImages.getSelectionModel().getSelectedItem().getUserData())).layerTree.getSelectionModel().getSelectedItem().getValue().history;
-					if (shift) history.redo();
-					else history.undo();
+				switch (event.getCode()) {
+					case Z -> {
+						History history = ((OpenImage)(this.openImages.getSelectionModel().getSelectedItem().getUserData())).layerTree.getSelectionModel().getSelectedItem().getValue().history;
+						if (shift) history.redo();
+						else history.undo();
+					}
+					case C -> {
+						OpenImage openImage = this.getCurrentImage();
+						if (openImage != null) {
+							Layer layer = openImage.getSelectedLayer();
+							if (layer != null) {
+								Clipboard.getSystemClipboard().setContent(
+									Map.of(DataFormat.IMAGE, layer.image.toJfxImage())
+								);
+							}
+						}
+					}
+					case V -> {
+						if (event.isShiftDown()) {
+							this.openFromClipboard();
+						}
+					}
+					case N -> {
+						this.fileNew(null);
+					}
+					case null, default -> {}
 				}
 			}
 			else switch (event.getCode()) {
@@ -252,13 +281,8 @@ public class MainWindow {
 					OpenImage image = this.getCurrentImage();
 					if (image != null) {
 						Layer layer = image.layerTree.getSelectionModel().getSelectedItem().getValue();
-						ToolType type = this.currentTool.get();
-						if (type != null) {
-							Tool<?> tool = type.getTool(layer);
-							if (tool != null) {
-								tool.keyPressed(layer, event.getCode());
-							}
-						}
+						Tool<?> tool = layer.sources.getCurrentTool();
+						if (tool != null) tool.keyPressed(event.getCode());
 					}
 				}
 			}
@@ -269,17 +293,27 @@ public class MainWindow {
 	}
 
 	public void swapColor(int index, boolean shift) {
-		OpenImage image = this.getCurrentImage();
-		if (image != null) {
-			SavedColor color = image.colorPicker.savedColors[index];
-			if (shift) color.save();
-			else color.apply();
-		}
+		SavedColor color = this.colorPicker.savedColors[index];
+		if (shift) color.save();
+		else color.apply();
 	}
 
 	public @Nullable OpenImage getCurrentImage() {
 		Tab tab = this.openImages.getSelectionModel().getSelectedItem();
 		return tab != null ? ((OpenImage)(tab.getUserData())) : null;
+	}
+
+	public void openFromClipboard() {
+		Object content = Clipboard.getSystemClipboard().getContent(DataFormat.IMAGE);
+		if (content instanceof Image image) {
+			OpenImage openImage = new OpenImage(this);
+			Layer layer = new Layer(openImage, "Pasted image", new HDRImage(image));
+			openImage.initFirstLayer(layer);
+			this.addOpenImage("Pasted image", openImage);
+		}
+		else {
+			System.err.println("No image in clipboard: " + content);
+		}
 	}
 
 	public void fileNew(ActionEvent event) {
@@ -402,17 +436,26 @@ public class MainWindow {
 	}
 
 	public void addOpenImage(String name, OpenImage openImage) {
-		Tab tab = new Tab(name, openImage.mainPane);
+		Tab tab = new Tab(name, openImage.getMainNode());
 		tab.setUserData(openImage);
 		ImageView thumbnail = new ImageView();
 		thumbnail.imageProperty().bind(openImage.layerTree.rootProperty().map((TreeItem<Layer> item) -> item.getValue().thumbnail));
 		HDRImage image = openImage.layerTree.getRoot().getValue().image;
-		if (image.width >= image.height) thumbnail.setFitWidth(16.0D);
-		else thumbnail.setFitHeight(16.0D);
+		if (image.width >= image.height) thumbnail.setFitWidth(32.0D);
+		else thumbnail.setFitHeight(32.0D);
 		thumbnail.setPreserveRatio(true);
 		tab.setGraphic(thumbnail);
+		tab.textProperty().bind(
+			this
+			.openImages
+			.getSelectionModel()
+			.selectedItemProperty()
+			.flatMap((Tab selected) -> selected == tab ? openImage.layerTree.rootProperty() : null)
+			.flatMap((TreeItem<Layer> layer) -> layer.getValue().name)
+		);
 		int index = this.openImages.getSelectionModel().getSelectedIndex() + 1;
 		this.openImages.getTabs().add(index, tab);
 		this.openImages.getSelectionModel().select(index);
+		openImage.init();
 	}
 }

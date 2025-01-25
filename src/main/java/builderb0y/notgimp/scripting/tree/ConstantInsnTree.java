@@ -2,6 +2,9 @@ package builderb0y.notgimp.scripting.tree;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Arrays;
+
+import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.scripting.types.VectorType;
 
@@ -25,19 +28,9 @@ public class ConstantInsnTree extends InsnTree {
 
 	@Override
 	public void emitBytecode(Context context) {
-		switch (this.type) {
+		switch (this.type()) {
 			case INT -> {
-				int intValue = this.<BigInteger>get().intValueExact();
-				switch (intValue) {
-					case -1 -> context.codeBuilder.iconst_m1();
-					case  0 -> context.codeBuilder.iconst_0();
-					case  1 -> context.codeBuilder.iconst_1();
-					case  2 -> context.codeBuilder.iconst_2();
-					case  3 -> context.codeBuilder.iconst_3();
-					case  4 -> context.codeBuilder.iconst_4();
-					case  5 -> context.codeBuilder.iconst_5();
-					default -> context.codeBuilder.bipush(intValue);
-				}
+				context.codeBuilder.constantInstruction(this.<Integer>get());
 			}
 			case INT2 -> {
 				throw new UnsupportedOperationException();
@@ -60,10 +53,7 @@ public class ConstantInsnTree extends InsnTree {
 			}
 			*/
 			case LONG -> {
-				long longValue = this.<BigInteger>get().longValueExact();
-				if (longValue == 0L) context.codeBuilder.lconst_0();
-				else if (longValue == 1L) context.codeBuilder.lconst_1();
-				else context.codeBuilder.ldc(longValue);
+				context.codeBuilder.constantInstruction(this.<Long>get());
 			}
 			case LONG2 -> {
 				throw new UnsupportedOperationException();
@@ -86,11 +76,7 @@ public class ConstantInsnTree extends InsnTree {
 			}
 			*/
 			case FLOAT -> {
-				float floatValue = this.<BigDecimal>get().floatValue();
-				if (Float.floatToRawIntBits(floatValue) == 0) context.codeBuilder.fconst_0();
-				else if (floatValue == 1.0F) context.codeBuilder.fconst_1();
-				else if (floatValue == 2.0F) context.codeBuilder.fconst_2();
-				else context.codeBuilder.ldc(floatValue);
+				context.codeBuilder.constantInstruction(this.<Float>get());
 			}
 			case FLOAT2 -> {
 				throw new UnsupportedOperationException();
@@ -113,10 +99,7 @@ public class ConstantInsnTree extends InsnTree {
 			}
 			*/
 			case DOUBLE -> {
-				double doubleValue = this.<BigDecimal>get().doubleValue();
-				if (Double.doubleToRawLongBits(doubleValue) == 0) context.codeBuilder.dconst_0();
-				else if (doubleValue == 1.0D) context.codeBuilder.dconst_1();
-				else context.codeBuilder.ldc(doubleValue);
+				context.codeBuilder.constantInstruction(this.<Double>get());
 			}
 			case DOUBLE2 -> {
 				throw new UnsupportedOperationException();
@@ -155,12 +138,18 @@ public class ConstantInsnTree extends InsnTree {
 			case BOOLEAN4 -> {
 				throw new UnsupportedOperationException();
 			}
-			case BIGINT -> {
-				throw new IllegalStateException("BigInteger not coerced");
-			}
-			case BIGDEC -> {
-				throw new IllegalStateException("BigDecimal not coerced");
-			}
+		}
+	}
+
+	@Override
+	public @Nullable InsnTree cast(VectorType... types) {
+		if (Arrays.equals(this.types, types)) return this;
+		if (types.length != 1) return null;
+		if (this.types[0].componentType.isFloatingPoint() == types[0].componentType.isFloatingPoint()) {
+			return new ConstantInsnTree(types[0], this.value);
+		}
+		else {
+			return null;
 		}
 	}
 }

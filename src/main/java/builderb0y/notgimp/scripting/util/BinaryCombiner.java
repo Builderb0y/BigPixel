@@ -55,7 +55,6 @@ public abstract class BinaryCombiner<T> {
 	public UnaryValue<T> createUnary(VectorType type, VectorOperators.Unary operator) {
 		String name = operator.name().toLowerCase(Locale.ROOT) + '_' + type.name;
 		T handler = this.invoker(VectorOperations.class, name, type.holderClass());
-		System.out.println((handler != null ? "found" : "did not find") + ' ' + name);
 		return handler != null ? new UnaryValue<>(type, type, handler) : null;
 	}
 
@@ -64,15 +63,8 @@ public abstract class BinaryCombiner<T> {
 	}
 
 	public BinaryValue<T> createBinary(VectorType left, VectorType right, VectorOperators.Binary operator) {
-		if (left.isBig() && right.isNotBig()) {
-			left = unit(right);
-		}
-		else if (left.isNotBig() && right.isBig()) {
-			right = unit(left);
-		}
 		String name = operator.name().toLowerCase(Locale.ROOT) + '_' + left.name + '_' + right.name;
 		T handler = this.invoker(VectorOperations.class, name, left.holderClass(), right.holderClass());
-		System.out.println((handler != null ? "found" : "did not find") + ' ' + name);
 		return handler != null ? new BinaryValue<>(left, right, left.shape == GroupShape.UNIT ? right : left, handler) : null;
 	}
 

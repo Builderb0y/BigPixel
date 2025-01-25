@@ -7,7 +7,6 @@ import java.lang.classfile.TypeKind;
 import java.lang.constant.ClassDesc;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import builderb0y.notgimp.scripting.types.VectorType;
 import builderb0y.notgimp.scripting.util.LocalVariable;
@@ -15,11 +14,6 @@ import builderb0y.notgimp.scripting.util.LocalVariable;
 public interface CodeEmitter {
 
 	public abstract void emitBytecode(Context context);
-
-	public default CodeEmitter andThen(CodeEmitter that) {
-		Objects.requireNonNull(that);
-		return (Context context) -> { this.emitBytecode(context); that.emitBytecode(context); };
-	}
 
 	public static class Context {
 

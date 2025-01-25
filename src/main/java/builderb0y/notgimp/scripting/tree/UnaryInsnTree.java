@@ -16,9 +16,9 @@ public class UnaryInsnTree extends InsnTree {
 	public final CodeEmitter emitter;
 
 	public UnaryInsnTree(InsnTree operand, VectorOperators.Unary operator) {
-		UnaryValue<CodeEmitter> emitter = VectorOpCompiler.INSTANCE.unary(operand.type, operator);
+		UnaryValue<CodeEmitter> emitter = VectorOpCompiler.INSTANCE.unary(operand.type(), operator);
 		super(emitter.out());
-		this.operand = ScriptHandlers.cast(operand, emitter.in());
+		this.operand = operand.cast(emitter.in());
 		this.operator = operator;
 		this.emitter = emitter.value();
 		if (this.operand == null) {
@@ -28,7 +28,7 @@ public class UnaryInsnTree extends InsnTree {
 
 	public static InsnTree create(InsnTree operand, VectorOperators.Unary operator) {
 		if (operand instanceof ConstantInsnTree constant) {
-			UnaryValue<MethodHandle> handle = ConstantFolder.INSTANCE.unary(operand.type, operator);
+			UnaryValue<MethodHandle> handle = ConstantFolder.INSTANCE.unary(operand.type(), operator);
 			try {
 				return new ConstantInsnTree(handle.out(), handle.value().invoke(constant.value));
 			}

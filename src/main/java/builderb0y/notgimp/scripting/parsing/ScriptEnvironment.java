@@ -4,6 +4,7 @@ import java.util.*;
 
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.*;
 import builderb0y.notgimp.scripting.tree.InsnTree;
+import builderb0y.notgimp.scripting.tree.SwizzleInsnTree;
 import builderb0y.notgimp.scripting.types.VectorType;
 
 public class ScriptEnvironment implements
@@ -52,8 +53,12 @@ public class ScriptEnvironment implements
 
 	@Override
 	public InsnTree getField(ExpressionParser<?> parser, InsnTree receiver, String name) throws ScriptParsingException {
-		FieldHandler handler = this.fields.get(new NamedVectorType(name, receiver.type));
-		if (handler == null) throw new ScriptParsingException("Unknown field: " + name, parser.reader);
+		FieldHandler handler = this.fields.get(new NamedVectorType(name, receiver.type()));
+		if (handler == null) {
+			InsnTree swizzle = SwizzleInsnTree.swizzle(receiver, name);
+			if (swizzle != null) return swizzle;
+			else throw new ScriptParsingException("Unknown field: " + name, parser.reader);
+		}
 		InsnTree field = handler.getField(parser, receiver, name);
 		if (field == null) throw new ScriptParsingException("No such field: " + name, parser.reader);
 		return field;
@@ -61,10 +66,10 @@ public class ScriptEnvironment implements
 
 	@Override
 	public InsnTree getIndex(ExpressionParser<?> parser, InsnTree receiver, InsnTree[] params) throws ScriptParsingException {
-		IndexHandler handler = this.indexes.get(receiver.type);
-		if (handler == null) throw new ScriptParsingException("Unknown index: " + receiver.type, parser.reader);
+		IndexHandler handler = this.indexes.get(receiver.type());
+		if (handler == null) throw new ScriptParsingException("Unknown index: " + receiver, parser.reader);
 		InsnTree index = handler.getIndex(parser, receiver, params);
-		if (index == null) throw new ScriptParsingException("No such index: " + receiver.type, parser.reader);
+		if (index == null) throw new ScriptParsingException("No such index: " + receiver, parser.reader);
 		return index;
 	}
 
@@ -81,7 +86,7 @@ public class ScriptEnvironment implements
 
 	@Override
 	public InsnTree getMethod(ExpressionParser<?> parser, InsnTree receiver, String name, InsnTree[] params) throws ScriptParsingException {
-		List<MethodHandler> handlers = this.methods.get(new NamedVectorType(name, receiver.type));
+		List<MethodHandler> handlers = this.methods.get(new NamedVectorType(name, receiver.type()));
 		if (handlers == null) throw new ScriptParsingException("Unknown method: " + name, parser.reader);
 		for (MethodHandler handler : handlers) {
 			InsnTree result = handler.getMethod(parser, receiver, name, params);

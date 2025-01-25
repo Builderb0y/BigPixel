@@ -27,8 +27,11 @@ import org.jetbrains.annotations.NotNull;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.parsing.ExpressionReader.CursorPos;
+import builderb0y.notgimp.scripting.parsing.ScriptHandlers.KeywordHandler;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.VariableHandler;
 import builderb0y.notgimp.scripting.tree.*;
+import builderb0y.notgimp.scripting.tree.InsnTree.Assigner;
+import builderb0y.notgimp.scripting.tree.condition.*;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 import builderb0y.notgimp.scripting.types.VectorType;
 import builderb0y.notgimp.scripting.types.VectorType.ComponentType;
@@ -65,80 +68,56 @@ public class ExpressionParser<I> {
 	}
 
 	public ExpressionParser<I> addBuiltins() {
-		/*
-		for (Method method : VectorApi.class.getDeclaredMethods()) {
-			Name annotation = method.getAnnotation(Name.class);
-			String name = annotation != null ? annotation.value() : method.getName();
-			MethodInfo model = new MethodInfo(method);
-			VectorType returnType = VectorType.get(method.getAnnotatedReturnType());
-			VectorType[] paramTypes = Arrays.stream(method.getAnnotatedParameterTypes()).map(VectorType::get).toArray(VectorType[]::new);
-			this.scope.environment.addFunction(name, (ExpressionParser<?> parser, String name_, InsnTree[] params) -> {
-				InsnTree[] castParameters = ScriptHandlers.multiCast(params, paramTypes);
-				if (castParameters == null) return null;
-				return new InvokeInsnTree(returnType, castParameters, model);
-			});
-		}
-		*/
 		for (VectorType type : VectorType.VALUES) {
-			if (type.isNotBig()) {
-				this.scope.environment.addFunction(type.name, (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
-					int length = params.length;
-					VectorType[] types = new VectorType[length];
-					for (int index = 0; index < length; index++) {
-						VectorType paramType = params[index].type;
-						if (paramType.isBig()) paramType = VectorType.get(type.componentType, GroupShape.UNIT);
-						types[index] = paramType;
-					}
-					InsnTree[] castArgs = ScriptHandlers.multiCast(params, types);
-					if (castArgs == null) return null;
-					String fullName = name + "_from_" + Arrays.stream(types).map((VectorType paramType) -> paramType.name).collect(Collectors.joining("_"));
-					try {
-						MethodInfo model = new MethodInfo(VectorOperations.class, fullName);
-						return new InvokeInsnTree(type, castArgs, model);
-					}
-					catch (IllegalArgumentException exception) {
-						return null;
-					}
+			this.scope.environment.addFunction(type.name, (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
+				VectorType[] types = InsnTree.flattenTypes(params);
+				String fullName = name + "_from_" + Arrays.stream(types).map((VectorType paramType) -> paramType.name).collect(Collectors.joining("_"));
+				try {
+					MethodInfo model = new MethodInfo(VectorOperations.class, fullName);
+					return new VectorConstructorInsnTree(type, params, model);
+				}
+				catch (IllegalArgumentException exception) {
+					return null;
+				}
+			});
+			if (type.shape != GroupShape.UNIT) {
+				this.scope.environment.addIndex(type, (ExpressionParser<?> parser, InsnTree receiver, InsnTree[] params) -> {
+					InsnTree[] castArguments = ScriptHandlers.multiCast(params, VectorType.INT);
+					if (castArguments == null) return null;
+					return new IndexInsnTree(
+						VectorType.get(receiver.type().componentType, GroupShape.UNIT),
+						receiver,
+						castArguments,
+						new MethodInfo(
+							receiver.type().holderClass(),
+							receiver.type().componentType == ComponentType.BOOLEAN ? "laneIsSet" : "lane",
+							int.class
+						)
+					);
 				});
-				if (type.shape != GroupShape.UNIT) {
+			}
+			/*
+			switch (type.shape) {
+				case UNIT -> {}
+				case VEC2, VEC4, VEC8 -> {
+					MethodInfo model = new MethodInfo(type.holderClass(), type.componentType == ComponentType.BOOLEAN ? "laneIsSet" : "lane", int.class);
 					this.scope.environment.addIndex(type, (ExpressionParser<?> parser, InsnTree receiver, InsnTree[] params) -> {
-						InsnTree[] castArguments = ScriptHandlers.multiCast(params, VectorType.INT);
-						if (castArguments == null) return null;
-						return new InvokeInsnTree(
-							VectorType.get(receiver.type.componentType, GroupShape.UNIT),
-							receiver,
-							castArguments,
-							new MethodInfo(
-								receiver.type.holderClass(),
-								receiver.type.componentType == ComponentType.BOOLEAN ? "laneIsSet" : "lane",
-								int.class
-							)
-						);
+						InsnTree[] cast = ScriptHandlers.multiCast(params, VectorType.INT);
+						if (cast == null) return null;
+						return new InvokeInsnTree(VectorType.get(type.componentType, GroupShape.UNIT), receiver, cast, model);
 					});
 				}
-				/*
-				switch (type.shape) {
-					case UNIT -> {}
-					case VEC2, VEC4, VEC8 -> {
-						MethodInfo model = new MethodInfo(type.holderClass(), type.componentType == ComponentType.BOOLEAN ? "laneIsSet" : "lane", int.class);
-						this.scope.environment.addIndex(type, (ExpressionParser<?> parser, InsnTree receiver, InsnTree[] params) -> {
-							InsnTree[] cast = ScriptHandlers.multiCast(params, VectorType.INT);
-							if (cast == null) return null;
-							return new InvokeInsnTree(VectorType.get(type.componentType, GroupShape.UNIT), receiver, cast, model);
-						});
-					}
-					case MAT2, MAT4, MAT8 -> {
-						VectorType unit = VectorType.get(type.componentType, GroupShape.UNIT);
-						VectorType vector = VectorType.get(type.componentType, GroupShape.VALUES[type.shape.ordinal() - 3]);
-						this.scope.environment.addStaticFunction(type, "columns",  StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "columns" ), type, Util.fill(new VectorType[type.shape.columns], vector)));
-						this.scope.environment.addStaticFunction(type, "rows",     StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "rows"    ), type, Util.fill(new VectorType[type.shape.columns], vector)));
-						this.scope.environment.addStaticFunction(type, "diagonal", StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "diagonal"), type, Util.fill(new VectorType[1], vector)));
-						this.scope.environment.addStaticFunction(type, "scalar",   StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "scalar"  ), type, Util.fill(new VectorType[1], unit)));
-						this.scope.environment.addStaticFunction(type, "fill",     StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "fill"    ), type, Util.fill(new VectorType[1], unit)));
-					}
+				case MAT2, MAT4, MAT8 -> {
+					VectorType unit = VectorType.get(type.componentType, GroupShape.UNIT);
+					VectorType vector = VectorType.get(type.componentType, GroupShape.VALUES[type.shape.ordinal() - 3]);
+					this.scope.environment.addStaticFunction(type, "columns",  StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "columns" ), type, Util.fill(new VectorType[type.shape.columns], vector)));
+					this.scope.environment.addStaticFunction(type, "rows",     StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "rows"    ), type, Util.fill(new VectorType[type.shape.columns], vector)));
+					this.scope.environment.addStaticFunction(type, "diagonal", StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "diagonal"), type, Util.fill(new VectorType[1], vector)));
+					this.scope.environment.addStaticFunction(type, "scalar",   StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "scalar"  ), type, Util.fill(new VectorType[1], unit)));
+					this.scope.environment.addStaticFunction(type, "fill",     StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "fill"    ), type, Util.fill(new VectorType[1], unit)));
 				}
-				*/
 			}
+			*/
 		}
 		for (VectorOperators.Unary operator : OpsGenerator.UNARIES) {
 			this.scope.environment.addFunction(operator.name().toLowerCase(Locale.ROOT), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
@@ -148,13 +127,16 @@ public class ExpressionParser<I> {
 		}
 		for (VectorOperators.Binary operator : OpsGenerator.BINARIES) {
 			this.scope.environment.addFunction(operator.name().toLowerCase(Locale.ROOT), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
-				if (params.length != 2) return null;
-				return BinaryInsnTree.create(params[0], params[1], operator);
+				return switch (params.length) {
+					case 1 -> BinaryInsnTree.createUnpacked(params[0], operator);
+					case 2 -> BinaryInsnTree.create(params[0], params[1], operator);
+					default -> null;
+				};
 			});
 		}
 		for (String name : new String[] { "dot", "lengthSquared", "length", "normalize", "mix" }) {
 			this.scope.environment.addFunction(name, (ExpressionParser<?> parser, String name_, InsnTree[] params) -> {
-				String fullName = name_ + '_' + Arrays.stream(params).map((InsnTree tree) -> tree.type.name).collect(Collectors.joining("_"));
+				String fullName = name_ + '_' + Arrays.stream(params).map(InsnTree::types).flatMap(Arrays::stream).map((VectorType t) -> t.name).collect(Collectors.joining("_"));
 				try {
 					MethodInfo model = new MethodInfo(VectorOperations.class, fullName);
 					return new InvokeInsnTree(model.vectorReturnType(), params, model);
@@ -164,6 +146,13 @@ public class ExpressionParser<I> {
 				}
 			});
 		}
+		this.scope.environment.addVariable("e", VariableHandler.constant(VectorType.DOUBLE, Math.E));
+		this.scope.environment.addVariable("pi", VariableHandler.constant(VectorType.DOUBLE, Math.PI));
+		this.scope.environment.addVariable("tau", VariableHandler.constant(VectorType.DOUBLE, Math.TAU));
+		this.scope.environment.addVariable("true", VariableHandler.constant(VectorType.BOOLEAN, Boolean.TRUE));
+		this.scope.environment.addVariable("false", VariableHandler.constant(VectorType.BOOLEAN, Boolean.FALSE));
+		this.scope.environment.addKeyword("if", KeywordHandler.makeIf());
+		this.scope.environment.addKeyword("unless", KeywordHandler.makeIf());
 		return this;
 	}
 
@@ -172,8 +161,9 @@ public class ExpressionParser<I> {
 		MethodInfo two = new MethodInfo(Layer.class, "getPixelWrapped", 2);
 		for (Map.Entry<String, Layer> entry : layers.entrySet()) {
 			this.scope.environment.addFunction(entry.getKey(), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
+				VectorType[] types = InsnTree.flattenTypes(params);
 				int index = parser.usedLayers.computeIfAbsent(name, (String _) -> parser.usedLayers.size());
-				return switch (params.length) {
+				return switch (types.length) {
 					case 1 -> {
 						InsnTree[] castParams = ScriptHandlers.multiCast(params, VectorType.INT2);
 						if (castParams == null) yield null;
@@ -198,6 +188,7 @@ public class ExpressionParser<I> {
 		return this;
 	}
 
+	@SuppressWarnings("preview")
 	public I parse(Map<String, Layer> layers) throws ScriptParsingException {
 		InsnTree tree;
 		try {
@@ -293,16 +284,18 @@ public class ExpressionParser<I> {
 	}
 
 	public @NotNull InsnTree nextStatement() throws ScriptParsingException {
-		CursorPos revert = this.reader.getCursor();
+		if (this.reader.hasAfterWhitespace('{')) {
+			InsnTree result;
+			try (Scope _ = this.pushScope()) {
+				result = this.nextScript();
+			}
+			this.reader.expectAfterWhitespace('}');
+			return new BlockInsnTree(result);
+		}
 		String maybeKeyword = this.reader.readIdentifierAfterWhitespace();
 		if (maybeKeyword != null) {
-			InsnTree result = this.nextIdentifier(maybeKeyword, true);
-			if (result != null) {
-				this.reader.expectOperatorAfterWhitespace(";");
-				return result;
-			}
+			return this.nextIdentifier(maybeKeyword, true);
 		}
-		this.reader.setCursor(revert);
 		InsnTree result = this.nextExpression();
 		this.reader.expectOperatorAfterWhitespace(";");
 		if (!result.canBeStatement()) {
@@ -312,7 +305,55 @@ public class ExpressionParser<I> {
 	}
 
 	public @NotNull InsnTree nextExpression() throws ScriptParsingException {
-		return this.nextSum();
+		if (this.reader.hasOperatorAfterWhitespace("...")) {
+			InsnTree result = this.nextTernary();
+			if (result.type().shape == GroupShape.UNIT) return result;
+			return SwizzleInsnTree.unpack(result);
+		}
+		else {
+			return this.nextTernary();
+		}
+	}
+
+	public @NotNull InsnTree nextTernary() throws ScriptParsingException {
+		InsnTree result = this.nextBoolean();
+		if (this.reader.hasOperatorAfterWhitespace("?")) {
+			ConditionTree condition = result.toCondition();
+			InsnTree ifTrue = this.nextExpression();
+			this.reader.expectOperatorAfterWhitespace(":");
+			InsnTree ifFalse = this.nextExpression();
+			return new IfElseInsnTree(condition, ifTrue, ifFalse, false);
+		}
+		return result;
+	}
+
+	public @NotNull InsnTree nextBoolean() throws ScriptParsingException {
+		InsnTree result = this.nextCompare();
+		while (true) {
+			CursorPos revert = this.reader.getCursor();
+			String operator = this.reader.readOperatorAfterWhitespace();
+			switch (operator) {
+				case "&&" -> result = new AndConditionTree(result.toCondition(), this.nextCompare().toCondition()).toInsn();
+				case "||" -> result = new  OrConditionTree(result.toCondition(), this.nextCompare().toCondition()).toInsn();
+				default -> { this.reader.setCursor(revert); return result; }
+			}
+		}
+	}
+
+	public @NotNull InsnTree nextCompare() throws ScriptParsingException {
+		InsnTree result = this.nextSum();
+		CursorPos revert = this.reader.getCursor();
+		String operator = this.reader.readOperatorAfterWhitespace();
+		switch (operator) {
+			case ">"  -> result = CompareConditionTree.create(result, this.nextSum(), CompareMode.GT).toInsn();
+			case "<"  -> result = CompareConditionTree.create(result, this.nextSum(), CompareMode.LT).toInsn();
+			case ">=" -> result = CompareConditionTree.create(result, this.nextSum(), CompareMode.GE).toInsn();
+			case "<=" -> result = CompareConditionTree.create(result, this.nextSum(), CompareMode.LE).toInsn();
+			case "==" -> result = CompareConditionTree.create(result, this.nextSum(), CompareMode.EQ).toInsn();
+			case "!=" -> result = CompareConditionTree.create(result, this.nextSum(), CompareMode.NE).toInsn();
+			default -> this.reader.setCursor(revert);
+		}
+		return result;
 	}
 
 	public @NotNull InsnTree nextSum() throws ScriptParsingException {
@@ -440,11 +481,36 @@ public class ExpressionParser<I> {
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {
 				Number number = this.reader.readNumber();
 				char suffix = this.reader.peek();
-				VectorType type = switch (suffix) {
-					case 'i', 'I' -> { this.reader.onCharRead(suffix); yield number instanceof BigDecimal ? VectorType.FLOAT  : VectorType.INT;  }
-					case 'l', 'L' -> { this.reader.onCharRead(suffix); yield number instanceof BigDecimal ? VectorType.DOUBLE : VectorType.LONG; }
-					default -> number instanceof BigDecimal ? VectorType.BIGDEC : VectorType.BIGINT;
-				};
+				VectorType type;
+				switch (suffix) {
+					case 'l':
+					case 'L':
+						this.reader.onCharRead(suffix);
+						if (number instanceof BigDecimal) {
+							number = number.doubleValue();
+							type = VectorType.DOUBLE;
+						}
+						else {
+							number = number.longValue();
+							type = VectorType.LONG;
+						}
+						break;
+					case 'i':
+					case 'I':
+						this.reader.onCharRead(suffix);
+					//fallthrough
+					default:
+						if (number instanceof BigDecimal) {
+							number = number.floatValue();
+							type = VectorType.FLOAT;
+						}
+						else {
+							number = number.intValue();
+							type = VectorType.INT;
+						}
+						break;
+				}
+				;
 				yield new ConstantInsnTree(type, number);
 			}
 			case
@@ -491,12 +557,13 @@ public class ExpressionParser<I> {
 				}
 				this.reader.expectOperatorAfterWhitespace("=");
 				InsnTree initializer = this.nextExpression();
-				if (initializer.type == type) {
+				this.reader.expectOperatorAfterWhitespace(";");
+				if (initializer.type() == type) {
 					this.scope.environment.addVariable(declarationName, VariableHandler.userVar(type));
 					return new VariableDeclarationInsnTree(declarationName, initializer);
 				}
 				else {
-					throw new ScriptParsingException(STR."Attempt to initialize \{type} with \{initializer.type}", this.reader);
+					throw new ScriptParsingException(STR."Attempt to initialize \{type} with \{initializer.type()}", this.reader);
 				}
 			}
 			else {
@@ -505,8 +572,21 @@ public class ExpressionParser<I> {
 		}
 		else {
 			result = this.scope.environment.getVariable(this, name);
-			if (result != null) return result;
-			else throw new ScriptParsingException("No such variable with name " + name, this.reader);
+			if (result != null) {
+				if (this.reader.hasOperatorAfterWhitespace("=")) {
+					Assigner assigner = result.assigner();
+					if (assigner == null) {
+						throw new ScriptParsingException("Not an lvalue: " + result, this.reader);
+					}
+					InsnTree value = this.nextExpression();
+					this.reader.expectOperatorAfterWhitespace(";");
+					result = assigner.assign(value);
+				}
+				return result;
+			}
+			else {
+				throw new ScriptParsingException("No such variable with name " + name, this.reader);
+			}
 		}
 	}
 
@@ -514,7 +594,7 @@ public class ExpressionParser<I> {
 		if (this.reader.hasAfterWhitespace(')')) return new InsnTree[0];
 		List<InsnTree> expressions = new ArrayList<>();
 		while (true) {
-			expressions.add(Objects.requireNonNull(this.nextExpression()));
+			expressions.add(this.nextExpression());
 			if (!this.reader.hasOperatorAfterWhitespace(",")) {
 				return expressions.toArray(new InsnTree[expressions.size()]);
 			}

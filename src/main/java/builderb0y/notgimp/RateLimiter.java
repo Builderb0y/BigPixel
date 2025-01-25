@@ -5,42 +5,77 @@ import java.util.TimerTask;
 
 import javafx.application.Platform;
 
-public class RateLimiter implements Runnable {
+public abstract class RateLimiter implements Runnable {
 
 	public static final Timer TIMER = new Timer(true);
 
 	public final long millisecondDelay;
 	public final Runnable action;
-	public boolean canRun = true, runQueued;
 
 	public RateLimiter(long millisecondDelay, Runnable action) {
 		this.millisecondDelay = millisecondDelay;
 		this.action = action;
 	}
 
-	@Override
-	public void run() {
-		if (!this.canRun) {
-			this.runQueued = true;
-			return;
+	public static class PeriodicRateLimiter extends RateLimiter {
+
+		public boolean canRun = true, runQueued;
+
+		public PeriodicRateLimiter(long millisecondDelay, Runnable action) {
+			super(millisecondDelay, action);
 		}
-		this.action.run();
-		this.canRun = false;
-		TIMER.schedule(
-			new TimerTask() {
+
+		@Override
+		public void run() {
+			if (!this.canRun) {
+				this.runQueued = true;
+				return;
+			}
+			this.action.run();
+			this.canRun = false;
+			TIMER.schedule(
+				new TimerTask() {
+
+					@Override
+					public void run() {
+						Platform.runLater(() -> {
+							PeriodicRateLimiter.this.canRun = true;
+							if (PeriodicRateLimiter.this.runQueued) {
+								PeriodicRateLimiter.this.runQueued = false;
+								PeriodicRateLimiter.this.action.run();
+							}
+						});
+					}
+				},
+				this.millisecondDelay
+			);
+		}
+	}
+
+	public static class NonPeriodicRateLimiter extends RateLimiter {
+
+		public TimerTask waitingFor;
+
+		public NonPeriodicRateLimiter(long millisecondDelay, Runnable action) {
+			super(millisecondDelay, action);
+		}
+
+		@Override
+		public void run() {
+			if (this.waitingFor != null) {
+				this.waitingFor.cancel();
+			}
+			this.waitingFor = new TimerTask() {
 
 				@Override
 				public void run() {
 					Platform.runLater(() -> {
-						RateLimiter.this.canRun = true;
-						if (RateLimiter.this.runQueued) {
-							RateLimiter.this.runQueued = false;
-							RateLimiter.this.action.run();
-						}
+						NonPeriodicRateLimiter.this.waitingFor = null;
+						NonPeriodicRateLimiter.this.action.run();
 					});
 				}
-			},
-			this.millisecondDelay
-		);
+			};
+			TIMER.schedule(this.waitingFor, this.millisecondDelay);
+		}
 	}
 }

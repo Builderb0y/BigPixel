@@ -12,7 +12,9 @@ import javax.imageio.stream.ImageOutputStream;
 
 import javafx.beans.value.ObservableValueBase;
 import javafx.scene.image.Image;
+import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelReader;
+import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 
 public class HDRImage {
@@ -113,6 +115,26 @@ public class HDRImage {
 
 	public static int packRgbaToArgb(float red, float green, float blue, float alpha) {
 		return (clamp(alpha) << 24) | (clamp(red) << 16) | (clamp(green) << 8) | clamp(blue);
+	}
+
+	public Image toJfxImage() {
+		WritableImage image = new WritableImage(this.width, this.height);
+		byte[] pixels = new byte[this.width * this.height * 4];
+		for (int y = 0; y < this.height; y++) {
+			for (int x = 0; x < this.width; x++) {
+				int baseIndex = this.baseIndex(x, y);
+				float red   = this.pixels[baseIndex |   RED_OFFSET];
+				float green = this.pixels[baseIndex | GREEN_OFFSET];
+				float blue  = this.pixels[baseIndex |  BLUE_OFFSET];
+				float alpha = this.pixels[baseIndex | ALPHA_OFFSET];
+				pixels[baseIndex    ] = (byte)(clamp(blue  * alpha));
+				pixels[baseIndex | 1] = (byte)(clamp(green * alpha));
+				pixels[baseIndex | 2] = (byte)(clamp(red   * alpha));
+				pixels[baseIndex | 3] = (byte)(clamp(        alpha));
+			}
+		}
+		image.getPixelWriter().setPixels(0, 0, this.width, this.height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);
+		return image;
 	}
 
 	public BufferedImage toAwt(SaveProgress progress) {

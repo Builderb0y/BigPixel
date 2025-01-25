@@ -5,7 +5,7 @@ public class SequenceInsnTree extends InsnTree {
 	public final InsnTree[] statements;
 
 	public SequenceInsnTree(InsnTree... statements) {
-		super(statements[statements.length - 1].type);
+		super(statements[statements.length - 1].types());
 		this.statements = flatten(statements);
 	}
 

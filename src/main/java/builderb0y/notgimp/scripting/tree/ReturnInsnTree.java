@@ -1,20 +1,19 @@
 package builderb0y.notgimp.scripting.tree;
 
-import builderb0y.notgimp.scripting.types.VectorType;
-
 public class ReturnInsnTree extends InsnTree {
 
 	public final InsnTree value;
 
 	public ReturnInsnTree(InsnTree value) {
-		super(VectorType.VOID);
+		value.type();
+		super();
 		this.value = value;
 	}
 
 	@Override
 	public void emitBytecode(Context context) {
 		this.value.emitBytecode(context);
-		switch (this.value.type) {
+		switch (this.value.type()) {
 			case INT, BOOLEAN -> context.codeBuilder.ireturn();
 			case LONG -> context.codeBuilder.lreturn();
 			case FLOAT -> context.codeBuilder.freturn();

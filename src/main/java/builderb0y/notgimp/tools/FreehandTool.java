@@ -8,20 +8,21 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class FreehandTool extends Tool<FreehandTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("freehand", 9.0D, 9.0D, Tools::freehandTool);
+	public static final ToolType TYPE = new ToolType("freehand", 9.0D, 9.0D);
 
-	public FreehandTool() {
-		super(TYPE);
+	public FreehandTool(ManualLayerSource source) {
+		super(TYPE, source);
 	}
 
 	@Override
-	public void mouseDown(Layer layer, int x, int y, MouseButton button) {
+	public void mouseDown(int x, int y, MouseButton button) {
 		if (this.work == null) {
-			layer.beginUsingTool();
-			this.work = new Work(layer);
+			this.source.beginUsingTool();
+			this.work = new Work();
 		}
 		this.handleMouse(x, y, button);
 	}
@@ -32,18 +33,18 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 	}
 
 	public void handleMouse(int x, int y, MouseButton button) {
-		Layer layer = this.work.layer;
+		Layer layer = this.layer();
 		if (x >= 0 && x < layer.image.width && y >= 0 && y < layer.image.height) {
 			if (button == MouseButton.PRIMARY) {
 				this.work.points.add(new Point(x, y));
-				layer.image.setColor(x, y, layer.openImage.colorPicker.currentColor);
+				layer.image.setColor(x, y, layer.openImage.mainWindow.colorPicker.currentColor);
 				layer.image.markDirty();
 				this.updateLabelText();
 			}
 			else if (button == MouseButton.SECONDARY) {
 				this.work.points.remove(new Point(x, y));
 				int index = layer.image.baseIndex(x, y);
-				System.arraycopy(layer.toollessImage.pixels, index, layer.image.pixels, index, 4);
+				System.arraycopy(layer.sources.manualSource.toollessImage.pixels, index, layer.image.pixels, index, 4);
 				layer.image.markDirty();
 				this.updateLabelText();
 			}
@@ -57,17 +58,13 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 
 	public void redraw() {
 		Work work = this.work;
-		work.layer.beforeToolChanged();
-		ColorHelper color = work.layer.openImage.colorPicker.currentColor;
+		this.source.beforeToolChanged();
+		Layer layer = this.layer();
+		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
 		for (Point point : work.points) {
-			work.layer.image.setColor(point.x, point.y, color);
+			layer.image.setColor(point.x, point.y, color);
 		}
-		work.layer.image.markDirty();
-	}
-
-	@Override
-	public void enter(Layer layer) {
-		super.enter(layer);
+		layer.image.markDirty();
 	}
 
 	@Override
@@ -85,13 +82,9 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 		}
 	}
 
-	public static class Work extends Tool.Work {
+	public static class Work {
 
 		public Set<Point> points = new HashSet<>();
-
-		public Work(Layer layer) {
-			super(layer);
-		}
 	}
 
 	public static record Point(int x, int y) {}

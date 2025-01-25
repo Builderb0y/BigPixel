@@ -63,6 +63,8 @@ public class CanvasHelper {
 	}
 
 	public CanvasHelper resizeable(Consumer<Canvas> redrawer) {
+		this.innerPane.setMinWidth(0.0D);
+		this.innerPane.setMinHeight(0.0D);
 		this.canvas.widthProperty().bind(this.innerPane.widthProperty());
 		this.canvas.heightProperty().bind(this.innerPane.heightProperty());
 		ChangeListener<Number> listener = (ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> redrawer.accept(this.canvas);

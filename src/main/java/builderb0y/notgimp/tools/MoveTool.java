@@ -11,21 +11,21 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class MoveTool extends Tool<MoveTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("move", 12.0D, 12.0D, Tools::moveTool);
+	public static final ToolType TYPE = new ToolType("move", 12.0D, 12.0D);
 
 	public CheckBox fill = new CheckBox("Fill");
 
-	public MoveTool() {
-		super(TYPE);
+	public MoveTool(ManualLayerSource source) {
+		super(TYPE, source);
 		this.fill.selectedProperty().addListener(
 			(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
 				if (this.work != null) {
 					this.transfer();
-					this.work.layer.image.markDirty();
+					this.layer().image.markDirty();
 					this.updateLabelText();
 				}
 			}
@@ -33,7 +33,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	}
 
 	@Override
-	public void mouseDown(Layer layer, int x, int y, MouseButton button) {
+	public void mouseDown(int x, int y, MouseButton button) {
 		Work work = this.work;
 		if (work != null) {
 			Selection selection = new Selection();
@@ -44,8 +44,8 @@ public class MoveTool extends Tool<MoveTool.Work> {
 				selection.maxX, selection.maxY
 			);
 			if (moving == BoundaryPosition.OUTSIDE) {
-				this.enter(layer);
-				this.work = new Work(layer, x, y);
+				this.enter();
+				this.work = new Work(x, y);
 			}
 			else {
 				work.prevX = x;
@@ -54,9 +54,9 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			}
 		}
 		else {
-			layer.beginUsingTool();
-			this.work = new Work(layer, x, y);
-			layer.image.markDirty();
+			this.source.beginUsingTool();
+			this.work = new Work(x, y);
+			this.layer().image.markDirty();
 			this.updateLabelText();
 		}
 	}
@@ -82,7 +82,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			}
 			case OUTSIDE -> throw new IllegalStateException(work.moving.toString());
 		}
-		work.layer.image.markDirty();
+		this.layer().image.markDirty();
 		this.updateLabelText();
 	}
 
@@ -90,15 +90,15 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	public void colorChanged() {
 		if (this.work != null) {
 			this.transfer();
-			this.work.layer.image.markDirty();
+			this.layer().image.markDirty();
 		}
 	}
 
 	public void transfer() {
 		Work work = this.work;
-		work.layer.beforeToolChanged();
-		HDRImage toImage = work.layer.image;
-		HDRImage fromImage = work.layer.toollessImage;
+		this.source.beforeToolChanged();
+		HDRImage toImage = this.layer().image;
+		HDRImage fromImage = this.source.toollessImage;
 		int minX = Math.min(work.x1, work.x2);
 		int minY = Math.min(work.y1, work.y2);
 		int maxX = Math.max(work.x1, work.x2);
@@ -106,7 +106,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		int offsetX = work.offsetX;
 		int offsetY = work.offsetY;
 		if (this.fill.isSelected()) {
-			ColorHelper color = work.layer.openImage.colorPicker.currentColor;
+			ColorHelper color = this.layer().openImage.mainWindow.colorPicker.currentColor;
 			for (int fromY = minY; fromY <= maxY; fromY++) {
 				for (int fromX = minX; fromX <= maxX; fromX++) {
 					if (fromX >= 0 && fromX < toImage.width && fromY >= 0 && fromY < toImage.height) {
@@ -145,7 +145,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	}
 
 	@Override
-	public void keyPressed(Layer layer, KeyCode key) {
+	public void keyPressed(KeyCode key) {
 		switch (key) {
 			case Q -> this.symmetrify(Symmetry.ROTATE_180);
 			case E -> this.symmetrify(Symmetry.ROTATE_CCW);
@@ -154,8 +154,8 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			case V -> this.symmetrify(Symmetry.FLIP_V);
 			case T -> this.symmetrify(Symmetry.FLIP_L);
 			case Y -> this.symmetrify(Symmetry.FLIP_R);
-			case C -> this.copyInPlace(layer);
-			default -> super.keyPressed(layer, key);
+			case C -> this.copyInPlace();
+			default -> super.keyPressed(key);
 		}
 	}
 
@@ -163,28 +163,28 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		if (this.work != null) {
 			this.work.symmetry = this.work.symmetry.andThen(symmetry);
 			this.transfer();
-			this.work.layer.image.markDirty();
+			this.layer().image.markDirty();
 			this.updateLabelText();
 		}
 	}
 
 	@Override
-	public void enter(Layer layer) {
+	public void enter() {
 		boolean hadWork = this.work != null;
-		super.enter(layer);
-		if (hadWork) layer.image.markDirty();
+		super.enter();
+		if (hadWork) this.layer().image.markDirty();
 	}
 
-	public void copyInPlace(Layer layer) {
+	public void copyInPlace() {
 		Work work = this.work;
 		if (work != null) {
-			super.enter(layer);
-			this.work = new Work(layer);
+			super.enter();
+			this.work = new Work();
 			this.work.x1 = work.x1 + work.offsetX;
 			this.work.x2 = work.x2 + work.offsetX;
 			this.work.y1 = work.y1 + work.offsetY;
 			this.work.y2 = work.y2 + work.offsetY;
-			layer.image.markDirty();
+			this.layer().image.markDirty();
 		}
 	}
 
@@ -284,19 +284,16 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		}
 	}
 
-	public static class Work extends Tool.Work {
+	public static class Work {
 
 		public int x1, x2, y1, y2;
 		public int prevX, prevY, offsetX, offsetY;
 		public BoundaryPosition moving;
 		public Symmetry symmetry = Symmetry.IDENTITY;
 
-		public Work(Layer layer) {
-			super(layer);
-		}
+		public Work() {}
 
-		public Work(Layer layer, int x, int y) {
-			this(layer);
+		public Work(int x, int y) {
 			this.x1 = this.x2 = x;
 			this.y1 = this.y2 = y;
 			this.moving = BoundaryPosition.CORNER_X2_Y2;
