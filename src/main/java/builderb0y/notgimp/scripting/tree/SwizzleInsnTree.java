@@ -71,6 +71,8 @@ public class SwizzleInsnTree extends InsnTree {
 	}
 
 	public static InsnTree unpack(InsnTree vector) {
+		//todo: fix "uv.xxx" causing this code to break.
+		/*
 		if (vector instanceof VectorConstructorInsnTree constructor) {
 			if (constructor.arguments.length == 1) {
 				return new DupInsnTree(constructor.arguments[0], constructor.type().shape.rows);
@@ -79,6 +81,7 @@ public class SwizzleInsnTree extends InsnTree {
 				return new UnpackedInsnTree(constructor.arguments);
 			}
 		}
+		*/
 		GroupShape shape = vector.type().shape;
 		if (shape == GroupShape.UNIT) return vector;
 		int rows = shape.rows;

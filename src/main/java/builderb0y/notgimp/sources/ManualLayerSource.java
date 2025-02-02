@@ -1,5 +1,9 @@
 package builderb0y.notgimp.sources;
 
+import java.util.Collection;
+import java.util.Collections;
+
+import com.google.gson.JsonObject;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.scene.Cursor;
@@ -11,6 +15,7 @@ import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.tools.*;
 
 public class ManualLayerSource extends LayerSource {
@@ -21,6 +26,7 @@ public class ManualLayerSource extends LayerSource {
 		lineTool        = new        LineTool(this),
 		rectangleTool   = new   RectangleTool(this),
 		moveTool        = new        MoveTool(this),
+		bucketTool      = new      BucketTool(this),
 		colorPickerTool = new ColorPickerTool(this);
 	public GridPane
 		toolSelection = new GridPane();
@@ -28,11 +34,22 @@ public class ManualLayerSource extends LayerSource {
 		freehandButton = this.button(this.freehandTool),
 		lineButton     = this.button(this.lineTool),
 		rectButton     = this.button(this.rectangleTool),
-		moveButton     = this.button(this.moveTool);
+		moveButton     = this.button(this.moveTool),
+		bucketButton   = this.button(this.bucketTool);
 	public BorderPane
 		toolConfig = new BorderPane();
 	public SimpleObjectProperty<@Nullable Tool<?>>
 		currentTool = new SimpleObjectProperty<>();
+
+	public JsonObject save() {
+		JsonObject object = new JsonObject();
+		object.add("image", this.toollessImage.save());
+		return object;
+	}
+
+	public void load(JsonObject object) {
+		this.toollessImage = new HDRImage(object.getAsJsonObject("image"));
+	}
 
 	public ManualLayerSource(LayerSources sources) {
 		super(sources);
@@ -40,12 +57,20 @@ public class ManualLayerSource extends LayerSource {
 		this.toolSelection.add(this.lineButton, 1, 0);
 		this.toolSelection.add(this.freehandButton, 2, 0);
 		this.toolSelection.add(this.moveButton, 0, 1);
+		this.toolSelection.add(this.bucketButton, 1, 1);
 		this.toolSelection.add(this.toolConfig, 0, 2, 3, 1);
 		this.toolConfig.centerProperty().bind(this.currentTool.map(Tool::getConfiguration));
 	}
 
-	public void init() {
-		this.toollessImage = new HDRImage(this.sources.layer.image);
+	public void init(boolean fromSave) {
+		if (!fromSave) this.toollessImage = new HDRImage(this.sources.layer.image);
+	}
+
+	public Button button(Tool<?> tool) {
+		Button button = new Button();
+		button.setGraphic(new ImageView(tool.type.icon()));
+		button.setOnAction((ActionEvent event) -> this.currentTool.set(tool));
+		return button;
 	}
 
 	public void beginUsingTool() {
@@ -62,18 +87,26 @@ public class ManualLayerSource extends LayerSource {
 
 	public void cancelToolAction() {
 		System.arraycopy(this.toollessImage.pixels, 0, this.sources.layer.image.pixels, 0, this.toollessImage.pixels.length);
-		this.sources.layer.image.markDirty();
+		this.sources.layer.image.markDirty(false);
 	}
 
 	public void copyFrom(ManualLayerSource that) {
 		System.arraycopy(that.toollessImage.pixels, 0, this.toollessImage.pixels, 0, that.toollessImage.pixels.length);
 	}
 
-	public Button button(Tool<?> tool) {
-		Button button = new Button();
-		button.setGraphic(new ImageView(tool.type.icon()));
-		button.setOnAction((ActionEvent event) -> this.currentTool.set(tool));
-		return button;
+	@Override
+	public void onInvalidated() {
+
+	}
+
+	@Override
+	public Collection<Layer> getDependencies() {
+		return Collections.emptySet();
+	}
+
+	@Override
+	public boolean isAnimated() {
+		return false;
 	}
 
 	@Override
@@ -82,10 +115,10 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void redraw() {
+	public void redraw(boolean fromAnimation) {
 		HDRImage layerImage = this.sources.layer.image;
 		System.arraycopy(this.toollessImage.pixels, 0, layerImage.pixels, 0, layerImage.pixels.length);
-		layerImage.markDirty();
+		layerImage.markDirty(fromAnimation);
 	}
 
 	@Override

@@ -1,7 +1,6 @@
 package builderb0y.notgimp.scripting.tree.condition;
 
 import java.lang.classfile.Label;
-import java.math.BigInteger;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -35,7 +34,7 @@ public class CompareConditionTree extends ConditionTree {
 	@Override
 	public void emitBytecode(CodeEmitter.Context context, @Nullable Label ifTrue, @Nullable Label ifFalse) {
 		this.left.emitBytecode(context);
-		if (this.right instanceof ConstantInsnTree constant && constant.type() == VectorType.INT && constant.<BigInteger>get().signum() == 0) {
+		if (this.right instanceof ConstantInsnTree constant && constant.type() == VectorType.INT && constant.<Integer>get() == 0) {
 			this.mode.emitIntZero(context, ifTrue, ifFalse);
 		}
 		else {

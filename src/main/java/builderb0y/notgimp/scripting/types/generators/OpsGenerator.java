@@ -58,7 +58,6 @@ public class OpsGenerator {
 		VectorOperators.ADD,
 		VectorOperators.SUB,
 		VectorOperators.MUL,
-		VectorOperators.DIV,
 		VectorOperators.POW,
 		VectorOperators.AND,
 		VectorOperators.OR,
@@ -70,6 +69,55 @@ public class OpsGenerator {
 		VectorOperators.MIN,
 		VectorOperators.MAX,
 	};
+	public static final ExtraOperator[] EXTRA_UNARIES = {
+		new ExtraOperator(
+			"floor",
+			null,
+			null,
+			"return (float)Math.floor(a);",
+			"return Math.floor(a);"
+		),
+		new ExtraOperator(
+			"ceil",
+			null,
+			null,
+			"return (float)Math.ceil(a);",
+			"return Math.ceil(a);"
+		),
+		new ExtraOperator(
+			"fract",
+			null,
+			null,
+			"return a - (float)Math.floor(a);",
+			"return a - Math.floor(a);"
+		),
+	};
+	public static final ExtraOperator[] EXTRA_BINARIES = {
+		new ExtraOperator(
+			"div",
+			"return Math.floorDiv(a, b);",
+			"return Math.floorDiv(a, b);",
+			"return a / b;",
+			"return a / b;"
+		),
+		new ExtraOperator(
+			"mod",
+			"return Math.floorMod(a, b);",
+			"return Math.floorMod(a, b);",
+			//floorMod() not available for floats and doubles,
+			//and % doesn't do the same thing.
+			"float r = a % b; return (Float.floatToRawIntBits(a) ^ Float.floatToRawIntBits(b)) < 0 && r != 0 ? r + b : r;",
+			"double r = a % b; return (Double.doubleToRawLongBits(a) ^ Double.doubleToRawLongBits(b)) < 0L && r != 0 ? r + b : r;"
+		)
+	};
+
+	public static record ExtraOperator(
+		String name,
+		String intImplementation,
+		String longImplementation,
+		String floatImplementation,
+		String doubleImplementation
+	) {}
 
 	public static String typeName(VectorType type) {
 		String name = type.holderClass().getSimpleName();
@@ -96,7 +144,6 @@ public class OpsGenerator {
 		file.append("""
 		package builderb0y.notgimp.scripting.types.generated;
 		
-		import java.math.*;
 		import jdk.incubator.vector.*;
 		import builderb0y.notgimp.scripting.types.VectorType.Vec;
 		
@@ -107,7 +154,6 @@ public class OpsGenerator {
 			"ImplicitNumericConversion",
 			"NumericCastThatLosesPrecision",
 			"MethodParameterNamingConvention",
-			"UnpredictableBigDecimalConstructorCall",
 		})
 		public class VectorOperations {
 		
@@ -118,6 +164,7 @@ public class OpsGenerator {
 		
 		""");
 		for (VectorType primary : VECTOR_TYPES) {
+			VectorType primaryUnit = VectorType.get(primary.componentType, GroupShape.UNIT);
 			for (ComponentType from : COMPONENT_TYPES) {
 				file
 				.append("\tpublic static ")
@@ -168,23 +215,22 @@ public class OpsGenerator {
 				}
 			}
 			if (primary.shape != GroupShape.UNIT) {
-				VectorType component = VectorType.get(primary.componentType, GroupShape.UNIT);
 				file
 				.append("\tpublic static ")
 				.append(typeName(primary))
 				.append(' ')
 				.append(primary.name)
 				.append("_from_")
-				.append(component.name)
+				.append(primaryUnit.name)
 				.append('(')
-				.append(component.holderClass().getSimpleName())
+				.append(primaryUnit.holderClass().getSimpleName())
 				.append(" a) { return ")
 				.append(primary.holderClass().getSimpleName())
 				.append(".broadcast(")
 				.append(primary.holderClass().getSimpleName())
 				.append(".SPECIES_")
 				.append(species(primary))
-				.append(", a); } \n");
+				.append(", a); }\n");
 
 				file
 				.append("\tpublic static ")
@@ -193,13 +239,13 @@ public class OpsGenerator {
 				.append(primary.name)
 				.append("_from");
 				for (int row = 0; row < primary.shape.rows; row++) {
-					file.append('_').append(component.name);
+					file.append('_').append(primaryUnit.name);
 				}
 				file.append('(');
 				for (int row = 0; row < primary.shape.rows; row++) {
 					if (row != 0) file.append(", ");
 					file
-					.append(component.holderClass().getSimpleName())
+					.append(primaryUnit.holderClass().getSimpleName())
 					.append(' ')
 					.append(letter(row));
 				}
@@ -211,7 +257,7 @@ public class OpsGenerator {
 				.append(".SPECIES_")
 				.append(species(primary))
 				.append(", new ")
-				.append(component.holderClass().getSimpleName())
+				.append(primaryUnit.holderClass().getSimpleName())
 				.append("[] { ");
 				for (int row = 0; row < primary.shape.rows; row++) {
 					if (row != 0) file.append(", ");
@@ -235,27 +281,69 @@ public class OpsGenerator {
 					.append('(')
 					.append(typeName(primary))
 					.append(" a) { return ");
-					switch (primary.shape) {
-						case UNIT -> {
-							if (operator == VectorOperators.NEG) file.append("-a; }\n");
-							else if (operator == VectorOperators.NOT) file.append("~a; }\n");
-							else if (operator == VectorOperators.ABS) file.append("Math.abs(a); }\n");
-							else {
-								if (!primary.componentType.isDoubleWidth) {
-									file.append('(').append(primary.holderClass().getSimpleName()).append(')');
-								}
-								file.append("Math.").append(operator.operatorName()).append("(a); }\n");
+					if (primary.shape == GroupShape.UNIT) {
+						if (operator == VectorOperators.NEG) file.append("-a; }\n");
+						else if (operator == VectorOperators.NOT) file.append("~a; }\n");
+						else if (operator == VectorOperators.ABS) file.append("Math.abs(a); }\n");
+						else {
+							if (!primary.componentType.isDoubleWidth) {
+								file.append('(').append(primary.holderClass().getSimpleName()).append(')');
 							}
+							file.append("Math.").append(operator.operatorName()).append("(a); }\n");
 						}
-						case VEC2, VEC3, VEC4 -> {
-							file.append("a.lanewise(VectorOperators.").append(operator.name()).append("); }\n");
+					}
+					else {
+						file.append("a.lanewise(VectorOperators.").append(operator.name()).append("); }\n");
+					}
+				}
+			}
+			for (ExtraOperator operator : EXTRA_UNARIES) {
+				String implementation = switch (primary.componentType) {
+					case INT -> operator.intImplementation;
+					case LONG -> operator.longImplementation;
+					case FLOAT -> operator.floatImplementation;
+					case DOUBLE -> operator.doubleImplementation;
+					case BOOLEAN -> null;
+					case VOID -> null;
+				};
+				if (implementation != null) {
+					file
+					.append("\tpublic static ")
+					.append(typeName(primary))
+					.append(' ')
+					.append(operator.name)
+					.append('_')
+					.append(primary.name)
+					.append('(')
+					.append(typeName(primary))
+					.append(" a) { ");
+					if (primary.shape == GroupShape.UNIT) {
+						file.append(implementation).append(" }\n");
+					}
+					else {
+						file.append("return ").append(primary.name).append("_from");
+						for (int lane = 0; lane < primary.shape.rows; lane++) {
+							file.append('_').append(primaryUnit.name);
 						}
+						file.append('(');
+						for (int lane = 0; lane < primary.shape.rows; lane++) {
+							if (lane != 0) file.append(", ");
+							file
+							.append(operator.name)
+							.append('_')
+							.append(primaryUnit.name)
+							.append("(a.lane(")
+							.append((char)(lane + '0'))
+							.append("))");
+						}
+						file.append("); }\n");
 					}
 				}
 			}
 			file.append('\n');
 			for (VectorType secondary : VECTOR_TYPES) {
 				if (primary.componentType == secondary.componentType && (primary.shape == GroupShape.UNIT || secondary.shape == GroupShape.UNIT || primary.shape == secondary.shape)) {
+					VectorType secondaryUnit = VectorType.get(secondary.componentType, GroupShape.UNIT);
 					for (VectorOperators.Binary operator : BINARIES) {
 						if (operator.compatibleWith(primary.componentType.holderClass(GroupShape.UNIT))) {
 							if (
@@ -327,6 +415,70 @@ public class OpsGenerator {
 							}
 						}
 					}
+					for (ExtraOperator operator : EXTRA_BINARIES) {
+						String implementation = switch (primary.componentType) {
+							case INT -> operator.intImplementation;
+							case LONG -> operator.longImplementation;
+							case FLOAT -> operator.floatImplementation;
+							case DOUBLE -> operator.doubleImplementation;
+							case BOOLEAN -> null;
+							case VOID -> null;
+						};
+						if (implementation != null) {
+							VectorType longer = primary.shape == GroupShape.UNIT ? secondary : primary;
+							file
+								.append("\tpublic static ")
+								.append(typeName(longer))
+								.append(' ')
+								.append(operator.name)
+								.append('_')
+								.append(primary.name)
+								.append('_')
+								.append(secondary.name)
+								.append('(')
+								.append(typeName(primary))
+								.append(" a, ")
+								.append(typeName(secondary))
+								.append(" b) { ");
+							if (primary.shape == GroupShape.UNIT && secondary.shape == GroupShape.UNIT) {
+								file.append(implementation).append(" }\n");
+							}
+							else {
+								file.append("return ").append(longer.name).append("_from");
+								for (int lane = 0; lane < longer.shape.rows; lane++) {
+									file
+									.append('_')
+									.append(primaryUnit.name);
+								}
+								file.append('(');
+								for (int lane = 0; lane < longer.shape.rows; lane++) {
+									if (lane != 0) file.append(", ");
+									file
+									.append(operator.name)
+									.append('_')
+									.append(primaryUnit.name)
+									.append('_')
+									.append(primaryUnit.name)
+									.append("(a");
+									if (primary.shape != GroupShape.UNIT) {
+										file
+										.append(".lane(")
+										.append((char)(lane + '0'))
+										.append(')');
+									}
+									file.append(", b");
+									if (secondary.shape != GroupShape.UNIT) {
+										file
+										.append(".lane(")
+										.append((char)(lane + '0'))
+										.append(')');
+									}
+									file.append(')');
+								}
+								file.append("); }\n");
+							}
+						}
+					}
 				}
 			}
 			file.append('\n');
@@ -345,7 +497,11 @@ public class OpsGenerator {
 				.append(typeName(primary))
 				.append(" a, ")
 				.append(typeName(primary))
-				.append(" b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }\n");
+				.append(" b) { return a.mul(b).reduceLanes(VectorOperators.ADD");
+				if (primary.shape.rows == 3) {
+					file.append(", ").append(primary.name.toUpperCase(Locale.ROOT)).append("_MASK");
+				}
+				file.append("); }\n");
 
 				file
 				.append("\tpublic static ")
@@ -438,49 +594,45 @@ public class OpsGenerator {
 			if (newline) file.append('\n');
 		}
 		file.append("""
-			public static BigInteger neg_bigint(BigInteger a) { return a.negate(); }
-			public static BigInteger not_bigint(BigInteger a) { return a.not(); }
-			public static BigInteger abs_bigint(BigInteger a) { return a.abs(); }
+			public static int pow_int_int(int a, int b) {
+				if (b <= 0) return b == 0 ? 1 : 0;
+				int accum = a;
+				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+					accum *= accum;
+					if ((b & mask) != 0) accum *= a;
+				}
+				return accum;
+			}
 		
-			public static BigInteger add_bigint_bigint(BigInteger a, BigInteger b) { return a.add(b); }
-			public static BigInteger sub_bigint_bigint(BigInteger a, BigInteger b) { return a.subtract(b); }
-			public static BigInteger mul_bigint_bigint(BigInteger a, BigInteger b) { return a.multiply(b); }
-			public static BigInteger div_bigint_bigint(BigInteger a, BigInteger b) { return a.divide(b); }
-			public static BigInteger pow_bigint_bigint(BigInteger a, BigInteger b) { return a.pow(b.intValueExact()); }
-			public static BigInteger and_bigint_bigint(BigInteger a, BigInteger b) { return a.and(b); }
-			public static BigInteger or_bigint_bigint(BigInteger a, BigInteger b) { return a.or(b); }
-			public static BigInteger xor_bigint_bigint(BigInteger a, BigInteger b) { return a.xor(b); }
-			public static BigInteger lshl_bigint_bigint(BigInteger a, BigInteger b) { return a.shiftLeft(b.intValueExact()); }
-			public static BigInteger ashr_bigint_bigint(BigInteger a, BigInteger b) { return a.shiftRight(b.intValueExact()); }
-			public static BigInteger min_bigint_bigint(BigInteger a, BigInteger b) { return a.min(b); }
-			public static BigInteger max_bigint_bigint(BigInteger a, BigInteger b) { return a.max(b); }
-
-			public static BigDecimal neg_bigdec(BigDecimal a) { return a.negate(); }
-			public static BigDecimal abs_bigdec(BigDecimal a) { return a.abs(); }
-			public static BigDecimal sin_bigdec(BigDecimal a) { return new BigDecimal(Math.sin(a.doubleValue())); }
-			public static BigDecimal cos_bigdec(BigDecimal a) { return new BigDecimal(Math.cos(a.doubleValue())); }
-			public static BigDecimal tan_bigdec(BigDecimal a) { return new BigDecimal(Math.tan(a.doubleValue())); }
-			public static BigDecimal asin_bigdec(BigDecimal a) { return new BigDecimal(Math.asin(a.doubleValue())); }
-			public static BigDecimal acos_bigdec(BigDecimal a) { return new BigDecimal(Math.acos(a.doubleValue())); }
-			public static BigDecimal atan_bigdec(BigDecimal a) { return new BigDecimal(Math.atan(a.doubleValue())); }
-			public static BigDecimal sinh_bigdec(BigDecimal a) { return new BigDecimal(Math.sinh(a.doubleValue())); }
-			public static BigDecimal cosh_bigdec(BigDecimal a) { return new BigDecimal(Math.cosh(a.doubleValue())); }
-			public static BigDecimal tanh_bigdec(BigDecimal a) { return new BigDecimal(Math.tanh(a.doubleValue())); }
-			public static BigDecimal sqrt_bigdec(BigDecimal a) { return a.sqrt(MathContext.DECIMAL128); }
-			public static BigDecimal cbrt_bigdec(BigDecimal a) { return new BigDecimal(Math.cbrt(a.doubleValue())); }
-			public static BigDecimal exp_bigdec(BigDecimal a) { return new BigDecimal(Math.exp(a.doubleValue())); }
-			public static BigDecimal log_bigdec(BigDecimal a) { return new BigDecimal(Math.log(a.doubleValue())); }
+			public static long pow_long_int(long a, int b) {
+				if (b <= 0) return b == 0 ? 1 : 0;
+				long accum = a;
+				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+					accum *= accum;
+					if ((b & mask) != 0) accum *= a;
+				}
+				return accum;
+			}
 		
-			public static BigDecimal add_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.add(b); }
-			public static BigDecimal sub_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.subtract(b); }
-			public static BigDecimal mul_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.multiply(b, MathContext.DECIMAL128); }
-			public static BigDecimal div_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.divide(b, MathContext.DECIMAL128); }
-			public static BigDecimal pow_bigdec_bigdec(BigDecimal a, BigDecimal b) { return new BigDecimal(Math.pow(a.doubleValue(), b.doubleValue())); }
-			public static BigDecimal atan2_bigdec_bigdec(BigDecimal a, BigDecimal b) { return new BigDecimal(Math.atan2(a.doubleValue(), b.doubleValue())); }
-			public static BigDecimal min_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.min(b); }
-			public static BigDecimal max_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.max(b); }
+			public static float pow_float_int(float a, int b) {
+				if (b <= 0) return b == 0 ? 1 : 0;
+				float accum = a;
+				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+					accum *= accum;
+					if ((b & mask) != 0) accum *= a;
+				}
+				return accum;
+			}
 		
-			public static BigDecimal mix_bigdec_bigdec_bigdec(BigDecimal a, BigDecimal b, BigDecimal f) { return b.subtract(a).multiply(f, MathContext.DECIMAL128).add(a); }
+			public static double pow_double_int(double a, int b) {
+				if (b <= 0) return b == 0 ? 1 : 0;
+				double accum = a;
+				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+					accum *= accum;
+					if ((b & mask) != 0) accum *= a;
+				}
+				return accum;
+			}
 		}""");
 		try (FileWriter writer = new FileWriter("src/main/java/builderb0y/notgimp/scripting/types/generated/VectorOperations.java")) {
 			writer.write(file.toString());

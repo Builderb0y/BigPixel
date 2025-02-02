@@ -2,9 +2,12 @@ package builderb0y.notgimp;
 
 import java.util.stream.IntStream;
 
-import javafx.beans.Observable;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.TreeItem;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
@@ -19,12 +22,42 @@ import static builderb0y.notgimp.HDRImage.*;
 public class Layer {
 
 	public OpenImage openImage;
-	public StringProperty name = new SimpleStringProperty();
+	public SimpleStringProperty name = new SimpleStringProperty();
+	public TreeItem<Layer> item = new TreeItem<>(this);
 	public HDRImage image;
 	public WritableImage thumbnail;
 	public ImageView thumbnailView;
 	public LayerSources sources;
 	public History history;
+
+	public JsonObject save() {
+		JsonObject object = new JsonObject();
+		object.addProperty("name", this.name.get());
+		object.addProperty("width", this.image.width);
+		object.addProperty("height", this.image.height);
+		JsonArray jsonChildren = new JsonArray(this.item.getChildren().size());
+		for (TreeItem<Layer> child : this.item.getChildren()) {
+			jsonChildren.add(child.getValue().save());
+		}
+		object.add("children", jsonChildren);
+		object.add("sources", this.sources.save());
+		object.addProperty("expanded", this.item.isExpanded());
+		return object;
+	}
+
+	public Layer(OpenImage openImage, JsonObject saveData) {
+		this(
+			openImage,
+			saveData.get("name").getAsString(),
+			saveData.get("width").getAsInt(),
+			saveData.get("height").getAsInt()
+		);
+		for (JsonElement element : saveData.getAsJsonArray("children")) {
+			this.item.getChildren().add(new Layer(openImage, element.getAsJsonObject()).item);
+		}
+		this.sources.load(saveData.get("sources").getAsJsonObject());
+		this.item.setExpanded(true);
+	}
 
 	public Layer(OpenImage openImage, String name, int width, int height) {
 		this(openImage, name, new HDRImage(width, height));
@@ -50,7 +83,7 @@ public class Layer {
 		this.history = new History(this);
 	}
 
-	public void init() {
+	public void init(boolean fromSave) {
 		if (this.image.width >= this.image.height) {
 			this.thumbnailView.setFitWidth(32.0D);
 		}
@@ -59,14 +92,29 @@ public class Layer {
 		}
 		this.thumbnailView.setPreserveRatio(true);
 		this.redrawThumbnail();
-		this.image.value.addListener((Observable _) -> this.redrawThumbnail());
-		this.sources.init();
-		this.history.init();
+		this.image.addWatcher((HDRImage image, boolean fromAnimation) -> this.redrawThumbnail());
+
+		RadioButton showing = new RadioButton();
+		showing.setGraphic(this.thumbnailView);
+		showing.setText(" ");
+		showing.setToggleGroup(this.openImage.showingLayer);
+		showing.setUserData(this);
+		showing.setSelected(true);
+		this.item.setGraphic(showing);
+
+		this.sources.init(fromSave);
+		this.history.init(fromSave);
+
+		if (fromSave) {
+			for (TreeItem<Layer> child : this.item.getChildren()) {
+				child.getValue().init(true);
+			}
+		}
 	}
 
 	public void setName(String name) {
 		name = name.trim();
-		this.openImage.layerMap.remove(this.name);
+		this.openImage.layerMap.remove(this.name.get());
 		Layer found = this.openImage.findLayer(name);
 		if (found != null && found != this) {
 			for (int index = 1; true; index++) {
@@ -112,10 +160,10 @@ public class Layer {
 				float green   = this.image.pixels[baseIndex | GREEN_OFFSET];
 				float blue    = this.image.pixels[baseIndex |  BLUE_OFFSET];
 				float alpha   = this.image.pixels[baseIndex | ALPHA_OFFSET];
-				pixels[baseIndex    ] = (byte)(clamp(blue  * alpha));
-				pixels[baseIndex | 1] = (byte)(clamp(green * alpha));
-				pixels[baseIndex | 2] = (byte)(clamp(red   * alpha));
-				pixels[baseIndex | 3] = (byte)(clamp(alpha));
+				pixels[baseIndex    ] = Util.clampB(blue  * alpha);
+				pixels[baseIndex | 1] = Util.clampB(green * alpha);
+				pixels[baseIndex | 2] = Util.clampB(red   * alpha);
+				pixels[baseIndex | 3] = Util.clampB(alpha);
 			}
 		});
 		writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);

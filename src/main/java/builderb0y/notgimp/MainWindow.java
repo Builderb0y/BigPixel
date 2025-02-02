@@ -1,11 +1,16 @@
 package builderb0y.notgimp;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonWriter;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
@@ -51,6 +56,8 @@ public class MainWindow {
 	public MenuItem
 		fileNewMenuItem = new MenuItem("New..."),
 		fileOpenMenuItem = new MenuItem("Open..."),
+		fileSaveMenuItem = new MenuItem("Save"),
+		fileSaveAsMenuItem = new MenuItem("Save as..."),
 		fileExportMenuItem = new MenuItem("Export"),
 		fileExportAsMenuItem = new MenuItem("Export as..."),
 		editUndoMenuItem = new MenuItem(),
@@ -63,27 +70,6 @@ public class MainWindow {
 		colorPicker = new ColorSelector(this);
 	public CheckBox
 		tilingCheckbox = new CheckBox("Tile view");
-	public Label
-		imageSizeLabel = new Label(),
-		zoomLabel = new Label();
-	public ObservableValue<String>
-		toolInfoText = (
-			this
-			.openImages
-			.getSelectionModel()
-			.selectedItemProperty()
-			.map(Tab::getUserData)
-			.map(OpenImage.class::cast)
-			.flatMap(image -> image.layerTree.getSelectionModel().selectedItemProperty())
-			.flatMap(item -> item.getValue().sources.tabPane.getSelectionModel().selectedItemProperty())
-			.flatMap((Tab tab) -> tab.getUserData() instanceof ManualLayerSource source ? source.currentTool : null)
-			.flatMap(tool -> tool.labelText)
-			.orElse("")
-		);
-	public Label
-		toolInfoLabel = new Label();
-	public HBox
-		infoPane = new HBox();
 	public SimpleObjectProperty<String>
 		styleSheetName = new SimpleObjectProperty<>("assets/themes/light.css");
 
@@ -92,6 +78,8 @@ public class MainWindow {
 		this.fileMenu.getItems().addAll(
 			this.fileNewMenuItem,
 			this.fileOpenMenuItem,
+			this.fileSaveMenuItem,
+			this.fileSaveAsMenuItem,
 			this.fileExportMenuItem,
 			this.fileExportAsMenuItem
 		);
@@ -108,35 +96,27 @@ public class MainWindow {
 		this.openImages.setTabMinHeight(48.0D);
 		this.openImages.setTabMaxHeight(48.0D);
 		this.rootPane.setCenter(this.openImages);
-		this.toolInfoLabel.textProperty().bind(this.toolInfoText);
 		this.tilingCheckbox.setPadding(new Insets(4.0D));
-		this.imageSizeLabel.setPadding(new Insets(4.0D));
-		this.zoomLabel.setPadding(new Insets(4.0D));
-		this.toolInfoLabel.setPadding(new Insets(4.0D));
-		this.infoPane.getChildren().addAll(
-			this.tilingCheckbox,
-			new Separator(Orientation.VERTICAL),
-			this.imageSizeLabel,
-			this.zoomLabel,
-			new Separator(Orientation.VERTICAL),
-			this.toolInfoLabel
-		);
-		this.rootPane.setBottom(this.infoPane);
 	}
 
 	public void init() {
 		this.fileNewMenuItem.setOnAction(this::fileNew);
 		this.fileOpenMenuItem.setOnAction(this::fileOpen);
+		this.fileSaveMenuItem.setOnAction(this::save);
+		this.fileSaveAsMenuItem.setOnAction(this::saveAs);
 		this.fileExportMenuItem.setOnAction(this::fileExport);
 		this.fileExportAsMenuItem.setOnAction(this::fileExportAs);
 		BooleanBinding noOpenFile = this.openImages.getSelectionModel().selectedItemProperty().isNull();
+		this.fileSaveAsMenuItem.disableProperty().bind(noOpenFile);
 		this.fileExportAsMenuItem.disableProperty().bind(noOpenFile);
 		//can't use .map() because that returns an ObservableValue<Boolean> instead of an ObservableBooleanValue.
 		//can't use .isNull() because .flatMap() returns an ObservableValue<File> instead of an ObjectExpression.
 		ObservableValue<File> fileValue = this.openImages.getSelectionModel().selectedItemProperty().flatMap(tab -> ((OpenImage)(tab.getUserData())).file);
-		this.fileExportMenuItem.disableProperty().bind(noOpenFile.or(new BooleanBinding() {
+		BooleanBinding noNamedFile = noOpenFile.or(new BooleanBinding() {
 
-			{ this.bind(fileValue); }
+			{
+				this.bind(fileValue);
+			}
 
 			@Override
 			public boolean computeValue() {
@@ -147,7 +127,9 @@ public class MainWindow {
 			public void dispose() {
 				this.unbind(fileValue);
 			}
-		}));
+		});
+		this.fileSaveMenuItem.disableProperty().bind(noNamedFile);
+		this.fileExportMenuItem.disableProperty().bind(noNamedFile);
 		ObservableValue<History.Entry> currentAction = (
 			this
 			.openImages
@@ -182,7 +164,7 @@ public class MainWindow {
 
 			{
 				MainWindow.this.openImages.getSelectionModel().selectedItemProperty().addListener(
-					Util.change((Tab newValue) -> this.fireValueChangedEvent())
+					Util.change(this::fireValueChangedEvent)
 				);
 			}
 
@@ -208,51 +190,28 @@ public class MainWindow {
 				}
 			}
 		});
-		this.imageSizeLabel.textProperty().bind(
-			this.openImages.getSelectionModel().selectedItemProperty().map((Tab tab) -> {
-				OpenImage openImage = (OpenImage)(tab.getUserData());
-				TreeItem<Layer> root = openImage.layerTree.getRoot();
-				if (root != null) {
-					HDRImage image = root.getValue().image;
-					return "" + image.width + 'x' + image.height;
-				}
-				else {
-					return "";
-				}
-			})
-			.orElse("No image loaded")
-		);
-		this.zoomLabel.textProperty().bind(
-			this.openImages.getSelectionModel().selectedItemProperty().flatMap((Tab tab) -> {
-				OpenImage openImage = (OpenImage)(tab.getUserData());
-				return openImage.imageDisplay.zoom;
-			})
-			.map((Double zoom) -> "(" + (1.0D / zoom) + "x zoom)")
-			.orElse("")
-		);
 		this.stage.titleProperty().bind(this.openImages.getSelectionModel().selectedItemProperty().map(Tab::getText).orElse("Not Gimp"));
 	}
 
 	public void show() {
 		Scene scene = new Scene(this.rootPane, 1536, 896);
 		scene.setOnKeyPressed((KeyEvent event) -> {
+			OpenImage openImage = this.getCurrentImage();
+			if (openImage == null) return; // || scene.getFocusOwner() != openImage.imageDisplay.display.canvas) return;
 			boolean shift = event.isShiftDown();
 			if (event.isControlDown()) {
 				switch (event.getCode()) {
 					case Z -> {
-						History history = ((OpenImage)(this.openImages.getSelectionModel().getSelectedItem().getUserData())).layerTree.getSelectionModel().getSelectedItem().getValue().history;
+						History history = openImage.getSelectedLayer().history;
 						if (shift) history.redo();
 						else history.undo();
 					}
 					case C -> {
-						OpenImage openImage = this.getCurrentImage();
-						if (openImage != null) {
-							Layer layer = openImage.getSelectedLayer();
-							if (layer != null) {
-								Clipboard.getSystemClipboard().setContent(
-									Map.of(DataFormat.IMAGE, layer.image.toJfxImage())
-								);
-							}
+						Layer layer = openImage.getSelectedLayer();
+						if (layer != null) {
+							Clipboard.getSystemClipboard().setContent(
+								Map.of(DataFormat.IMAGE, layer.image.toJfxImage())
+							);
 						}
 					}
 					case V -> {
@@ -278,7 +237,7 @@ public class MainWindow {
 				case DIGIT9 -> this.swapColor(8, shift);
 				case DIGIT0 -> this.swapColor(9, shift);
 				default -> {
-					OpenImage image = this.getCurrentImage();
+					OpenImage image = openImage;
 					if (image != null) {
 						Layer layer = image.layerTree.getSelectionModel().getSelectedItem().getValue();
 						Tool<?> tool = layer.sources.getCurrentTool();
@@ -308,7 +267,7 @@ public class MainWindow {
 		if (content instanceof Image image) {
 			OpenImage openImage = new OpenImage(this);
 			Layer layer = new Layer(openImage, "Pasted image", new HDRImage(image));
-			openImage.initFirstLayer(layer);
+			openImage.initFirstLayer(layer, false);
 			this.addOpenImage("Pasted image", openImage);
 		}
 		else {
@@ -338,7 +297,7 @@ public class MainWindow {
 		if (dialog.showAndWait().orElse(null) == ButtonType.OK) {
 			OpenImage image = new OpenImage(this);
 			Layer layer = new Layer(image, nameField.getText(), width.getValue(), height.getValue());
-			image.initFirstLayer(layer);
+			image.initFirstLayer(layer, false);
 			this.addOpenImage(nameField.getText(), image);
 		}
 	}
@@ -346,7 +305,7 @@ public class MainWindow {
 	public void fileOpen(ActionEvent event) {
 		FileChooser fileChooser = new FileChooser();
 		fileChooser.getExtensionFilters().addAll(
-			new ExtensionFilter("Image files", "*.png", "*.jpg", "*.jpeg"),
+			new ExtensionFilter("NotGimp files", "*.png", "*.jpg", "*.jpeg", "*.json"),
 			new ExtensionFilter("All files", "*.*")
 		);
 		File file = fileChooser.showOpenDialog(this.stage);
@@ -358,31 +317,83 @@ public class MainWindow {
 	public void doOpen(File file) {
 		OpenImage openImage;
 		try {
-			Image image = new Image(new FileInputStream(file));
-			Exception exception = image.getException();
-			if (exception != null) throw exception;
-			openImage = new OpenImage(this);
-			openImage.file.set(file);
-			Layer layer = new Layer(openImage, file.getName(), new HDRImage(image));
-			openImage.initFirstLayer(layer);
+			if (Util.getExtension(file).equals("json")) {
+				JsonObject object = JsonParser.parseReader(new BufferedReader(new FileReader(file, StandardCharsets.UTF_8))).getAsJsonObject();
+				SaveVersions.process(object);
+				openImage = new OpenImage(this);
+				openImage.load(object);
+			}
+			else {
+				Image image = new Image(new FileInputStream(file));
+				Exception exception = image.getException();
+				if (exception != null) throw exception;
+				openImage = new OpenImage(this);
+				Layer layer = new Layer(openImage, file.getName(), new HDRImage(image));
+				openImage.initFirstLayer(layer, false);
+			}
 		}
 		catch (Exception exception) {
 			exception.printStackTrace();
 			new ExceptionDialog(exception).showAndWait();
 			return;
 		}
+		openImage.file.set(file);
 		this.addOpenImage(file.getName(), openImage);
 	}
 
+	//such a colossal waste.
+	//literally all I need is access to Streams.write().
+	public static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
+
+	public void save(ActionEvent event) {
+		OpenImage openImage = this.getCurrentImage();
+		if (openImage == null) return;
+		File file = openImage.file.get();
+		if (file != null) {
+			file = Util.changeExtension(file, "json");
+			this.doSave(openImage, file);
+		}
+	}
+
+	public void saveAs(ActionEvent event) {
+		OpenImage openImage = this.getCurrentImage();
+		if (openImage == null) return;
+		FileChooser fileChooser = new FileChooser();
+		fileChooser.getExtensionFilters().add(new ExtensionFilter("JSON files", "*.json"));
+		File file = fileChooser.showSaveDialog(this.stage);
+		if (file == null) {
+			return;
+		}
+		file = Util.changeExtension(file, "json");
+		openImage.file.set(file);
+		this.doSave(openImage, file);
+	}
+
+	public void doSave(OpenImage openImage, File file) {
+		try {
+			JsonObject object = openImage.save();
+			try (JsonWriter writer = new JsonWriter(new FileWriter(file, StandardCharsets.UTF_8))) {
+				writer.setIndent("\t");
+				writer.setHtmlSafe(false);
+				GSON.toJson(object, writer);
+			}
+		}
+		catch (Exception exception) {
+			exception.printStackTrace();
+			new ExceptionDialog(exception).showAndWait();
+		}
+	}
+
 	public void fileExport(ActionEvent event) {
-		Tab tab = this.openImages.getSelectionModel().getSelectedItem();
-		if (tab == null) return;
-		OpenImage openImage = ((OpenImage)(tab.getUserData()));
+		OpenImage openImage = this.getCurrentImage();
+		if (openImage == null) return;
 		File file = openImage.file.get();
 		if (file != null) {
 			file = Util.changeExtension(file, "png");
 			try {
-				byte[] bytes = openImage.layerTree.getRoot().getValue().image.toPngByteArray(new SaveProgress());
+				HDRImage hdrImage = openImage.layerTree.getRoot().getValue().image;
+				BufferedImage bufferedImage = hdrImage.toAwtImage(openImage.animationSource);
+				byte[] bytes = HDRImage.toPngByteArray(bufferedImage, new SaveProgress());
 				try (FileOutputStream stream = new FileOutputStream(file)) {
 					stream.write(bytes);
 				}
@@ -400,8 +411,9 @@ public class MainWindow {
 		OpenImage openImage = ((OpenImage)(tab.getUserData()));
 		Layer layer = openImage.layerTree.getRoot().getValue();
 		HDRImage image = layer.image;
+		BufferedImage bufferedImage = image.toAwtImage(openImage.animationSource);
 		SaveProgress progress = new SaveProgress();
-		CompletableFuture<byte[]> future = CompletableFuture.supplyAsync(() -> image.toPngByteArray(progress));
+		CompletableFuture<byte[]> future = CompletableFuture.supplyAsync(() -> HDRImage.toPngByteArray(bufferedImage, progress));
 		FileChooser fileChooser = new FileChooser();
 		fileChooser.getExtensionFilters().add(new ExtensionFilter("PNG files", "*.png"));
 		File file = fileChooser.showSaveDialog(this.stage);
@@ -410,15 +422,6 @@ public class MainWindow {
 			return;
 		}
 		file = Util.changeExtension(file, "png");
-
-		if (file.exists()) {
-			Dialog<ButtonType> dialog = new Dialog<>();
-			dialog.getDialogPane().getButtonTypes().addAll(ButtonType.YES, ButtonType.NO);
-			if (dialog.showAndWait().orElse(null) != ButtonType.YES) {
-				progress.cancel();
-				return;
-			}
-		}
 		openImage.file.set(file);
 
 		try {

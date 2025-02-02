@@ -6,8 +6,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.constant.ClassDesc;
 import java.lang.reflect.AnnotatedType;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
@@ -145,14 +143,12 @@ public enum VectorType {
 	}
 
 	public static enum ComponentType {
-		INT    (false, false, int.class,        IntVector.class),
-		LONG   (false, true,  long.class,       LongVector.class),
-		FLOAT  (true,  false, float.class,      FloatVector.class),
-		DOUBLE (true,  true,  double.class,     DoubleVector.class),
-		BOOLEAN(false, false, boolean.class,    VectorMask.class),
-		BIGINT (false, false, BigInteger.class, BigInteger.class),
-		BIGDEC (true,  false, BigDecimal.class, BigDecimal.class),
-		VOID   (false, false, void.class,       void.class);
+		INT    (false, false, int.class,     IntVector.class),
+		LONG   (false, true,  long.class,    LongVector.class),
+		FLOAT  (true,  false, float.class,   FloatVector.class),
+		DOUBLE (true,  true,  double.class,  DoubleVector.class),
+		BOOLEAN(false, false, boolean.class, VectorMask.class),
+		VOID   (false, false, void.class,    void.class);
 
 		public static final ComponentType[] VALUES = values();
 
@@ -190,8 +186,6 @@ public enum VectorType {
 				case FLOAT -> shape.floatType;
 				case DOUBLE -> shape.doubleType;
 				case BOOLEAN -> shape.booleanType;
-				case BIGINT -> BigInteger.class;
-				case BIGDEC -> BigDecimal.class;
 				case VOID -> void.class;
 			};
 		}

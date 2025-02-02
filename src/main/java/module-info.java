@@ -1,4 +1,5 @@
 module builderb0y.notgimp {
+	requires com.google.gson;
 	requires java.desktop;
 	requires javafx.controls;
 	requires jdk.incubator.vector;

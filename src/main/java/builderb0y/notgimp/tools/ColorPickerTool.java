@@ -3,10 +3,7 @@ package builderb0y.notgimp.tools;
 import javafx.scene.Node;
 import javafx.scene.input.MouseButton;
 
-import builderb0y.notgimp.ColorHelper;
-import builderb0y.notgimp.ColorSelector;
-import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.*;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class ColorPickerTool extends Tool<Void> {
@@ -22,10 +19,10 @@ public class ColorPickerTool extends Tool<Void> {
 		Layer layer = this.layer();
 		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
 		int baseIndex = layer.image.baseIndex(x, y);
-		color.setRed  (ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage.  RED_OFFSET]));
-		color.setGreen(ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage.GREEN_OFFSET]));
-		color.setBlue (ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage. BLUE_OFFSET]));
-		color.setAlpha(ColorSelector.clamp(layer.image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]));
+		color.setRed  (Util.clampF(layer.image.pixels[baseIndex | HDRImage.  RED_OFFSET]));
+		color.setGreen(Util.clampF(layer.image.pixels[baseIndex | HDRImage.GREEN_OFFSET]));
+		color.setBlue (Util.clampF(layer.image.pixels[baseIndex | HDRImage. BLUE_OFFSET]));
+		color.setAlpha(Util.clampF(layer.image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]));
 		color.markDirty();
 	}
 

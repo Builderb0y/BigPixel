@@ -74,6 +74,11 @@ public abstract class InsnTree implements CodeEmitter {
 		return Arrays.equals(this.types, types) ? this : null;
 	}
 
+	public InsnTree castToVoid() {
+		if (this.types.length == 0) return this;
+		else return new PopInsnTree(this);
+	}
+
 	public boolean canBeStatement() {
 		return false;
 	}

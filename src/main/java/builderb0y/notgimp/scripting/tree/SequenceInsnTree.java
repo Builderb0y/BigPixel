@@ -1,5 +1,11 @@
 package builderb0y.notgimp.scripting.tree;
 
+import java.util.Arrays;
+
+import org.jetbrains.annotations.Nullable;
+
+import builderb0y.notgimp.scripting.types.VectorType;
+
 public class SequenceInsnTree extends InsnTree {
 
 	public final InsnTree[] statements;
@@ -7,6 +13,11 @@ public class SequenceInsnTree extends InsnTree {
 	public SequenceInsnTree(InsnTree... statements) {
 		super(statements[statements.length - 1].types());
 		this.statements = flatten(statements);
+	}
+
+	public SequenceInsnTree(VectorType[] types, InsnTree[] statements) {
+		super(types);
+		this.statements = statements;
 	}
 
 	/** I expect this method to be a bit of a hot spot, so optimize the hell out of it! */
@@ -34,7 +45,7 @@ public class SequenceInsnTree extends InsnTree {
 			}
 			//when appending a sequence, only the last statement in that
 			//sequence needs to be popped. all the other statements
-			//in the sequence are guaranteed to already be statements.
+			//in the sequence are guaranteed to already be void-typed.
 			//
 			//when appending a single element, that
 			//element always needs to be popped.
@@ -45,7 +56,7 @@ public class SequenceInsnTree extends InsnTree {
 			//when result is completely full and contains an element
 			//at every index. hence the length check below.
 			if (writeIndex != flattenedLength) {
-				result[writeIndex - 1] = new PopInsnTree(result[writeIndex - 1]);
+				result[writeIndex - 1] = result[writeIndex - 1].castToVoid();
 			}
 		}
 		return result;
@@ -66,5 +77,23 @@ public class SequenceInsnTree extends InsnTree {
 	@Override
 	public boolean canBeStatement() {
 		return this.statements[this.statements.length - 1].canBeStatement();
+	}
+
+	@Override
+	public @Nullable InsnTree cast(VectorType... types) {
+		if (Arrays.equals(this.types(), types)) return this;
+		InsnTree last = this.statements[this.statements.length - 1].cast(types);
+		if (last == null) return null;
+		InsnTree[] clone = this.statements.clone();
+		clone[clone.length - 1] = last;
+		return new SequenceInsnTree(types, clone);
+	}
+
+	@Override
+	public InsnTree castToVoid() {
+		if (this.types().length == 0) return this;
+		InsnTree[] clone = this.statements.clone();
+		clone[clone.length - 1] = clone[clone.length - 1].castToVoid();
+		return new SequenceInsnTree(new VectorType[0], clone);
 	}
 }

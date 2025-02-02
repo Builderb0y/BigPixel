@@ -121,7 +121,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 				}
 			}
 		}
-		layer.image.markDirty();
+		layer.image.markDirty(false);
 		this.updateLabelText();
 	}
 

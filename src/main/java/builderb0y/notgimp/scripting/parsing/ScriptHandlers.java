@@ -20,7 +20,6 @@ public class ScriptHandlers {
 			VectorType[] to = Arrays.copyOfRange(types, fromIndex, fromIndex + arguments[argIndex].types().length);
 			InsnTree replacement = arguments[argIndex].cast(to);
 			if (replacement == null) {
-				System.out.println("Can't cast " + arguments[argIndex] + " to " + Arrays.toString(to));
 				return null;
 			}
 			fromIndex += arguments[argIndex].types().length;
@@ -29,10 +28,19 @@ public class ScriptHandlers {
 			result[argIndex] = replacement;
 		}
 		if (fromIndex != types.length) {
-			System.out.println(STR."fromIndex: \{fromIndex}, length: \{types.length}");
 			return null;
 		}
 		return result;
+	}
+
+	public static class UsageTracker implements Runnable {
+
+		public boolean used;
+
+		@Override
+		public void run() {
+			this.used = true;
+		}
 	}
 
 	@FunctionalInterface
@@ -41,12 +49,17 @@ public class ScriptHandlers {
 		public abstract InsnTree getVariable(ExpressionParser<?> parser, String name) throws ScriptParsingException;
 
 		public static VariableHandler builtinParameter(String name, VectorType type) {
+			return builtinParameter(name, type, null);
+		}
+
+		public static VariableHandler builtinParameter(String name, VectorType type, Runnable onUsed) {
 			return (ExpressionParser<?> parser, String name_) -> {
 				for (Parameter parameter : parser.implMethod.getParameters()) {
 					if (!parameter.isNamePresent()) {
 						throw new ScriptParsingException(parser.implMethod + " does not have parameter names", parser.reader);
 					}
 					if (parameter.getName().equals(name)) {
+						if (onUsed != null) onUsed.run();
 						return new LoadInsnTree(type, name);
 					}
 				}
@@ -82,6 +95,16 @@ public class ScriptHandlers {
 	public static interface FunctionHandler {
 
 		public abstract InsnTree getFunction(ExpressionParser<?> parser, String name, InsnTree[] params) throws ScriptParsingException;
+
+		public static FunctionHandler invoker(MethodInfo method) {
+			VectorType returnType = method.vectorReturnType();
+			VectorType[] paramTypes = method.vectorParamTypes();
+			return (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
+				InsnTree[] castArgs = multiCast(params, paramTypes);
+				if (castArgs == null) return null;
+				return new InvokeInsnTree(returnType, castArgs, method);
+			};
+		}
 	}
 
 	@FunctionalInterface
@@ -114,12 +137,18 @@ public class ScriptHandlers {
 		public static KeywordHandler returner(VectorType type) {
 			return (ExpressionParser<?> parser, String name, boolean statement) -> {
 				if (!statement) return null;
-				InsnTree result = parser.nextExpression();
-				parser.reader.expectOperatorAfterWhitespace(";");
-				if (result.type() != type) {
-					throw new ScriptParsingException(STR."Can't return \{result.type()} from method expecting \{type}", parser.reader);
+				if (type == VectorType.VOID) {
+					parser.reader.expectOperatorAfterWhitespace(";");
+					return new ReturnInsnTree(NoopInsnTree.INSTANCE);
 				}
-				return new ReturnInsnTree(result);
+				else {
+					InsnTree result = parser.nextExpression();
+					parser.reader.expectOperatorAfterWhitespace(";");
+					if (result.type() != type) {
+						throw new ScriptParsingException(STR."Can't return \{result.type()} from method expecting \{type}", parser.reader);
+					}
+					return new ReturnInsnTree(result);
+				}
 			};
 		}
 

@@ -109,16 +109,16 @@ public class ColorHelper {
 
 	public void recomputeFullRGB() {
 		float hue = this.hue.get() * 6.0F;
-		this.fullRed   = ColorSelector.clamp(Math.abs(hue - 3.0F) - 1.0F);
-		this.fullGreen = ColorSelector.clamp(2.0F - Math.abs(hue - 2.0F));
-		this.fullBlue  = ColorSelector.clamp(2.0F - Math.abs(hue - 4.0F));
+		this.fullRed   = Util.clampF(Math.abs(hue - 3.0F) - 1.0F);
+		this.fullGreen = Util.clampF(2.0F - Math.abs(hue - 2.0F));
+		this.fullBlue  = Util.clampF(2.0F - Math.abs(hue - 4.0F));
 		this.recomputePartialRGB();
 	}
 
 	public void recomputePartialRGB() {
-		this.red  .set(ColorSelector.mix(ColorSelector.mix(0.5F, 0.0F, this.dark.get()), ColorSelector.mix(1.0F, this.fullRed,   this.dark.get()), this.light.get()));
-		this.green.set(ColorSelector.mix(ColorSelector.mix(0.5F, 0.0F, this.dark.get()), ColorSelector.mix(1.0F, this.fullGreen, this.dark.get()), this.light.get()));
-		this.blue .set(ColorSelector.mix(ColorSelector.mix(0.5F, 0.0F, this.dark.get()), ColorSelector.mix(1.0F, this.fullBlue,  this.dark.get()), this.light.get()));
+		this.red  .set(Util.mix(Util.mix(0.5F, 0.0F, this.dark.get()), Util.mix(1.0F, this.fullRed,   this.dark.get()), this.light.get()));
+		this.green.set(Util.mix(Util.mix(0.5F, 0.0F, this.dark.get()), Util.mix(1.0F, this.fullGreen, this.dark.get()), this.light.get()));
+		this.blue .set(Util.mix(Util.mix(0.5F, 0.0F, this.dark.get()), Util.mix(1.0F, this.fullBlue,  this.dark.get()), this.light.get()));
 	}
 
 	public void recomputeFullHDL() {
@@ -134,9 +134,9 @@ public class ColorHelper {
 			this.hue.set(0.0F);
 		}
 		else {
-			this.fullRed = ColorSelector.unmix(min, max, red);
-			this.fullGreen = ColorSelector.unmix(min, max, green);
-			this.fullBlue = ColorSelector.unmix(min, max, blue);
+			this.fullRed = Util.unmix(min, max, red);
+			this.fullGreen = Util.unmix(min, max, green);
+			this.fullBlue = Util.unmix(min, max, blue);
 			float hue = this.fullBlue + this.fullGreen - this.fullRed;
 			hue = this.fullGreen < this.fullBlue ? 5.0F - hue : hue + 1.0F;
 			this.hue.set(Math.clamp(hue / 6.0F, 0.0F, 1.0F));

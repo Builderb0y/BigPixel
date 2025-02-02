@@ -25,7 +25,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
 				if (this.work != null) {
 					this.transfer();
-					this.layer().image.markDirty();
+					this.layer().image.markDirty(false);
 					this.updateLabelText();
 				}
 			}
@@ -56,7 +56,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		else {
 			this.source.beginUsingTool();
 			this.work = new Work(x, y);
-			this.layer().image.markDirty();
+			this.layer().image.markDirty(false);
 			this.updateLabelText();
 		}
 	}
@@ -82,7 +82,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			}
 			case OUTSIDE -> throw new IllegalStateException(work.moving.toString());
 		}
-		this.layer().image.markDirty();
+		this.layer().image.markDirty(false);
 		this.updateLabelText();
 	}
 
@@ -90,7 +90,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	public void colorChanged() {
 		if (this.work != null) {
 			this.transfer();
-			this.layer().image.markDirty();
+			this.layer().image.markDirty(false);
 		}
 	}
 
@@ -163,7 +163,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		if (this.work != null) {
 			this.work.symmetry = this.work.symmetry.andThen(symmetry);
 			this.transfer();
-			this.layer().image.markDirty();
+			this.layer().image.markDirty(false);
 			this.updateLabelText();
 		}
 	}
@@ -172,7 +172,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	public void enter() {
 		boolean hadWork = this.work != null;
 		super.enter();
-		if (hadWork) this.layer().image.markDirty();
+		if (hadWork) this.layer().image.markDirty(false);
 	}
 
 	public void copyInPlace() {
@@ -184,7 +184,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			this.work.x2 = work.x2 + work.offsetX;
 			this.work.y1 = work.y1 + work.offsetY;
 			this.work.y2 = work.y2 + work.offsetY;
-			this.layer().image.markDirty();
+			this.layer().image.markDirty(false);
 		}
 	}
 

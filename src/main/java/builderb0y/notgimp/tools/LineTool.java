@@ -163,7 +163,7 @@ public class LineTool extends Tool<LineTool.Work> {
 				}
 			}
 		}
-		layer.image.markDirty();
+		layer.image.markDirty(false);
 		this.updateLabelText();
 	}
 

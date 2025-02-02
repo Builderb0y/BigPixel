@@ -2,15 +2,19 @@ package builderb0y.notgimp;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.util.Base64;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 
-import javafx.beans.value.ObservableValueBase;
+import com.google.gson.JsonObject;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelReader;
@@ -27,13 +31,51 @@ public class HDRImage {
 
 	public int width, height;
 	public float[] pixels;
-	public HDRImageValue value;
+	public Set<HdrImageWatcher> watchers;
+
+	public JsonObject save() {
+		JsonObject object = new JsonObject();
+		object.addProperty("width", this.width);
+		object.addProperty("height", this.height);
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream(this.pixels.length * Float.BYTES);
+			GZIPOutputStream compressor = new GZIPOutputStream(baos);
+			DataOutputStream dos = new DataOutputStream(compressor);
+			for (float pixel : this.pixels) {
+				dos.writeFloat(pixel);
+			}
+			dos.close();
+			object.addProperty("pixels", Base64.getEncoder().encodeToString(baos.toByteArray()));
+		}
+		catch (IOException unexpected) {
+			throw new SaveException(unexpected);
+		}
+		return object;
+	}
+
+	public HDRImage(JsonObject saveData) {
+		this(saveData.get("width").getAsInt(), saveData.get("height").getAsInt());
+		try {
+			String base64Pixels = saveData.get("pixels").getAsString();
+			byte[] compressedPixels = Base64.getDecoder().decode(base64Pixels);
+			ByteArrayInputStream bais = new ByteArrayInputStream(compressedPixels);
+			GZIPInputStream decompressor = new GZIPInputStream(bais);
+			DataInputStream in = new DataInputStream(decompressor);
+			for (int index = 0, length = this.pixels.length; index < length; index++) {
+				this.pixels[index] = in.readFloat();
+			}
+			if (in.available() != 0) throw new IOException("Trailing data");
+		}
+		catch (IOException exception) {
+			throw new SaveException(exception);
+		}
+	}
 
 	public HDRImage(int width, int height) {
 		this.width = width;
 		this.height = height;
 		this.pixels = new float[width * height * 4];
-		this.value = this.new HDRImageValue();
+		this.watchers = new HashSet<>();
 	}
 
 	public HDRImage(Image image) {
@@ -51,11 +93,21 @@ public class HDRImage {
 		this.width = from.width;
 		this.height = from.height;
 		this.pixels = from.pixels.clone();
-		this.value = this.new HDRImageValue();
+		this.watchers = new HashSet<>();
 	}
 
-	public void markDirty() {
-		this.value.fireValueChangedEvent();
+	public void addWatcher(HdrImageWatcher watcher) {
+		this.watchers.add(watcher);
+	}
+
+	public void removeWatcher(HdrImageWatcher watcher) {
+		this.watchers.remove(watcher);
+	}
+
+	public void markDirty(boolean fromAnimation) {
+		for (HdrImageWatcher watcher : this.watchers) {
+			watcher.onImageChanged(this, fromAnimation);
+		}
 	}
 
 	public int baseIndex(int x, int y) {
@@ -106,15 +158,8 @@ public class HDRImage {
 		this.setRgba(x, y, color.red.get(), color.green.get(), color.blue.get(), color.alpha.get());
 	}
 
-	public static int clamp(float value) {
-		int clamped = (int)(value * 256.0F);
-		if (clamped <=   0) return   0;
-		if (clamped >= 255) return 255;
-		return clamped;
-	}
-
 	public static int packRgbaToArgb(float red, float green, float blue, float alpha) {
-		return (clamp(alpha) << 24) | (clamp(red) << 16) | (clamp(green) << 8) | clamp(blue);
+		return (Util.clampI(alpha) << 24) | (Util.clampI(red) << 16) | (Util.clampI(green) << 8) | Util.clampI(blue);
 	}
 
 	public Image toJfxImage() {
@@ -127,33 +172,38 @@ public class HDRImage {
 				float green = this.pixels[baseIndex | GREEN_OFFSET];
 				float blue  = this.pixels[baseIndex |  BLUE_OFFSET];
 				float alpha = this.pixels[baseIndex | ALPHA_OFFSET];
-				pixels[baseIndex    ] = (byte)(clamp(blue  * alpha));
-				pixels[baseIndex | 1] = (byte)(clamp(green * alpha));
-				pixels[baseIndex | 2] = (byte)(clamp(red   * alpha));
-				pixels[baseIndex | 3] = (byte)(clamp(        alpha));
+				pixels[baseIndex    ] = Util.clampB(blue * alpha);
+				pixels[baseIndex | 1] = Util.clampB(green * alpha);
+				pixels[baseIndex | 2] = Util.clampB(red * alpha);
+				pixels[baseIndex | 3] = Util.clampB(        alpha);
 			}
 		}
-		image.getPixelWriter().setPixels(0, 0, this.width, this.height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);
+		image.getPixelWriter().setPixels(0, 0, this.width, this.height, PixelFormat.getByteBgraPreInstance(), pixels, 0, this.width << 2);
 		return image;
 	}
 
-	public BufferedImage toAwt(SaveProgress progress) {
-		BufferedImage image = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_ARGB);
+	public BufferedImage toAwtImage(AnimationSource animation) {
+		int frames = animation.frames.get();
+		BufferedImage image = new BufferedImage(this.width, this.height * frames, BufferedImage.TYPE_INT_ARGB);
 		WritableRaster raster = image.getRaster();
 		int[] pixel = new int[1];
-		for (int y = 0; y < this.height; y++) {
-			if (progress.isCanceled()) return null;
-			for (int x = 0; x < this.height; x++) {
-				pixel[0] = this.getPackedArgb(x, y);
-				raster.setDataElements(x, y, pixel);
+		int oldFrame = animation.frame.get();
+		for (int frame = 0; frame < frames; frame++) {
+			animation.frame.set(frame);
+			animation.openImage.tickAnimation();
+			for (int y = 0; y < this.height; y++) {
+				for (int x = 0; x < this.height; x++) {
+					pixel[0] = this.getPackedArgb(x, y);
+					raster.setDataElements(x, y + frame * this.height, pixel);
+				}
 			}
 		}
+		animation.frame.set(oldFrame);
+		animation.openImage.tickAnimation();
 		return image;
 	}
 
-	public byte[] toPngByteArray(SaveProgress progress) {
-		BufferedImage image = this.toAwt(progress);
-		if (image == null) return null;
+	public static byte[] toPngByteArray(BufferedImage image, SaveProgress progress) {
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
 		try {
 			ImageTypeSpecifier type = ImageTypeSpecifier.createFromRenderedImage(image);
@@ -193,16 +243,9 @@ public class HDRImage {
 		}
 	}
 
-	public class HDRImageValue extends ObservableValueBase<HDRImage> {
+	@FunctionalInterface
+	public static interface HdrImageWatcher {
 
-		@Override
-		public HDRImage getValue() {
-			return HDRImage.this;
-		}
-
-		@Override
-		public void fireValueChangedEvent() {
-			super.fireValueChangedEvent();
-		}
+		public abstract void onImageChanged(HDRImage image, boolean fromAnimation);
 	}
 }

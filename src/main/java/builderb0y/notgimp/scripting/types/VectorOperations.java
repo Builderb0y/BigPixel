@@ -1,6 +1,5 @@
 package builderb0y.notgimp.scripting.types;
 
-import java.math.*;
 import jdk.incubator.vector.*;
 import builderb0y.notgimp.scripting.types.VectorType.Vec;
 
@@ -11,7 +10,6 @@ import builderb0y.notgimp.scripting.types.VectorType.Vec;
 	"ImplicitNumericConversion",
 	"NumericCastThatLosesPrecision",
 	"MethodParameterNamingConvention",
-	"UnpredictableBigDecimalConstructorCall",
 })
 public class VectorOperations {
 
@@ -32,7 +30,6 @@ public class VectorOperations {
 	public static int add_int_int(int a, int b) { return a + b; }
 	public static int sub_int_int(int a, int b) { return a - b; }
 	public static int mul_int_int(int a, int b) { return a * b; }
-	public static int div_int_int(int a, int b) { return a / b; }
 	public static int and_int_int(int a, int b) { return a & b; }
 	public static int or_int_int(int a, int b) { return a | b; }
 	public static int xor_int_int(int a, int b) { return a ^ b; }
@@ -41,10 +38,11 @@ public class VectorOperations {
 	public static int ashr_int_int(int a, int b) { return a >> b; }
 	public static int min_int_int(int a, int b) { return Math.min(a, b); }
 	public static int max_int_int(int a, int b) { return Math.max(a, b); }
+	public static int div_int_int(int a, int b) { return Math.floorDiv(a, b); }
+	public static int mod_int_int(int a, int b) { return Math.floorMod(a, b); }
 	public static @Vec(2) IntVector add_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) IntVector sub_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) IntVector mul_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) IntVector div_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(2) IntVector and_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.AND, b); }
 	public static @Vec(2) IntVector or_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.OR, b); }
 	public static @Vec(2) IntVector xor_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.XOR, b); }
@@ -53,10 +51,11 @@ public class VectorOperations {
 	public static @Vec(2) IntVector ashr_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(2) IntVector min_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) IntVector max_int_int2(int a, @Vec(2) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_64, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) IntVector div_int_int2(int a, @Vec(2) IntVector b) { return int2_from_int_int(div_int_int(a, b.lane(0)), div_int_int(a, b.lane(1))); }
+	public static @Vec(2) IntVector mod_int_int2(int a, @Vec(2) IntVector b) { return int2_from_int_int(mod_int_int(a, b.lane(0)), mod_int_int(a, b.lane(1))); }
 	public static @Vec(3) IntVector add_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) IntVector sub_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) IntVector mul_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) IntVector div_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(3) IntVector and_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.AND, b); }
 	public static @Vec(3) IntVector or_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.OR, b); }
 	public static @Vec(3) IntVector xor_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.XOR, b); }
@@ -65,10 +64,11 @@ public class VectorOperations {
 	public static @Vec(3) IntVector ashr_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(3) IntVector min_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) IntVector max_int_int3(int a, @Vec(3) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) IntVector div_int_int3(int a, @Vec(3) IntVector b) { return int3_from_int_int_int(div_int_int(a, b.lane(0)), div_int_int(a, b.lane(1)), div_int_int(a, b.lane(2))); }
+	public static @Vec(3) IntVector mod_int_int3(int a, @Vec(3) IntVector b) { return int3_from_int_int_int(mod_int_int(a, b.lane(0)), mod_int_int(a, b.lane(1)), mod_int_int(a, b.lane(2))); }
 	public static @Vec(4) IntVector add_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) IntVector sub_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) IntVector mul_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) IntVector div_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(4) IntVector and_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.AND, b); }
 	public static @Vec(4) IntVector or_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.OR, b); }
 	public static @Vec(4) IntVector xor_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.XOR, b); }
@@ -77,6 +77,8 @@ public class VectorOperations {
 	public static @Vec(4) IntVector ashr_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(4) IntVector min_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) IntVector max_int_int4(int a, @Vec(4) IntVector b) { return IntVector.broadcast(IntVector.SPECIES_128, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) IntVector div_int_int4(int a, @Vec(4) IntVector b) { return int4_from_int_int_int_int(div_int_int(a, b.lane(0)), div_int_int(a, b.lane(1)), div_int_int(a, b.lane(2)), div_int_int(a, b.lane(3))); }
+	public static @Vec(4) IntVector mod_int_int4(int a, @Vec(4) IntVector b) { return int4_from_int_int_int_int(mod_int_int(a, b.lane(0)), mod_int_int(a, b.lane(1)), mod_int_int(a, b.lane(2)), mod_int_int(a, b.lane(3))); }
 
 	public static @Vec(2) IntVector int2_from_int2(@Vec(2) IntVector a) { return a; }
 	public static @Vec(2) IntVector int2_from_long2(@Vec(2) LongVector a) { return (IntVector)a.convertShape(VectorOperators.L2I, IntVector.SPECIES_64, 0); }
@@ -92,7 +94,6 @@ public class VectorOperations {
 	public static @Vec(2) IntVector add_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) IntVector sub_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) IntVector mul_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) IntVector div_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(2) IntVector and_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(2) IntVector or_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(2) IntVector xor_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -101,10 +102,11 @@ public class VectorOperations {
 	public static @Vec(2) IntVector ashr_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(2) IntVector min_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) IntVector max_int2_int(@Vec(2) IntVector a, int b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) IntVector div_int2_int(@Vec(2) IntVector a, int b) { return int2_from_int_int(div_int_int(a.lane(0), b), div_int_int(a.lane(1), b)); }
+	public static @Vec(2) IntVector mod_int2_int(@Vec(2) IntVector a, int b) { return int2_from_int_int(mod_int_int(a.lane(0), b), mod_int_int(a.lane(1), b)); }
 	public static @Vec(2) IntVector add_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) IntVector sub_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) IntVector mul_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) IntVector div_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(2) IntVector and_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(2) IntVector or_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(2) IntVector xor_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -113,6 +115,8 @@ public class VectorOperations {
 	public static @Vec(2) IntVector ashr_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(2) IntVector min_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) IntVector max_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) IntVector div_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return int2_from_int_int(div_int_int(a.lane(0), b.lane(0)), div_int_int(a.lane(1), b.lane(1))); }
+	public static @Vec(2) IntVector mod_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return int2_from_int_int(mod_int_int(a.lane(0), b.lane(0)), mod_int_int(a.lane(1), b.lane(1))); }
 
 	public static int dot_int2_int2(@Vec(2) IntVector a, @Vec(2) IntVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static int lengthSquared_int2(@Vec(2) IntVector a) { return dot_int2_int2(a, a); }
@@ -131,7 +135,6 @@ public class VectorOperations {
 	public static @Vec(3) IntVector add_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) IntVector sub_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) IntVector mul_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) IntVector div_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(3) IntVector and_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(3) IntVector or_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(3) IntVector xor_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -140,10 +143,11 @@ public class VectorOperations {
 	public static @Vec(3) IntVector ashr_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(3) IntVector min_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) IntVector max_int3_int(@Vec(3) IntVector a, int b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) IntVector div_int3_int(@Vec(3) IntVector a, int b) { return int3_from_int_int_int(div_int_int(a.lane(0), b), div_int_int(a.lane(1), b), div_int_int(a.lane(2), b)); }
+	public static @Vec(3) IntVector mod_int3_int(@Vec(3) IntVector a, int b) { return int3_from_int_int_int(mod_int_int(a.lane(0), b), mod_int_int(a.lane(1), b), mod_int_int(a.lane(2), b)); }
 	public static @Vec(3) IntVector add_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) IntVector sub_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) IntVector mul_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) IntVector div_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(3) IntVector and_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(3) IntVector or_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(3) IntVector xor_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -152,8 +156,10 @@ public class VectorOperations {
 	public static @Vec(3) IntVector ashr_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(3) IntVector min_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) IntVector max_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) IntVector div_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return int3_from_int_int_int(div_int_int(a.lane(0), b.lane(0)), div_int_int(a.lane(1), b.lane(1)), div_int_int(a.lane(2), b.lane(2))); }
+	public static @Vec(3) IntVector mod_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return int3_from_int_int_int(mod_int_int(a.lane(0), b.lane(0)), mod_int_int(a.lane(1), b.lane(1)), mod_int_int(a.lane(2), b.lane(2))); }
 
-	public static int dot_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
+	public static int dot_int3_int3(@Vec(3) IntVector a, @Vec(3) IntVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD, INT3_MASK); }
 	public static int lengthSquared_int3(@Vec(3) IntVector a) { return dot_int3_int3(a, a); }
 
 	public static @Vec(4) IntVector int4_from_int4(@Vec(4) IntVector a) { return a; }
@@ -170,7 +176,6 @@ public class VectorOperations {
 	public static @Vec(4) IntVector add_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) IntVector sub_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) IntVector mul_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) IntVector div_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(4) IntVector and_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(4) IntVector or_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(4) IntVector xor_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -179,10 +184,11 @@ public class VectorOperations {
 	public static @Vec(4) IntVector ashr_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(4) IntVector min_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) IntVector max_int4_int(@Vec(4) IntVector a, int b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) IntVector div_int4_int(@Vec(4) IntVector a, int b) { return int4_from_int_int_int_int(div_int_int(a.lane(0), b), div_int_int(a.lane(1), b), div_int_int(a.lane(2), b), div_int_int(a.lane(3), b)); }
+	public static @Vec(4) IntVector mod_int4_int(@Vec(4) IntVector a, int b) { return int4_from_int_int_int_int(mod_int_int(a.lane(0), b), mod_int_int(a.lane(1), b), mod_int_int(a.lane(2), b), mod_int_int(a.lane(3), b)); }
 	public static @Vec(4) IntVector add_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) IntVector sub_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) IntVector mul_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) IntVector div_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.DIV, b, INT3_MASK); }
 	public static @Vec(4) IntVector and_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(4) IntVector or_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(4) IntVector xor_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -191,6 +197,8 @@ public class VectorOperations {
 	public static @Vec(4) IntVector ashr_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(4) IntVector min_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) IntVector max_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) IntVector div_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return int4_from_int_int_int_int(div_int_int(a.lane(0), b.lane(0)), div_int_int(a.lane(1), b.lane(1)), div_int_int(a.lane(2), b.lane(2)), div_int_int(a.lane(3), b.lane(3))); }
+	public static @Vec(4) IntVector mod_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return int4_from_int_int_int_int(mod_int_int(a.lane(0), b.lane(0)), mod_int_int(a.lane(1), b.lane(1)), mod_int_int(a.lane(2), b.lane(2)), mod_int_int(a.lane(3), b.lane(3))); }
 
 	public static int dot_int4_int4(@Vec(4) IntVector a, @Vec(4) IntVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static int lengthSquared_int4(@Vec(4) IntVector a) { return dot_int4_int4(a, a); }
@@ -207,7 +215,6 @@ public class VectorOperations {
 	public static long add_long_long(long a, long b) { return a + b; }
 	public static long sub_long_long(long a, long b) { return a - b; }
 	public static long mul_long_long(long a, long b) { return a * b; }
-	public static long div_long_long(long a, long b) { return a / b; }
 	public static long and_long_long(long a, long b) { return a & b; }
 	public static long or_long_long(long a, long b) { return a | b; }
 	public static long xor_long_long(long a, long b) { return a ^ b; }
@@ -216,10 +223,11 @@ public class VectorOperations {
 	public static long ashr_long_long(long a, long b) { return a >> b; }
 	public static long min_long_long(long a, long b) { return Math.min(a, b); }
 	public static long max_long_long(long a, long b) { return Math.max(a, b); }
+	public static long div_long_long(long a, long b) { return Math.floorDiv(a, b); }
+	public static long mod_long_long(long a, long b) { return Math.floorMod(a, b); }
 	public static @Vec(2) LongVector add_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) LongVector sub_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) LongVector mul_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) LongVector div_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(2) LongVector and_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.AND, b); }
 	public static @Vec(2) LongVector or_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.OR, b); }
 	public static @Vec(2) LongVector xor_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.XOR, b); }
@@ -228,10 +236,11 @@ public class VectorOperations {
 	public static @Vec(2) LongVector ashr_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(2) LongVector min_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) LongVector max_long_long2(long a, @Vec(2) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_128, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) LongVector div_long_long2(long a, @Vec(2) LongVector b) { return long2_from_long_long(div_long_long(a, b.lane(0)), div_long_long(a, b.lane(1))); }
+	public static @Vec(2) LongVector mod_long_long2(long a, @Vec(2) LongVector b) { return long2_from_long_long(mod_long_long(a, b.lane(0)), mod_long_long(a, b.lane(1))); }
 	public static @Vec(3) LongVector add_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) LongVector sub_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) LongVector mul_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) LongVector div_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(3) LongVector and_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.AND, b); }
 	public static @Vec(3) LongVector or_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.OR, b); }
 	public static @Vec(3) LongVector xor_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.XOR, b); }
@@ -240,10 +249,11 @@ public class VectorOperations {
 	public static @Vec(3) LongVector ashr_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(3) LongVector min_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) LongVector max_long_long3(long a, @Vec(3) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) LongVector div_long_long3(long a, @Vec(3) LongVector b) { return long3_from_long_long_long(div_long_long(a, b.lane(0)), div_long_long(a, b.lane(1)), div_long_long(a, b.lane(2))); }
+	public static @Vec(3) LongVector mod_long_long3(long a, @Vec(3) LongVector b) { return long3_from_long_long_long(mod_long_long(a, b.lane(0)), mod_long_long(a, b.lane(1)), mod_long_long(a, b.lane(2))); }
 	public static @Vec(4) LongVector add_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) LongVector sub_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) LongVector mul_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) LongVector div_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(4) LongVector and_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.AND, b); }
 	public static @Vec(4) LongVector or_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.OR, b); }
 	public static @Vec(4) LongVector xor_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.XOR, b); }
@@ -252,6 +262,8 @@ public class VectorOperations {
 	public static @Vec(4) LongVector ashr_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(4) LongVector min_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) LongVector max_long_long4(long a, @Vec(4) LongVector b) { return LongVector.broadcast(LongVector.SPECIES_256, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) LongVector div_long_long4(long a, @Vec(4) LongVector b) { return long4_from_long_long_long_long(div_long_long(a, b.lane(0)), div_long_long(a, b.lane(1)), div_long_long(a, b.lane(2)), div_long_long(a, b.lane(3))); }
+	public static @Vec(4) LongVector mod_long_long4(long a, @Vec(4) LongVector b) { return long4_from_long_long_long_long(mod_long_long(a, b.lane(0)), mod_long_long(a, b.lane(1)), mod_long_long(a, b.lane(2)), mod_long_long(a, b.lane(3))); }
 
 	public static @Vec(2) LongVector long2_from_int2(@Vec(2) IntVector a) { return (LongVector)a.convertShape(VectorOperators.I2L, LongVector.SPECIES_128, 0); }
 	public static @Vec(2) LongVector long2_from_long2(@Vec(2) LongVector a) { return a; }
@@ -267,7 +279,6 @@ public class VectorOperations {
 	public static @Vec(2) LongVector add_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) LongVector sub_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) LongVector mul_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) LongVector div_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(2) LongVector and_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(2) LongVector or_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(2) LongVector xor_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -276,10 +287,11 @@ public class VectorOperations {
 	public static @Vec(2) LongVector ashr_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(2) LongVector min_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) LongVector max_long2_long(@Vec(2) LongVector a, long b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) LongVector div_long2_long(@Vec(2) LongVector a, long b) { return long2_from_long_long(div_long_long(a.lane(0), b), div_long_long(a.lane(1), b)); }
+	public static @Vec(2) LongVector mod_long2_long(@Vec(2) LongVector a, long b) { return long2_from_long_long(mod_long_long(a.lane(0), b), mod_long_long(a.lane(1), b)); }
 	public static @Vec(2) LongVector add_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) LongVector sub_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) LongVector mul_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) LongVector div_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(2) LongVector and_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(2) LongVector or_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(2) LongVector xor_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -288,6 +300,8 @@ public class VectorOperations {
 	public static @Vec(2) LongVector ashr_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(2) LongVector min_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) LongVector max_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) LongVector div_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return long2_from_long_long(div_long_long(a.lane(0), b.lane(0)), div_long_long(a.lane(1), b.lane(1))); }
+	public static @Vec(2) LongVector mod_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return long2_from_long_long(mod_long_long(a.lane(0), b.lane(0)), mod_long_long(a.lane(1), b.lane(1))); }
 
 	public static long dot_long2_long2(@Vec(2) LongVector a, @Vec(2) LongVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static long lengthSquared_long2(@Vec(2) LongVector a) { return dot_long2_long2(a, a); }
@@ -306,7 +320,6 @@ public class VectorOperations {
 	public static @Vec(3) LongVector add_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) LongVector sub_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) LongVector mul_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) LongVector div_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(3) LongVector and_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(3) LongVector or_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(3) LongVector xor_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -315,10 +328,11 @@ public class VectorOperations {
 	public static @Vec(3) LongVector ashr_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(3) LongVector min_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) LongVector max_long3_long(@Vec(3) LongVector a, long b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) LongVector div_long3_long(@Vec(3) LongVector a, long b) { return long3_from_long_long_long(div_long_long(a.lane(0), b), div_long_long(a.lane(1), b), div_long_long(a.lane(2), b)); }
+	public static @Vec(3) LongVector mod_long3_long(@Vec(3) LongVector a, long b) { return long3_from_long_long_long(mod_long_long(a.lane(0), b), mod_long_long(a.lane(1), b), mod_long_long(a.lane(2), b)); }
 	public static @Vec(3) LongVector add_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) LongVector sub_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) LongVector mul_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) LongVector div_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(3) LongVector and_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(3) LongVector or_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(3) LongVector xor_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -327,8 +341,10 @@ public class VectorOperations {
 	public static @Vec(3) LongVector ashr_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(3) LongVector min_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) LongVector max_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) LongVector div_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return long3_from_long_long_long(div_long_long(a.lane(0), b.lane(0)), div_long_long(a.lane(1), b.lane(1)), div_long_long(a.lane(2), b.lane(2))); }
+	public static @Vec(3) LongVector mod_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return long3_from_long_long_long(mod_long_long(a.lane(0), b.lane(0)), mod_long_long(a.lane(1), b.lane(1)), mod_long_long(a.lane(2), b.lane(2))); }
 
-	public static long dot_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
+	public static long dot_long3_long3(@Vec(3) LongVector a, @Vec(3) LongVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD, LONG3_MASK); }
 	public static long lengthSquared_long3(@Vec(3) LongVector a) { return dot_long3_long3(a, a); }
 
 	public static @Vec(4) LongVector long4_from_int4(@Vec(4) IntVector a) { return (LongVector)a.convertShape(VectorOperators.I2L, LongVector.SPECIES_256, 0); }
@@ -345,7 +361,6 @@ public class VectorOperations {
 	public static @Vec(4) LongVector add_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) LongVector sub_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) LongVector mul_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) LongVector div_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(4) LongVector and_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(4) LongVector or_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(4) LongVector xor_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -354,10 +369,11 @@ public class VectorOperations {
 	public static @Vec(4) LongVector ashr_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(4) LongVector min_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) LongVector max_long4_long(@Vec(4) LongVector a, long b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) LongVector div_long4_long(@Vec(4) LongVector a, long b) { return long4_from_long_long_long_long(div_long_long(a.lane(0), b), div_long_long(a.lane(1), b), div_long_long(a.lane(2), b), div_long_long(a.lane(3), b)); }
+	public static @Vec(4) LongVector mod_long4_long(@Vec(4) LongVector a, long b) { return long4_from_long_long_long_long(mod_long_long(a.lane(0), b), mod_long_long(a.lane(1), b), mod_long_long(a.lane(2), b), mod_long_long(a.lane(3), b)); }
 	public static @Vec(4) LongVector add_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) LongVector sub_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) LongVector mul_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) LongVector div_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.DIV, b, LONG3_MASK); }
 	public static @Vec(4) LongVector and_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.AND, b); }
 	public static @Vec(4) LongVector or_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.OR, b); }
 	public static @Vec(4) LongVector xor_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.XOR, b); }
@@ -366,6 +382,8 @@ public class VectorOperations {
 	public static @Vec(4) LongVector ashr_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.ASHR, b); }
 	public static @Vec(4) LongVector min_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) LongVector max_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) LongVector div_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return long4_from_long_long_long_long(div_long_long(a.lane(0), b.lane(0)), div_long_long(a.lane(1), b.lane(1)), div_long_long(a.lane(2), b.lane(2)), div_long_long(a.lane(3), b.lane(3))); }
+	public static @Vec(4) LongVector mod_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return long4_from_long_long_long_long(mod_long_long(a.lane(0), b.lane(0)), mod_long_long(a.lane(1), b.lane(1)), mod_long_long(a.lane(2), b.lane(2)), mod_long_long(a.lane(3), b.lane(3))); }
 
 	public static long dot_long4_long4(@Vec(4) LongVector a, @Vec(4) LongVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static long lengthSquared_long4(@Vec(4) LongVector a) { return dot_long4_long4(a, a); }
@@ -390,39 +408,46 @@ public class VectorOperations {
 	public static float cbrt_float(float a) { return (float)Math.cbrt(a); }
 	public static float exp_float(float a) { return (float)Math.exp(a); }
 	public static float log_float(float a) { return (float)Math.log(a); }
+	public static float floor_float(float a) { return (float)Math.floor(a); }
+	public static float ceil_float(float a) { return (float)Math.ceil(a); }
+	public static float fract_float(float a) { return a - (float)Math.floor(a); }
 
 	public static float add_float_float(float a, float b) { return a + b; }
 	public static float sub_float_float(float a, float b) { return a - b; }
 	public static float mul_float_float(float a, float b) { return a * b; }
-	public static float div_float_float(float a, float b) { return a / b; }
 	public static float pow_float_float(float a, float b) { return (float)Math.pow(a, b); }
 	public static float atan2_float_float(float a, float b) { return (float)Math.atan2(b, a); }
 	public static float min_float_float(float a, float b) { return Math.min(a, b); }
 	public static float max_float_float(float a, float b) { return Math.max(a, b); }
+	public static float div_float_float(float a, float b) { return a / b; }
+	public static float mod_float_float(float a, float b) { float r = a % b; return (Float.floatToRawIntBits(a) ^ Float.floatToRawIntBits(b)) < 0 && r != 0 ? r + b : r; }
 	public static @Vec(2) FloatVector add_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) FloatVector sub_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) FloatVector mul_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) FloatVector div_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.DIV, b); }
 	public static @Vec(2) FloatVector pow_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.POW, b); }
 	public static @Vec(2) FloatVector atan2_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(2) FloatVector min_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) FloatVector max_float_float2(float a, @Vec(2) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_64, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) FloatVector div_float_float2(float a, @Vec(2) FloatVector b) { return float2_from_float_float(div_float_float(a, b.lane(0)), div_float_float(a, b.lane(1))); }
+	public static @Vec(2) FloatVector mod_float_float2(float a, @Vec(2) FloatVector b) { return float2_from_float_float(mod_float_float(a, b.lane(0)), mod_float_float(a, b.lane(1))); }
 	public static @Vec(3) FloatVector add_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) FloatVector sub_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) FloatVector mul_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) FloatVector div_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.DIV, b); }
 	public static @Vec(3) FloatVector pow_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.POW, b); }
 	public static @Vec(3) FloatVector atan2_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(3) FloatVector min_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) FloatVector max_float_float3(float a, @Vec(3) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) FloatVector div_float_float3(float a, @Vec(3) FloatVector b) { return float3_from_float_float_float(div_float_float(a, b.lane(0)), div_float_float(a, b.lane(1)), div_float_float(a, b.lane(2))); }
+	public static @Vec(3) FloatVector mod_float_float3(float a, @Vec(3) FloatVector b) { return float3_from_float_float_float(mod_float_float(a, b.lane(0)), mod_float_float(a, b.lane(1)), mod_float_float(a, b.lane(2))); }
 	public static @Vec(4) FloatVector add_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) FloatVector sub_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) FloatVector mul_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) FloatVector div_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.DIV, b); }
 	public static @Vec(4) FloatVector pow_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.POW, b); }
 	public static @Vec(4) FloatVector atan2_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(4) FloatVector min_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) FloatVector max_float_float4(float a, @Vec(4) FloatVector b) { return FloatVector.broadcast(FloatVector.SPECIES_128, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) FloatVector div_float_float4(float a, @Vec(4) FloatVector b) { return float4_from_float_float_float_float(div_float_float(a, b.lane(0)), div_float_float(a, b.lane(1)), div_float_float(a, b.lane(2)), div_float_float(a, b.lane(3))); }
+	public static @Vec(4) FloatVector mod_float_float4(float a, @Vec(4) FloatVector b) { return float4_from_float_float_float_float(mod_float_float(a, b.lane(0)), mod_float_float(a, b.lane(1)), mod_float_float(a, b.lane(2)), mod_float_float(a, b.lane(3))); }
 
 	public static float mix_float_float_float(float a, float b, float f) { return (b - a) * f + a; }
 
@@ -448,23 +473,28 @@ public class VectorOperations {
 	public static @Vec(2) FloatVector cbrt_float2(@Vec(2) FloatVector a) { return a.lanewise(VectorOperators.CBRT); }
 	public static @Vec(2) FloatVector exp_float2(@Vec(2) FloatVector a) { return a.lanewise(VectorOperators.EXP); }
 	public static @Vec(2) FloatVector log_float2(@Vec(2) FloatVector a) { return a.lanewise(VectorOperators.LOG); }
+	public static @Vec(2) FloatVector floor_float2(@Vec(2) FloatVector a) { return float2_from_float_float(floor_float(a.lane(0)), floor_float(a.lane(1))); }
+	public static @Vec(2) FloatVector ceil_float2(@Vec(2) FloatVector a) { return float2_from_float_float(ceil_float(a.lane(0)), ceil_float(a.lane(1))); }
+	public static @Vec(2) FloatVector fract_float2(@Vec(2) FloatVector a) { return float2_from_float_float(fract_float(a.lane(0)), fract_float(a.lane(1))); }
 
 	public static @Vec(2) FloatVector add_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) FloatVector sub_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) FloatVector mul_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) FloatVector div_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(2) FloatVector pow_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(2) FloatVector atan2_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(2) FloatVector min_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) FloatVector max_float2_float(@Vec(2) FloatVector a, float b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) FloatVector div_float2_float(@Vec(2) FloatVector a, float b) { return float2_from_float_float(div_float_float(a.lane(0), b), div_float_float(a.lane(1), b)); }
+	public static @Vec(2) FloatVector mod_float2_float(@Vec(2) FloatVector a, float b) { return float2_from_float_float(mod_float_float(a.lane(0), b), mod_float_float(a.lane(1), b)); }
 	public static @Vec(2) FloatVector add_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) FloatVector sub_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) FloatVector mul_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) FloatVector div_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(2) FloatVector pow_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(2) FloatVector atan2_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(2) FloatVector min_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) FloatVector max_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) FloatVector div_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return float2_from_float_float(div_float_float(a.lane(0), b.lane(0)), div_float_float(a.lane(1), b.lane(1))); }
+	public static @Vec(2) FloatVector mod_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return float2_from_float_float(mod_float_float(a.lane(0), b.lane(0)), mod_float_float(a.lane(1), b.lane(1))); }
 
 	public static float dot_float2_float2(@Vec(2) FloatVector a, @Vec(2) FloatVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static float lengthSquared_float2(@Vec(2) FloatVector a) { return dot_float2_float2(a, a); }
@@ -495,25 +525,30 @@ public class VectorOperations {
 	public static @Vec(3) FloatVector cbrt_float3(@Vec(3) FloatVector a) { return a.lanewise(VectorOperators.CBRT); }
 	public static @Vec(3) FloatVector exp_float3(@Vec(3) FloatVector a) { return a.lanewise(VectorOperators.EXP); }
 	public static @Vec(3) FloatVector log_float3(@Vec(3) FloatVector a) { return a.lanewise(VectorOperators.LOG); }
+	public static @Vec(3) FloatVector floor_float3(@Vec(3) FloatVector a) { return float3_from_float_float_float(floor_float(a.lane(0)), floor_float(a.lane(1)), floor_float(a.lane(2))); }
+	public static @Vec(3) FloatVector ceil_float3(@Vec(3) FloatVector a) { return float3_from_float_float_float(ceil_float(a.lane(0)), ceil_float(a.lane(1)), ceil_float(a.lane(2))); }
+	public static @Vec(3) FloatVector fract_float3(@Vec(3) FloatVector a) { return float3_from_float_float_float(fract_float(a.lane(0)), fract_float(a.lane(1)), fract_float(a.lane(2))); }
 
 	public static @Vec(3) FloatVector add_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) FloatVector sub_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) FloatVector mul_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) FloatVector div_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(3) FloatVector pow_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(3) FloatVector atan2_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(3) FloatVector min_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) FloatVector max_float3_float(@Vec(3) FloatVector a, float b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) FloatVector div_float3_float(@Vec(3) FloatVector a, float b) { return float3_from_float_float_float(div_float_float(a.lane(0), b), div_float_float(a.lane(1), b), div_float_float(a.lane(2), b)); }
+	public static @Vec(3) FloatVector mod_float3_float(@Vec(3) FloatVector a, float b) { return float3_from_float_float_float(mod_float_float(a.lane(0), b), mod_float_float(a.lane(1), b), mod_float_float(a.lane(2), b)); }
 	public static @Vec(3) FloatVector add_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) FloatVector sub_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) FloatVector mul_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) FloatVector div_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(3) FloatVector pow_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(3) FloatVector atan2_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(3) FloatVector min_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) FloatVector max_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) FloatVector div_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return float3_from_float_float_float(div_float_float(a.lane(0), b.lane(0)), div_float_float(a.lane(1), b.lane(1)), div_float_float(a.lane(2), b.lane(2))); }
+	public static @Vec(3) FloatVector mod_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return float3_from_float_float_float(mod_float_float(a.lane(0), b.lane(0)), mod_float_float(a.lane(1), b.lane(1)), mod_float_float(a.lane(2), b.lane(2))); }
 
-	public static float dot_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
+	public static float dot_float3_float3(@Vec(3) FloatVector a, @Vec(3) FloatVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD, FLOAT3_MASK); }
 	public static float lengthSquared_float3(@Vec(3) FloatVector a) { return dot_float3_float3(a, a); }
 	public static float length_float3(@Vec(3) FloatVector a) { return (float)Math.sqrt(dot_float3_float3(a, a)); }
 	public static @Vec(3) FloatVector normalize_float3(@Vec(3) FloatVector a) { return a.div(length_float3(a)); }
@@ -542,23 +577,28 @@ public class VectorOperations {
 	public static @Vec(4) FloatVector cbrt_float4(@Vec(4) FloatVector a) { return a.lanewise(VectorOperators.CBRT); }
 	public static @Vec(4) FloatVector exp_float4(@Vec(4) FloatVector a) { return a.lanewise(VectorOperators.EXP); }
 	public static @Vec(4) FloatVector log_float4(@Vec(4) FloatVector a) { return a.lanewise(VectorOperators.LOG); }
+	public static @Vec(4) FloatVector floor_float4(@Vec(4) FloatVector a) { return float4_from_float_float_float_float(floor_float(a.lane(0)), floor_float(a.lane(1)), floor_float(a.lane(2)), floor_float(a.lane(3))); }
+	public static @Vec(4) FloatVector ceil_float4(@Vec(4) FloatVector a) { return float4_from_float_float_float_float(ceil_float(a.lane(0)), ceil_float(a.lane(1)), ceil_float(a.lane(2)), ceil_float(a.lane(3))); }
+	public static @Vec(4) FloatVector fract_float4(@Vec(4) FloatVector a) { return float4_from_float_float_float_float(fract_float(a.lane(0)), fract_float(a.lane(1)), fract_float(a.lane(2)), fract_float(a.lane(3))); }
 
 	public static @Vec(4) FloatVector add_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) FloatVector sub_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) FloatVector mul_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) FloatVector div_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(4) FloatVector pow_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(4) FloatVector atan2_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(4) FloatVector min_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) FloatVector max_float4_float(@Vec(4) FloatVector a, float b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) FloatVector div_float4_float(@Vec(4) FloatVector a, float b) { return float4_from_float_float_float_float(div_float_float(a.lane(0), b), div_float_float(a.lane(1), b), div_float_float(a.lane(2), b), div_float_float(a.lane(3), b)); }
+	public static @Vec(4) FloatVector mod_float4_float(@Vec(4) FloatVector a, float b) { return float4_from_float_float_float_float(mod_float_float(a.lane(0), b), mod_float_float(a.lane(1), b), mod_float_float(a.lane(2), b), mod_float_float(a.lane(3), b)); }
 	public static @Vec(4) FloatVector add_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) FloatVector sub_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) FloatVector mul_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) FloatVector div_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(4) FloatVector pow_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(4) FloatVector atan2_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(4) FloatVector min_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) FloatVector max_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) FloatVector div_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return float4_from_float_float_float_float(div_float_float(a.lane(0), b.lane(0)), div_float_float(a.lane(1), b.lane(1)), div_float_float(a.lane(2), b.lane(2)), div_float_float(a.lane(3), b.lane(3))); }
+	public static @Vec(4) FloatVector mod_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return float4_from_float_float_float_float(mod_float_float(a.lane(0), b.lane(0)), mod_float_float(a.lane(1), b.lane(1)), mod_float_float(a.lane(2), b.lane(2)), mod_float_float(a.lane(3), b.lane(3))); }
 
 	public static float dot_float4_float4(@Vec(4) FloatVector a, @Vec(4) FloatVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static float lengthSquared_float4(@Vec(4) FloatVector a) { return dot_float4_float4(a, a); }
@@ -587,39 +627,46 @@ public class VectorOperations {
 	public static double cbrt_double(double a) { return Math.cbrt(a); }
 	public static double exp_double(double a) { return Math.exp(a); }
 	public static double log_double(double a) { return Math.log(a); }
+	public static double floor_double(double a) { return Math.floor(a); }
+	public static double ceil_double(double a) { return Math.ceil(a); }
+	public static double fract_double(double a) { return a - Math.floor(a); }
 
 	public static double add_double_double(double a, double b) { return a + b; }
 	public static double sub_double_double(double a, double b) { return a - b; }
 	public static double mul_double_double(double a, double b) { return a * b; }
-	public static double div_double_double(double a, double b) { return a / b; }
 	public static double pow_double_double(double a, double b) { return Math.pow(a, b); }
 	public static double atan2_double_double(double a, double b) { return Math.atan2(b, a); }
 	public static double min_double_double(double a, double b) { return Math.min(a, b); }
 	public static double max_double_double(double a, double b) { return Math.max(a, b); }
+	public static double div_double_double(double a, double b) { return a / b; }
+	public static double mod_double_double(double a, double b) { double r = a % b; return (Double.doubleToRawLongBits(a) ^ Double.doubleToRawLongBits(b)) < 0L && r != 0 ? r + b : r; }
 	public static @Vec(2) DoubleVector add_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) DoubleVector sub_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) DoubleVector mul_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) DoubleVector div_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.DIV, b); }
 	public static @Vec(2) DoubleVector pow_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.POW, b); }
 	public static @Vec(2) DoubleVector atan2_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(2) DoubleVector min_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) DoubleVector max_double_double2(double a, @Vec(2) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_128, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) DoubleVector div_double_double2(double a, @Vec(2) DoubleVector b) { return double2_from_double_double(div_double_double(a, b.lane(0)), div_double_double(a, b.lane(1))); }
+	public static @Vec(2) DoubleVector mod_double_double2(double a, @Vec(2) DoubleVector b) { return double2_from_double_double(mod_double_double(a, b.lane(0)), mod_double_double(a, b.lane(1))); }
 	public static @Vec(3) DoubleVector add_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) DoubleVector sub_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) DoubleVector mul_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) DoubleVector div_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.DIV, b); }
 	public static @Vec(3) DoubleVector pow_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.POW, b); }
 	public static @Vec(3) DoubleVector atan2_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(3) DoubleVector min_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) DoubleVector max_double_double3(double a, @Vec(3) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) DoubleVector div_double_double3(double a, @Vec(3) DoubleVector b) { return double3_from_double_double_double(div_double_double(a, b.lane(0)), div_double_double(a, b.lane(1)), div_double_double(a, b.lane(2))); }
+	public static @Vec(3) DoubleVector mod_double_double3(double a, @Vec(3) DoubleVector b) { return double3_from_double_double_double(mod_double_double(a, b.lane(0)), mod_double_double(a, b.lane(1)), mod_double_double(a, b.lane(2))); }
 	public static @Vec(4) DoubleVector add_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) DoubleVector sub_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) DoubleVector mul_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) DoubleVector div_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.DIV, b); }
 	public static @Vec(4) DoubleVector pow_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.POW, b); }
 	public static @Vec(4) DoubleVector atan2_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(4) DoubleVector min_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) DoubleVector max_double_double4(double a, @Vec(4) DoubleVector b) { return DoubleVector.broadcast(DoubleVector.SPECIES_256, a).lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) DoubleVector div_double_double4(double a, @Vec(4) DoubleVector b) { return double4_from_double_double_double_double(div_double_double(a, b.lane(0)), div_double_double(a, b.lane(1)), div_double_double(a, b.lane(2)), div_double_double(a, b.lane(3))); }
+	public static @Vec(4) DoubleVector mod_double_double4(double a, @Vec(4) DoubleVector b) { return double4_from_double_double_double_double(mod_double_double(a, b.lane(0)), mod_double_double(a, b.lane(1)), mod_double_double(a, b.lane(2)), mod_double_double(a, b.lane(3))); }
 
 	public static double mix_double_double_double(double a, double b, double f) { return (b - a) * f + a; }
 
@@ -645,23 +692,28 @@ public class VectorOperations {
 	public static @Vec(2) DoubleVector cbrt_double2(@Vec(2) DoubleVector a) { return a.lanewise(VectorOperators.CBRT); }
 	public static @Vec(2) DoubleVector exp_double2(@Vec(2) DoubleVector a) { return a.lanewise(VectorOperators.EXP); }
 	public static @Vec(2) DoubleVector log_double2(@Vec(2) DoubleVector a) { return a.lanewise(VectorOperators.LOG); }
+	public static @Vec(2) DoubleVector floor_double2(@Vec(2) DoubleVector a) { return double2_from_double_double(floor_double(a.lane(0)), floor_double(a.lane(1))); }
+	public static @Vec(2) DoubleVector ceil_double2(@Vec(2) DoubleVector a) { return double2_from_double_double(ceil_double(a.lane(0)), ceil_double(a.lane(1))); }
+	public static @Vec(2) DoubleVector fract_double2(@Vec(2) DoubleVector a) { return double2_from_double_double(fract_double(a.lane(0)), fract_double(a.lane(1))); }
 
 	public static @Vec(2) DoubleVector add_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) DoubleVector sub_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) DoubleVector mul_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) DoubleVector div_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(2) DoubleVector pow_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(2) DoubleVector atan2_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(2) DoubleVector min_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) DoubleVector max_double2_double(@Vec(2) DoubleVector a, double b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) DoubleVector div_double2_double(@Vec(2) DoubleVector a, double b) { return double2_from_double_double(div_double_double(a.lane(0), b), div_double_double(a.lane(1), b)); }
+	public static @Vec(2) DoubleVector mod_double2_double(@Vec(2) DoubleVector a, double b) { return double2_from_double_double(mod_double_double(a.lane(0), b), mod_double_double(a.lane(1), b)); }
 	public static @Vec(2) DoubleVector add_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(2) DoubleVector sub_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(2) DoubleVector mul_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(2) DoubleVector div_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(2) DoubleVector pow_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(2) DoubleVector atan2_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(2) DoubleVector min_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(2) DoubleVector max_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(2) DoubleVector div_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return double2_from_double_double(div_double_double(a.lane(0), b.lane(0)), div_double_double(a.lane(1), b.lane(1))); }
+	public static @Vec(2) DoubleVector mod_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return double2_from_double_double(mod_double_double(a.lane(0), b.lane(0)), mod_double_double(a.lane(1), b.lane(1))); }
 
 	public static double dot_double2_double2(@Vec(2) DoubleVector a, @Vec(2) DoubleVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static double lengthSquared_double2(@Vec(2) DoubleVector a) { return dot_double2_double2(a, a); }
@@ -692,25 +744,30 @@ public class VectorOperations {
 	public static @Vec(3) DoubleVector cbrt_double3(@Vec(3) DoubleVector a) { return a.lanewise(VectorOperators.CBRT); }
 	public static @Vec(3) DoubleVector exp_double3(@Vec(3) DoubleVector a) { return a.lanewise(VectorOperators.EXP); }
 	public static @Vec(3) DoubleVector log_double3(@Vec(3) DoubleVector a) { return a.lanewise(VectorOperators.LOG); }
+	public static @Vec(3) DoubleVector floor_double3(@Vec(3) DoubleVector a) { return double3_from_double_double_double(floor_double(a.lane(0)), floor_double(a.lane(1)), floor_double(a.lane(2))); }
+	public static @Vec(3) DoubleVector ceil_double3(@Vec(3) DoubleVector a) { return double3_from_double_double_double(ceil_double(a.lane(0)), ceil_double(a.lane(1)), ceil_double(a.lane(2))); }
+	public static @Vec(3) DoubleVector fract_double3(@Vec(3) DoubleVector a) { return double3_from_double_double_double(fract_double(a.lane(0)), fract_double(a.lane(1)), fract_double(a.lane(2))); }
 
 	public static @Vec(3) DoubleVector add_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) DoubleVector sub_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) DoubleVector mul_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) DoubleVector div_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(3) DoubleVector pow_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(3) DoubleVector atan2_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(3) DoubleVector min_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) DoubleVector max_double3_double(@Vec(3) DoubleVector a, double b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) DoubleVector div_double3_double(@Vec(3) DoubleVector a, double b) { return double3_from_double_double_double(div_double_double(a.lane(0), b), div_double_double(a.lane(1), b), div_double_double(a.lane(2), b)); }
+	public static @Vec(3) DoubleVector mod_double3_double(@Vec(3) DoubleVector a, double b) { return double3_from_double_double_double(mod_double_double(a.lane(0), b), mod_double_double(a.lane(1), b), mod_double_double(a.lane(2), b)); }
 	public static @Vec(3) DoubleVector add_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(3) DoubleVector sub_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(3) DoubleVector mul_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(3) DoubleVector div_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(3) DoubleVector pow_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(3) DoubleVector atan2_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(3) DoubleVector min_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(3) DoubleVector max_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(3) DoubleVector div_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return double3_from_double_double_double(div_double_double(a.lane(0), b.lane(0)), div_double_double(a.lane(1), b.lane(1)), div_double_double(a.lane(2), b.lane(2))); }
+	public static @Vec(3) DoubleVector mod_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return double3_from_double_double_double(mod_double_double(a.lane(0), b.lane(0)), mod_double_double(a.lane(1), b.lane(1)), mod_double_double(a.lane(2), b.lane(2))); }
 
-	public static double dot_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
+	public static double dot_double3_double3(@Vec(3) DoubleVector a, @Vec(3) DoubleVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD, DOUBLE3_MASK); }
 	public static double lengthSquared_double3(@Vec(3) DoubleVector a) { return dot_double3_double3(a, a); }
 	public static double length_double3(@Vec(3) DoubleVector a) { return Math.sqrt(dot_double3_double3(a, a)); }
 	public static @Vec(3) DoubleVector normalize_double3(@Vec(3) DoubleVector a) { return a.div(length_double3(a)); }
@@ -739,23 +796,28 @@ public class VectorOperations {
 	public static @Vec(4) DoubleVector cbrt_double4(@Vec(4) DoubleVector a) { return a.lanewise(VectorOperators.CBRT); }
 	public static @Vec(4) DoubleVector exp_double4(@Vec(4) DoubleVector a) { return a.lanewise(VectorOperators.EXP); }
 	public static @Vec(4) DoubleVector log_double4(@Vec(4) DoubleVector a) { return a.lanewise(VectorOperators.LOG); }
+	public static @Vec(4) DoubleVector floor_double4(@Vec(4) DoubleVector a) { return double4_from_double_double_double_double(floor_double(a.lane(0)), floor_double(a.lane(1)), floor_double(a.lane(2)), floor_double(a.lane(3))); }
+	public static @Vec(4) DoubleVector ceil_double4(@Vec(4) DoubleVector a) { return double4_from_double_double_double_double(ceil_double(a.lane(0)), ceil_double(a.lane(1)), ceil_double(a.lane(2)), ceil_double(a.lane(3))); }
+	public static @Vec(4) DoubleVector fract_double4(@Vec(4) DoubleVector a) { return double4_from_double_double_double_double(fract_double(a.lane(0)), fract_double(a.lane(1)), fract_double(a.lane(2)), fract_double(a.lane(3))); }
 
 	public static @Vec(4) DoubleVector add_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) DoubleVector sub_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) DoubleVector mul_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) DoubleVector div_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(4) DoubleVector pow_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(4) DoubleVector atan2_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(4) DoubleVector min_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) DoubleVector max_double4_double(@Vec(4) DoubleVector a, double b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) DoubleVector div_double4_double(@Vec(4) DoubleVector a, double b) { return double4_from_double_double_double_double(div_double_double(a.lane(0), b), div_double_double(a.lane(1), b), div_double_double(a.lane(2), b), div_double_double(a.lane(3), b)); }
+	public static @Vec(4) DoubleVector mod_double4_double(@Vec(4) DoubleVector a, double b) { return double4_from_double_double_double_double(mod_double_double(a.lane(0), b), mod_double_double(a.lane(1), b), mod_double_double(a.lane(2), b), mod_double_double(a.lane(3), b)); }
 	public static @Vec(4) DoubleVector add_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.ADD, b); }
 	public static @Vec(4) DoubleVector sub_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.SUB, b); }
 	public static @Vec(4) DoubleVector mul_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.MUL, b); }
-	public static @Vec(4) DoubleVector div_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.DIV, b); }
 	public static @Vec(4) DoubleVector pow_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.POW, b); }
 	public static @Vec(4) DoubleVector atan2_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.ATAN2, b); }
 	public static @Vec(4) DoubleVector min_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.MIN, b); }
 	public static @Vec(4) DoubleVector max_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.lanewise(VectorOperators.MAX, b); }
+	public static @Vec(4) DoubleVector div_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return double4_from_double_double_double_double(div_double_double(a.lane(0), b.lane(0)), div_double_double(a.lane(1), b.lane(1)), div_double_double(a.lane(2), b.lane(2)), div_double_double(a.lane(3), b.lane(3))); }
+	public static @Vec(4) DoubleVector mod_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return double4_from_double_double_double_double(mod_double_double(a.lane(0), b.lane(0)), mod_double_double(a.lane(1), b.lane(1)), mod_double_double(a.lane(2), b.lane(2)), mod_double_double(a.lane(3), b.lane(3))); }
 
 	public static double dot_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b) { return a.mul(b).reduceLanes(VectorOperators.ADD); }
 	public static double lengthSquared_double4(@Vec(4) DoubleVector a) { return dot_double4_double4(a, a); }
@@ -764,47 +826,43 @@ public class VectorOperations {
 	public static @Vec(4) DoubleVector mix_double4_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b, @Vec(4) DoubleVector f) { return b.sub(a).mul(f).add(a); }
 	public static @Vec(4) DoubleVector mix_double4_double4_double(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b, double f) { return b.sub(a).mul(f).add(a); }
 
-	public static BigInteger neg_bigint(BigInteger a) { return a.negate(); }
-	public static BigInteger not_bigint(BigInteger a) { return a.not(); }
-	public static BigInteger abs_bigint(BigInteger a) { return a.abs(); }
+	public static int pow_int_int(int a, int b) {
+		if (b <= 0) return b == 0 ? 1 : 0;
+		int accum = a;
+		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+			accum *= accum;
+			if ((b & mask) != 0) accum *= a;
+		}
+		return accum;
+	}
 
-	public static BigInteger add_bigint_bigint(BigInteger a, BigInteger b) { return a.add(b); }
-	public static BigInteger sub_bigint_bigint(BigInteger a, BigInteger b) { return a.subtract(b); }
-	public static BigInteger mul_bigint_bigint(BigInteger a, BigInteger b) { return a.multiply(b); }
-	public static BigInteger div_bigint_bigint(BigInteger a, BigInteger b) { return a.divide(b); }
-	public static BigInteger pow_bigint_bigint(BigInteger a, BigInteger b) { return a.pow(b.intValueExact()); }
-	public static BigInteger and_bigint_bigint(BigInteger a, BigInteger b) { return a.and(b); }
-	public static BigInteger or_bigint_bigint(BigInteger a, BigInteger b) { return a.or(b); }
-	public static BigInteger xor_bigint_bigint(BigInteger a, BigInteger b) { return a.xor(b); }
-	public static BigInteger lshl_bigint_bigint(BigInteger a, BigInteger b) { return a.shiftLeft(b.intValueExact()); }
-	public static BigInteger ashr_bigint_bigint(BigInteger a, BigInteger b) { return a.shiftRight(b.intValueExact()); }
-	public static BigInteger min_bigint_bigint(BigInteger a, BigInteger b) { return a.min(b); }
-	public static BigInteger max_bigint_bigint(BigInteger a, BigInteger b) { return a.max(b); }
+	public static long pow_long_int(long a, int b) {
+		if (b <= 0) return b == 0 ? 1 : 0;
+		long accum = a;
+		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+			accum *= accum;
+			if ((b & mask) != 0) accum *= a;
+		}
+		return accum;
+	}
 
-	public static BigDecimal neg_bigdec(BigDecimal a) { return a.negate(); }
-	public static BigDecimal abs_bigdec(BigDecimal a) { return a.abs(); }
-	public static BigDecimal sin_bigdec(BigDecimal a) { return new BigDecimal(Math.sin(a.doubleValue())); }
-	public static BigDecimal cos_bigdec(BigDecimal a) { return new BigDecimal(Math.cos(a.doubleValue())); }
-	public static BigDecimal tan_bigdec(BigDecimal a) { return new BigDecimal(Math.tan(a.doubleValue())); }
-	public static BigDecimal asin_bigdec(BigDecimal a) { return new BigDecimal(Math.asin(a.doubleValue())); }
-	public static BigDecimal acos_bigdec(BigDecimal a) { return new BigDecimal(Math.acos(a.doubleValue())); }
-	public static BigDecimal atan_bigdec(BigDecimal a) { return new BigDecimal(Math.atan(a.doubleValue())); }
-	public static BigDecimal sinh_bigdec(BigDecimal a) { return new BigDecimal(Math.sinh(a.doubleValue())); }
-	public static BigDecimal cosh_bigdec(BigDecimal a) { return new BigDecimal(Math.cosh(a.doubleValue())); }
-	public static BigDecimal tanh_bigdec(BigDecimal a) { return new BigDecimal(Math.tanh(a.doubleValue())); }
-	public static BigDecimal sqrt_bigdec(BigDecimal a) { return a.sqrt(MathContext.DECIMAL128); }
-	public static BigDecimal cbrt_bigdec(BigDecimal a) { return new BigDecimal(Math.cbrt(a.doubleValue())); }
-	public static BigDecimal exp_bigdec(BigDecimal a) { return new BigDecimal(Math.exp(a.doubleValue())); }
-	public static BigDecimal log_bigdec(BigDecimal a) { return new BigDecimal(Math.log(a.doubleValue())); }
+	public static float pow_float_int(float a, int b) {
+		if (b <= 0) return b == 0 ? 1 : 0;
+		float accum = a;
+		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+			accum *= accum;
+			if ((b & mask) != 0) accum *= a;
+		}
+		return accum;
+	}
 
-	public static BigDecimal add_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.add(b); }
-	public static BigDecimal sub_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.subtract(b); }
-	public static BigDecimal mul_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.multiply(b, MathContext.DECIMAL128); }
-	public static BigDecimal div_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.divide(b, MathContext.DECIMAL128); }
-	public static BigDecimal pow_bigdec_bigdec(BigDecimal a, BigDecimal b) { return new BigDecimal(Math.pow(a.doubleValue(), b.doubleValue())); }
-	public static BigDecimal atan2_bigdec_bigdec(BigDecimal a, BigDecimal b) { return new BigDecimal(Math.atan2(a.doubleValue(), b.doubleValue())); }
-	public static BigDecimal min_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.min(b); }
-	public static BigDecimal max_bigdec_bigdec(BigDecimal a, BigDecimal b) { return a.max(b); }
-
-	public static BigDecimal mix_bigdec_bigdec_bigdec(BigDecimal a, BigDecimal b, BigDecimal f) { return b.subtract(a).multiply(f, MathContext.DECIMAL128).add(a); }
+	public static double pow_double_int(double a, int b) {
+		if (b <= 0) return b == 0 ? 1 : 0;
+		double accum = a;
+		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+			accum *= accum;
+			if ((b & mask) != 0) accum *= a;
+		}
+		return accum;
+	}
 }

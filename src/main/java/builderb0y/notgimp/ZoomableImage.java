@@ -3,7 +3,6 @@ package builderb0y.notgimp;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-import javafx.beans.Observable;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.value.ChangeListener;
@@ -11,7 +10,6 @@ import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
 import javafx.scene.canvas.Canvas;
-import javafx.scene.control.Tab;
 import javafx.scene.control.TreeItem;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
@@ -20,7 +18,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 
 import builderb0y.notgimp.RateLimiter.PeriodicRateLimiter;
-import builderb0y.notgimp.sources.LayerSource;
 import builderb0y.notgimp.sources.ManualLayerSource;
 import builderb0y.notgimp.tools.ColorPickerTool;
 import builderb0y.notgimp.tools.Tool;
@@ -63,6 +60,7 @@ public class ZoomableImage {
 	public ObservableValue<Double> zoom = this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]);
 	public ChangeListener<Number> centerer;
 	public RateLimiter redrawer;
+	public HdrImageWatcher watcher = (HDRImage image, boolean fromAnimation) -> this.redraw();
 
 	public ZoomableImage(OpenImage openImage) {
 		this.openImage = openImage;
@@ -75,11 +73,13 @@ public class ZoomableImage {
 		this.display.canvas. widthProperty().addListener(this.centerer);
 		this.display.canvas.heightProperty().addListener(this.centerer);
 		Canvas canvas = this.display.canvas;
-		this.openImage.wrap.addListener(Util.change((Boolean wrap) -> this.redraw()));
-		this.openImage.showingImage.addListener((Observable observable) -> {
-			((ObservableValue<?>)(observable)).getValue(); //AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+		this.openImage.wrap.addListener(Util.change(this::redraw));
+		this.openImage.showingLayerProperty.addListener(Util.change((Layer oldLayer, Layer newLayer) -> {
+			oldLayer.image.removeWatcher(this.watcher);
+			newLayer.image.addWatcher(this.watcher);
 			this.redraw();
-		});
+		}));
+		this.openImage.showingLayerProperty.getValue().image.addWatcher(this.watcher);
 		canvas.setOnScroll((ScrollEvent event) -> {
 			int oldZoomIndex = this.zoomIndex.get();
 			int newZoomIndex;
@@ -222,27 +222,30 @@ public class ZoomableImage {
 		int width = (int)(canvas.getWidth());
 		int height = (int)(canvas.getHeight());
 		byte[] pixels = new byte[width * height * 4];
+		boolean wrap = this.openImage.wrap.get();
 		IntStream.range(0, height).parallel().forEach((int y) -> {
+			int mappedY = (int)(Math.floor((y - this.offsetY) * zoom));
+			if (wrap) {
+				mappedY = Math.floorMod(mappedY, image.height);
+			}
 			for (int x = 0; x < width; x++) {
 				int mappedX = (int)(Math.floor((x - this.offsetX) * zoom));
-				int mappedY = (int)(Math.floor((y - this.offsetY) * zoom));
-				if (this.openImage.wrap.get()) {
+				if (wrap) {
 					mappedX = Math.floorMod(mappedX, image.width);
-					mappedY = Math.floorMod(mappedY, image.height);
 				}
 				float red = 0.0F, green = 0.0F, blue = 0.0F, alpha = 0.0F;
 				if (mappedX >= 0 && mappedX < image.width && mappedY >= 0 && mappedY < image.height) {
-					int baseIndex =    image.baseIndex(mappedX, mappedY);
+					int baseIndex = image.baseIndex(mappedX, mappedY);
 					red   = image.pixels[baseIndex |   RED_OFFSET];
 					green = image.pixels[baseIndex | GREEN_OFFSET];
 					blue  = image.pixels[baseIndex |  BLUE_OFFSET];
 					alpha = image.pixels[baseIndex | ALPHA_OFFSET];
 				}
 				int baseIndex = (y * width + x) << 2;
-				pixels[baseIndex    ] = (byte)(clamp(blue  * alpha));
-				pixels[baseIndex | 1] = (byte)(clamp(green * alpha));
-				pixels[baseIndex | 2] = (byte)(clamp(red   * alpha));
-				pixels[baseIndex | 3] = (byte)(clamp(        alpha));
+				pixels[baseIndex    ] = Util.clampB(blue  * alpha);
+				pixels[baseIndex | 1] = Util.clampB(green * alpha);
+				pixels[baseIndex | 2] = Util.clampB(red   * alpha);
+				pixels[baseIndex | 3] = Util.clampB(        alpha);
 			}
 		});
 		int
@@ -250,7 +253,7 @@ public class ZoomableImage {
 			y1 = 0,
 			x2 = image.width,
 			y2 = image.height;
-		if (this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().sources.getCurrentSource() instanceof ManualLayerSource manual) {
+		if (this.openImage.getSelectedLayer().sources.getCurrentSource() instanceof ManualLayerSource manual) {
 			Selection selection = new Selection();
 			Tool<?> tool = manual.currentTool.get();
 			if (tool != null && tool.getSelection(selection)) {
@@ -278,7 +281,7 @@ public class ZoomableImage {
 	public static void setGrayscaleSafe(byte[] pixels, int x, int y, int width, int height, float grayscale) {
 		if (x >= 0 && x < width && y >= 0 && y < height) {
 			int baseIndex = (y * width + x) << 2;
-			byte value = (byte)(clamp(grayscale));
+			byte value = Util.clampB(grayscale);
 			pixels[baseIndex    ] = value;
 			pixels[baseIndex | 1] = value;
 			pixels[baseIndex | 2] = value;

@@ -11,9 +11,8 @@ public class IfInsnTree extends InsnTree {
 
 	public IfInsnTree(ConditionTree condition, InsnTree body) {
 		super();
-		if (body.types().length != 0) body = new PopInsnTree(body);
 		this.condition = condition;
-		this.body = body;
+		this.body = body.castToVoid();
 	}
 
 	@Override

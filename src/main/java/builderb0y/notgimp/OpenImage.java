@@ -1,7 +1,12 @@
 package builderb0y.notgimp;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -20,6 +25,8 @@ import javafx.scene.layout.HBox;
 import javafx.util.StringConverter;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.notgimp.sources.LayerSource;
+
 public class OpenImage {
 
 	public MainWindow
@@ -27,6 +34,7 @@ public class OpenImage {
 	public SimpleObjectProperty<File>
 		file = new SimpleObjectProperty<>();
 	public BorderPane
+		rightPane = new BorderPane(),
 		layersAndButtons = new BorderPane(),
 		sourcePane = new BorderPane();
 	public TreeView<Layer>
@@ -43,10 +51,10 @@ public class OpenImage {
 		addChildLayerButton  = new MenuItem("Add child layer"),
 		addLayerBelowButton  = new MenuItem("Add layer below");
 	public Button
-		removeLayerButton = new Button("-"),
+		removeLayerButton    = new Button("-"),
 		duplicateLayerButton = new Button("*"),
-		moveLayerUpButton = new Button("/\\"),
-		moveLayerDownButton = new Button("\\/");
+		moveLayerUpButton    = new Button("/\\"),
+		moveLayerDownButton  = new Button("\\/");
 	public SplitPane
 		layersAndTools = new SplitPane(),
 		imageAndRightPane = new SplitPane();
@@ -56,10 +64,29 @@ public class OpenImage {
 		showingLayer = new ToggleGroup();
 	public ObservableValue<Layer>
 		showingLayerProperty = this.showingLayer.selectedToggleProperty().map((Toggle toggle) -> (Layer)(toggle.getUserData()));
-	public ObservableValue<HDRImage>
-		showingImage = this.showingLayerProperty.flatMap((Layer layer) -> layer.image.value);
 	public SimpleBooleanProperty
 		wrap = new SimpleBooleanProperty();
+	public AnimationSource
+		animationSource = new AnimationSource(this);
+
+	public JsonObject save() {
+		JsonObject root = new JsonObject();
+		root.addProperty("version", SaveVersions.CURRENT);
+		TreeItem<Layer> rootItem = this.layerTree.getRoot();
+		root.add("root_layer", rootItem.getValue().save());
+		root.addProperty("showing_layer", this.getVisibleLayer().name.get());
+		root.addProperty("selected_layer", this.getSelectedLayer().name.get());
+		root.addProperty("wrap", this.wrap.getValue());
+		root.add("animation", this.animationSource.save());
+		return root;
+	}
+
+	public void load(JsonObject object) {
+		this.initFirstLayer(new Layer(this, object.getAsJsonObject("root_layer")), true);
+		this.showingLayer.selectToggle((RadioButton)(this.layerMap.get(object.get("showing_layer").getAsString()).item.getGraphic()));
+		this.layerTree.getSelectionModel().select(this.layerMap.get(object.get("selected_layer").getAsString()).item);
+		this.animationSource.load(object.getAsJsonObject("animation"));
+	}
 
 	public OpenImage(MainWindow mainWindow) {
 		this.mainWindow = mainWindow;
@@ -82,8 +109,10 @@ public class OpenImage {
 		this.layersAndButtons.setBottom(this.layerButtons);
 		this.layersAndTools.getItems().add(this.layersAndButtons);
 		this.layersAndTools.getItems().add(this.sourcePane);
+		this.rightPane.setCenter(this.layersAndTools);
+		this.rightPane.setBottom(this.animationSource.hbox);
 		this.imageAndRightPane.setOrientation(Orientation.HORIZONTAL);
-		this.imageAndRightPane.getItems().addAll(this.imageDisplay.display.getRootPane(), this.layersAndTools);
+		this.imageAndRightPane.getItems().addAll(this.imageDisplay.display.getRootPane(), this.rightPane);
 		this.imageAndRightPane.setDividerPositions(0.75D);
 		this.layerTree.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 		this.layerTree.setEditable(true);
@@ -136,7 +165,6 @@ public class OpenImage {
 			)
 		);
 		this.imageDisplay.init();
-		this.imageDisplay.init();
 	}
 
 	public Node getMainNode() {
@@ -155,77 +183,91 @@ public class OpenImage {
 		return this.layerMap.get(name);
 	}
 
-	public TreeItem<Layer> createTreeItem(Layer layer) {
-		RadioButton showing = new RadioButton();
-		showing.setGraphic(layer.thumbnailView);
-		showing.setText(" ");
-		showing.setToggleGroup(this.showingLayer);
-		showing.setUserData(layer);
-		showing.setSelected(true);
-		this.layerMap.put(layer.name.get(), layer);
-		return new TreeItem<>(layer, showing);
+	public void tickAnimation() {
+		this.tickAnimation(this.layerTree.getRoot());
 	}
 
-	public void initFirstLayer(Layer layer) {
-		this.layerTree.setRoot(this.createTreeItem(layer));
+	public Set<Layer> tickAnimation(TreeItem<Layer> layer) {
+		Set<Layer> changedLayers = new HashSet<>();
+		for (TreeItem<Layer> child : layer.getChildren()) {
+			changedLayers.addAll(this.tickAnimation(child));
+		}
+		LayerSource source = layer.getValue().sources.getCurrentSource();
+		if (source.isAnimated() || !Collections.disjoint(source.getDependencies(), changedLayers)) {
+			source.redraw(true);
+			changedLayers.add(layer.getValue());
+		}
+		return changedLayers;
+	}
+
+	public void addToMap(Layer layer) {
+		this.layerMap.put(layer.name.get(), layer);
+		for (TreeItem<Layer> child : layer.item.getChildren()) {
+			this.addToMap(child.getValue());
+		}
+	}
+
+	public void initFirstLayer(Layer layer, boolean fromSave) {
+		this.addToMap(layer);
+		this.layerTree.setRoot(layer.item);
 		this.layerTree.getSelectionModel().select(0);
-		layer.init();
+		layer.init(fromSave);
 	}
 
 	public void addParentLayer(ActionEvent event) {
 		TreeItem<Layer> old = this.layerTree.getSelectionModel().getSelectedItem();
 		HDRImage image = old.getValue().image;
 		Layer newLayer = new Layer(this, "", image.width, image.height);
-		TreeItem<Layer> item = this.createTreeItem(newLayer);
+		this.addToMap(newLayer);
 		if (old == this.layerTree.getRoot()) {
-			this.layerTree.setRoot(item);
+			this.layerTree.setRoot(newLayer.item);
 		}
 		else {
 			ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
 			int index = children.indexOf(old);
-			children.set(index, item);
+			children.set(index, newLayer.item);
 		}
-		item.getChildren().add(old);
-		item.setExpanded(true);
-		this.layerTree.getSelectionModel().select(item);
-		this.layerTree.edit(item);
-		newLayer.init();
+		newLayer.item.getChildren().add(old);
+		newLayer.item.setExpanded(true);
+		newLayer.init(false);
+		this.layerTree.getSelectionModel().select(newLayer.item);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void addLayerAbove(ActionEvent event) {
 		TreeItem<Layer> old = this.layerTree.getSelectionModel().getSelectedItem();
 		HDRImage image = old.getValue().image;
 		Layer newLayer = new Layer(this, "", image.width, image.height);
-		TreeItem<Layer> item = this.createTreeItem(newLayer);
+		this.addToMap(newLayer);
 		ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
-		children.add(children.indexOf(old), item);
-		this.layerTree.getSelectionModel().select(item);
-		this.layerTree.edit(item);
-		newLayer.init();
+		children.add(children.indexOf(old), newLayer.item);
+		newLayer.init(false);
+		this.layerTree.getSelectionModel().select(newLayer.item);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void addChildLayer(ActionEvent event) {
 		TreeItem<Layer> old = this.layerTree.getSelectionModel().getSelectedItem();
 		HDRImage image = old.getValue().image;
 		Layer newLayer = new Layer(this, "", image.width, image.height);
-		TreeItem<Layer> item = this.createTreeItem(newLayer);
-		old.getChildren().addFirst(item);
+		this.addToMap(newLayer);
+		old.getChildren().addFirst(newLayer.item);
 		old.setExpanded(true);
-		this.layerTree.getSelectionModel().select(item);
-		this.layerTree.edit(item);
-		newLayer.init();
+		newLayer.init(false);
+		this.layerTree.getSelectionModel().select(newLayer.item);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void addLayerBelow(ActionEvent event) {
 		TreeItem<Layer> old = this.layerTree.getSelectionModel().getSelectedItem();
 		HDRImage image = old.getValue().image;
 		Layer newLayer = new Layer(this, "", image.width, image.height);
-		TreeItem<Layer> item = this.createTreeItem(newLayer);
+		this.addToMap(newLayer);
 		ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
-		children.add(children.indexOf(old) + 1, item);
-		this.layerTree.getSelectionModel().select(item);
-		this.layerTree.edit(item);
-		newLayer.init();
+		children.add(children.indexOf(old) + 1, newLayer.item);
+		newLayer.init(false);
+		this.layerTree.getSelectionModel().select(newLayer.item);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void removeLayer(ActionEvent event) {
@@ -239,7 +281,7 @@ public class OpenImage {
 	}
 
 	public void removeLayerRecursive(TreeItem<Layer> toRemove) {
-		this.layerMap.remove(toRemove.getValue().name);
+		this.layerMap.remove(toRemove.getValue().name.get());
 		History.onLayerDeleted(toRemove);
 		for (TreeItem<Layer> child : toRemove.getChildren()) {
 			this.removeLayerRecursive(child);
@@ -249,11 +291,11 @@ public class OpenImage {
 	public void duplicateLayer(ActionEvent event) {
 		TreeItem<Layer> toDuplicate = this.layerTree.getSelectionModel().getSelectedItem();
 		Layer duplicate = new Layer(toDuplicate.getValue());
-		TreeItem<Layer> item = this.createTreeItem(duplicate);
+		this.addToMap(duplicate);
 		ObservableList<TreeItem<Layer>> children = toDuplicate.getParent().getChildren();
-		children.add(children.indexOf(toDuplicate), item);
-		this.layerTree.getSelectionModel().select(item);
-		duplicate.init();
+		children.add(children.indexOf(toDuplicate), duplicate.item);
+		this.layerTree.getSelectionModel().select(duplicate.item);
+		duplicate.init(false);
 	}
 
 	public boolean cantMoveUp(TreeItem<Layer> toMove) {
@@ -276,6 +318,7 @@ public class OpenImage {
 			int parentIndex = grandparent.getChildren().indexOf(parent);
 			siblings.remove(oldIndex);
 			grandparent.getChildren().add(parentIndex, toMove);
+			parent.getValue().sources.invalidateAll();
 		}
 		else {
 			int newIndex = oldIndex - 1;
@@ -305,6 +348,7 @@ public class OpenImage {
 			int parentIndex = grandparent.getChildren().indexOf(parent);
 			siblings.remove(oldIndex);
 			grandparent.getChildren().add(parentIndex + 1, toMove);
+			parent.getValue().sources.invalidateAll();
 		}
 		else {
 			siblings.remove(oldIndex);

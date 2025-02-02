@@ -1,7 +1,5 @@
 package builderb0y.notgimp.scripting.tree;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.Arrays;
 
 import org.jetbrains.annotations.Nullable;

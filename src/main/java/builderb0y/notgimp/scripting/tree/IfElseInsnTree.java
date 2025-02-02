@@ -16,8 +16,8 @@ public class IfElseInsnTree extends InsnTree {
 
 	public IfElseInsnTree(ConditionTree condition, InsnTree ifTrue, InsnTree ifFalse, boolean statement) {
 		if (statement) {
-			if (ifTrue.types().length != 0) ifTrue = new PopInsnTree(ifTrue);
-			if (ifFalse.types().length != 0) ifFalse = new PopInsnTree(ifFalse);
+			ifTrue = ifTrue.castToVoid();
+			ifFalse = ifFalse.castToVoid();
 		}
 		else {
 			if (!Arrays.equals(ifTrue.types(), ifFalse.types())) {
@@ -45,6 +45,11 @@ public class IfElseInsnTree extends InsnTree {
 	@Override
 	public boolean canBeStatement() {
 		return this.statement;
+	}
+
+	@Override
+	public boolean jumpsUnconditionally() {
+		return this.ifTrue.jumpsUnconditionally() && this.ifFalse.jumpsUnconditionally();
 	}
 
 	@Override

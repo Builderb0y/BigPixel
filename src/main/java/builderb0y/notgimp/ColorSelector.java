@@ -116,10 +116,10 @@ public class ColorSelector {
 				helper.setComponent(primaryComponent.horizontal(), x / 256.0F);
 				int baseIndex = (y * 257 + x) << 2;
 				float alpha = helper.alpha.get();
-				pixels[baseIndex    ] = (byte)(HDRImage.clamp(helper.blue .get() * alpha));
-				pixels[baseIndex | 1] = (byte)(HDRImage.clamp(helper.green.get() * alpha));
-				pixels[baseIndex | 2] = (byte)(HDRImage.clamp(helper.red  .get() * alpha));
-				pixels[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+				pixels[baseIndex    ] = Util.clampB(helper.blue .get() * alpha);
+				pixels[baseIndex | 1] = Util.clampB(helper.green.get() * alpha);
+				pixels[baseIndex | 2] = Util.clampB(helper.red  .get() * alpha);
+				pixels[baseIndex | 3] = Util.clampB(alpha);
 			}
 		}
 		int invertX = ((int)(this.currentColor.getComponent(primaryComponent.horizontal()).get() * 256.0F));
@@ -146,10 +146,10 @@ public class ColorSelector {
 			for (int x = 0; x <= 96; x++) {
 				int baseIndex = (y * 96 + x) << 2;
 				float alpha = this.currentColor.alpha.get();
-				pixels[baseIndex    ] = (byte)(HDRImage.clamp(this.currentColor.blue .get() * alpha));
-				pixels[baseIndex | 1] = (byte)(HDRImage.clamp(this.currentColor.green.get() * alpha));
-				pixels[baseIndex | 2] = (byte)(HDRImage.clamp(this.currentColor.red  .get() * alpha));
-				pixels[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+				pixels[baseIndex    ] = Util.clampB(this.currentColor.blue .get() * alpha);
+				pixels[baseIndex | 1] = Util.clampB(this.currentColor.green.get() * alpha);
+				pixels[baseIndex | 2] = Util.clampB(this.currentColor.red  .get() * alpha);
+				pixels[baseIndex | 3] = Util.clampB(alpha);
 			}
 		}
 		writer.setPixels(0, 0, 96, 96, PixelFormat.getByteBgraPreInstance(), pixels, 0, 96 << 2);
@@ -169,11 +169,11 @@ public class ColorSelector {
 		}
 
 		public void init() {
-			this.addToGrid(ColorSelector.this.mainPane, component.ordinal() + 3);
+			this.addToGrid(ColorSelector.this.mainPane, this.component.ordinal() + 3);
 			EventHandler<MouseEvent> mouseHandler = new RateLimitedMouseEventHandler(
 				(MouseEvent event) -> {
 					ColorSelector.this.currentColor.setComponent(
-						component,
+						this.component,
 						Math.clamp(((float)(int)(event.getX())) / 256.0F, 0.0F, 1.0F)
 					);
 					ColorSelector.this.currentColor.markDirty();
@@ -182,7 +182,7 @@ public class ColorSelector {
 			this.bar.canvas.setOnMousePressed(mouseHandler);
 			this.bar.canvas.setOnMouseDragged(mouseHandler);
 			this.bar.canvas.setOnMouseReleased(mouseHandler);
-			ColorSelector.this.currentColor.getComponent(component).addListener(
+			ColorSelector.this.currentColor.getComponent(this.component).addListener(
 				(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
 					((TextFormatter)(this.numberBox.getTextFormatter())).setValue(newValue);
 				}
@@ -197,7 +197,7 @@ public class ColorSelector {
 								Float value = super.fromString(string);
 								if (fractional) value /= 256.0F;
 								value = Math.clamp(value, 0.0F, 1.0F);
-								ColorSelector.this.currentColor.setComponent(component, value);
+								ColorSelector.this.currentColor.setComponent(ColorSlider.this.component, value);
 								ColorSelector.this.currentColor.markDirty();
 								return value;
 							}
@@ -208,7 +208,7 @@ public class ColorSelector {
 								return super.toString(value);
 							}
 						},
-						ColorSelector.this.currentColor.getComponent(component).getValue()
+						ColorSelector.this.currentColor.getComponent(this.component).getValue()
 					);
 				})
 			);
@@ -220,7 +220,7 @@ public class ColorSelector {
 				else value = Math.round(value);
 				value /= 256.0F;
 				value = Math.clamp(value, 0.0F, 1.0F);
-				ColorSelector.this.currentColor.setComponent(component, value);
+				ColorSelector.this.currentColor.setComponent(this.component, value);
 				ColorSelector.this.currentColor.markDirty();
 			};
 			this.bar.canvas.setOnScroll(eventHandler);
@@ -250,17 +250,17 @@ public class ColorSelector {
 				helper.setComponent(this.component, x / 256.0F);
 				int baseIndex = x << 2;
 				float alpha = helper.alpha.get();
-				colors[baseIndex    ] = (byte)(HDRImage.clamp(helper.blue .get() * alpha));
-				colors[baseIndex | 1] = (byte)(HDRImage.clamp(helper.green.get() * alpha));
-				colors[baseIndex | 2] = (byte)(HDRImage.clamp(helper.red  .get() * alpha));
-				colors[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+				colors[baseIndex    ] = Util.clampB(helper.blue .get() * alpha);
+				colors[baseIndex | 1] = Util.clampB(helper.green.get() * alpha);
+				colors[baseIndex | 2] = Util.clampB(helper.red  .get() * alpha);
+				colors[baseIndex | 3] = Util.clampB(alpha);
 			}
 			float component = ColorSelector.this.currentColor.getComponent(this.component).get();
 			helper.setComponent(this.component, component);
 			int invertIndex = ((int)(component * 256.0F)) << 2;
-			colors[invertIndex    ] = (byte)(HDRImage.clamp(1.0F - helper.blue .get()));
-			colors[invertIndex | 1] = (byte)(HDRImage.clamp(1.0F - helper.green.get()));
-			colors[invertIndex | 2] = (byte)(HDRImage.clamp(1.0F - helper.red  .get()));
+			colors[invertIndex    ] = Util.clampB(1.0F - helper.blue .get());
+			colors[invertIndex | 1] = Util.clampB(1.0F - helper.green.get());
+			colors[invertIndex | 2] = Util.clampB(1.0F - helper.red  .get());
 			colors[invertIndex | 3] = -1;
 			writer.setPixels(0, 0, 257, 18, PixelFormat.getByteBgraPreInstance(), colors, 0, 0);
 		}
@@ -313,25 +313,13 @@ public class ColorSelector {
 				for (int x = 0; x < 16; x++) {
 					int baseIndex = (y * 16 + x) << 2;
 					float alpha = this.color.alpha.get();
-					pixels[baseIndex    ] = (byte)(HDRImage.clamp(this.color.blue .get() * alpha));
-					pixels[baseIndex | 1] = (byte)(HDRImage.clamp(this.color.green.get() * alpha));
-					pixels[baseIndex | 2] = (byte)(HDRImage.clamp(this.color.red  .get() * alpha));
-					pixels[baseIndex | 3] = (byte)(HDRImage.clamp(alpha));
+					pixels[baseIndex    ] = Util.clampB(this.color.blue .get() * alpha);
+					pixels[baseIndex | 1] = Util.clampB(this.color.green.get() * alpha);
+					pixels[baseIndex | 2] = Util.clampB(this.color.red  .get() * alpha);
+					pixels[baseIndex | 3] = Util.clampB(alpha);
 				}
 			}
 			writer.setPixels(0, 0, 16, 16, PixelFormat.getByteBgraPreInstance(), pixels, 0, 16 << 2);
 		}
-	}
-
-	public static float clamp(float x) {
-		return x > 0.0F ? x > 1.0F ? 1.0F : x : 0.0F;
-	}
-
-	public static float mix(float a, float b, float f) {
-		return (b - a) * f + a;
-	}
-
-	public static float unmix(float a, float b, float f) {
-		return (f - a) / (b - a);
 	}
 }

@@ -25,8 +25,8 @@ public class History implements Comparable<History> {
 		ALL_HISTORIES.add(this);
 	}
 
-	public void init() {
-		this.save("Initial image");
+	public void init(boolean fromSave) {
+		this.save(fromSave ? "Load from disk" : "Initial image");
 	}
 
 	public static void onImageClosed(OpenImage image) {
@@ -35,7 +35,7 @@ public class History implements Comparable<History> {
 	}
 
 	public static void onLayerDeleted(TreeItem<Layer> layer) {
-		System.out.println("Deleting history for layer " + layer.getValue().name);
+		System.out.println("Deleting history for layer " + layer.getValue().name.get());
 		History history = layer.getValue().history;
 		history.clear();
 		ALL_HISTORIES.remove(history);
@@ -74,7 +74,7 @@ public class History implements Comparable<History> {
 		currentMemory += toAdd;
 		while (currentMemory > MAX_MEMORY) {
 			History history = ALL_HISTORIES.removeFirst();
-			System.out.println("Removing oldest history entry from layer " + history.layer.name + " to free up memory.");
+			System.out.println("Removing oldest history entry from layer " + history.layer.name.get() + " to free up memory.");
 			history.removeEntry(history.oldestEntry);
 		}
 		Entry next = new Entry(name, this.layer.image);
@@ -132,7 +132,7 @@ public class History implements Comparable<History> {
 
 		public void restore(HDRImage image) {
 			System.arraycopy(this.image.pixels, 0, image.pixels, 0, image.pixels.length);
-			image.markDirty();
+			image.markDirty(false);
 		}
 
 		@Override

@@ -21,24 +21,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.incubator.vector.VectorOperators;
+import javafx.scene.control.TreeItem;
 import org.jetbrains.annotations.NotNull;
 
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.parsing.ExpressionReader.CursorPos;
+import builderb0y.notgimp.scripting.parsing.ScriptHandlers.FunctionHandler;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.KeywordHandler;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.VariableHandler;
 import builderb0y.notgimp.scripting.tree.*;
 import builderb0y.notgimp.scripting.tree.InsnTree.Assigner;
 import builderb0y.notgimp.scripting.tree.condition.*;
+import builderb0y.notgimp.scripting.types.RngOperations;
+import builderb0y.notgimp.scripting.types.UtilityOperations;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 import builderb0y.notgimp.scripting.types.VectorType;
 import builderb0y.notgimp.scripting.types.VectorType.ComponentType;
 import builderb0y.notgimp.scripting.types.VectorType.GroupShape;
-import builderb0y.notgimp.scripting.types.generators.OpsGenerator;
+import builderb0y.notgimp.scripting.util.BinaryOperatorWrapper;
 import builderb0y.notgimp.scripting.util.LocalVariable;
 import builderb0y.notgimp.scripting.util.MethodInfo;
+import builderb0y.notgimp.scripting.util.UnaryOperatorWrapper;
 
 public class ExpressionParser<I> {
 
@@ -119,13 +123,13 @@ public class ExpressionParser<I> {
 			}
 			*/
 		}
-		for (VectorOperators.Unary operator : OpsGenerator.UNARIES) {
+		for (UnaryOperatorWrapper operator : UnaryOperatorWrapper.VALUES) {
 			this.scope.environment.addFunction(operator.name().toLowerCase(Locale.ROOT), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
 				if (params.length != 1) return null;
 				return UnaryInsnTree.create(params[0], operator);
 			});
 		}
-		for (VectorOperators.Binary operator : OpsGenerator.BINARIES) {
+		for (BinaryOperatorWrapper operator : BinaryOperatorWrapper.VALUES) {
 			this.scope.environment.addFunction(operator.name().toLowerCase(Locale.ROOT), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
 				return switch (params.length) {
 					case 1 -> BinaryInsnTree.createUnpacked(params[0], operator);
@@ -146,6 +150,43 @@ public class ExpressionParser<I> {
 				}
 			});
 		}
+		this.scope.environment.addFunction("rng", (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
+			for (InsnTree tree : params) {
+				for (VectorType type : tree.types()) {
+					if (type.shape != GroupShape.UNIT) {
+						return null;
+					}
+				}
+			}
+			return new RandomInsnTree(params);
+		});
+		for (String sign : new String[] { "positive", "uniform", "bounded", "ranged" }) {
+			for (VectorType outType : VectorType.VALUES) {
+				if (outType.componentType != ComponentType.BOOLEAN && outType != VectorType.VOID) {
+					MethodInfo method = new MethodInfo(RngOperations.class, "rng_to_" + sign + '_' + outType.name);
+					this.scope.environment.addMethod(
+						VectorType.LONG,
+						"next" + Util.capitalize(sign) + Util.capitalize(outType.name),
+						(ExpressionParser<?> parser, InsnTree receiver, String name, InsnTree[] params) -> {
+							try {
+								return new InvokeInsnTree(method.vectorReturnType(), receiver, params, method);
+							}
+							catch (IllegalArgumentException exception) {
+								return null;
+							}
+						}
+					);
+				}
+			}
+		}
+		for (Method method : UtilityOperations.class.getMethods()) {
+			if (Modifier.isStatic(method.getModifiers())) { //exclude equals(), hashCode(), toString().
+				this.scope.environment.addFunction(
+					method.getName().substring(0, method.getName().indexOf('_')),
+					FunctionHandler.invoker(new MethodInfo(method))
+				);
+			}
+		}
 		this.scope.environment.addVariable("e", VariableHandler.constant(VectorType.DOUBLE, Math.E));
 		this.scope.environment.addVariable("pi", VariableHandler.constant(VectorType.DOUBLE, Math.PI));
 		this.scope.environment.addVariable("tau", VariableHandler.constant(VectorType.DOUBLE, Math.TAU));
@@ -156,29 +197,34 @@ public class ExpressionParser<I> {
 		return this;
 	}
 
-	public ExpressionParser<I> addLayers(Map<String, Layer> layers) {
-		MethodInfo one = new MethodInfo(Layer.class, "getPixelWrapped", 1);
-		MethodInfo two = new MethodInfo(Layer.class, "getPixelWrapped", 2);
-		for (Map.Entry<String, Layer> entry : layers.entrySet()) {
-			this.scope.environment.addFunction(entry.getKey(), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
-				VectorType[] types = InsnTree.flattenTypes(params);
-				int index = parser.usedLayers.computeIfAbsent(name, (String _) -> parser.usedLayers.size());
-				return switch (types.length) {
-					case 1 -> {
-						InsnTree[] castParams = ScriptHandlers.multiCast(params, VectorType.INT2);
-						if (castParams == null) yield null;
-						yield new SampleInsnTree(castParams, "layer" + index, one);
-					}
-					case 2 -> {
-						InsnTree[] castParams = ScriptHandlers.multiCast(params, VectorType.INT, VectorType.INT);
-						if (castParams == null) yield null;
-						yield new SampleInsnTree(castParams, "layer" + index, two);
-					}
-					default -> {
-						yield null;
-					}
-				};
-			});
+	public static final MethodInfo getPixelWrappedOneArg = new MethodInfo(Layer.class, "getPixelWrapped", 1);
+	public static final MethodInfo getPixelWrappedTwoArgs = new MethodInfo(Layer.class, "getPixelWrapped", 2);
+
+	public ExpressionParser<I> addLayers(TreeItem<Layer> current) {
+		for (TreeItem<Layer> child : current.getChildren()) {
+			this.scope.environment.addFunction(
+				child.getValue().name.get(),
+				(ExpressionParser<?> parser, String name, InsnTree[] params) -> {
+					VectorType[] types = InsnTree.flattenTypes(params);
+					int index = parser.usedLayers.computeIfAbsent(name, (String _) -> parser.usedLayers.size());
+					return switch (types.length) {
+						case 1 -> {
+							InsnTree[] castParams = ScriptHandlers.multiCast(params, VectorType.INT2);
+							if (castParams == null) yield null;
+							yield new SampleInsnTree(castParams, "layer" + index, getPixelWrappedOneArg);
+						}
+						case 2 -> {
+							InsnTree[] castParams = ScriptHandlers.multiCast(params, VectorType.INT, VectorType.INT);
+							if (castParams == null) yield null;
+							yield new SampleInsnTree(castParams, "layer" + index, getPixelWrappedTwoArgs);
+						}
+						default -> {
+							yield null;
+						}
+					};
+				}
+			);
+			this.addLayers(child);
 		}
 		return this;
 	}
@@ -359,31 +405,15 @@ public class ExpressionParser<I> {
 	public @NotNull InsnTree nextSum() throws ScriptParsingException {
 		InsnTree left = this.nextProduct();
 		while (true) {
-			String read = this.reader.peekOperatorAfterWhitespace();
+			CursorPos revert = this.reader.getCursorAfterWhitespace();
+			String read = this.reader.readOperatorAfterWhitespace();
 			switch (read) {
-				case "+" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.add(left, this.nextProduct());
-				}
-				case "-" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.sub(left, this.nextProduct());
-				}
-				case "&" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.and(left, this.nextProduct());
-				}
-				case "|" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.or(left, this.nextProduct());
-				}
-				case "#" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.xor(left, this.nextProduct());
-				}
-				default -> {
-					return left;
-				}
+				case "+" -> left = BinaryInsnTree.add(left, this.nextProduct());
+				case "-" -> left = BinaryInsnTree.sub(left, this.nextProduct());
+				case "&" -> left = BinaryInsnTree.and(left, this.nextProduct());
+				case "|" -> left = BinaryInsnTree.or (left, this.nextProduct());
+				case "#" -> left = BinaryInsnTree.xor(left, this.nextProduct());
+				default -> { this.reader.setCursor(revert); return left; }
 			}
 		}
 	}
@@ -391,31 +421,16 @@ public class ExpressionParser<I> {
 	public @NotNull InsnTree nextProduct() throws ScriptParsingException {
 		InsnTree left = this.nextPrefix();
 		while (true) {
-			String read = this.reader.peekOperatorAfterWhitespace();
+			CursorPos revert = this.reader.getCursorAfterWhitespace();
+			String read = this.reader.readOperatorAfterWhitespace();
 			switch (read) {
-				case "*" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.mul(left, this.nextPrefix());
-				}
-				case "/" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.div(left, this.nextPrefix());
-				}
-				case "<<" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.shl(left, this.nextPrefix());
-				}
-				case ">>" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.shr(left, this.nextPrefix());
-				}
-				case ">>>" -> {
-					this.reader.onCharsRead(read);
-					left = BinaryInsnTree.ushr(left, this.nextPrefix());
-				}
-				default -> {
-					return left;
-				}
+				case "*"   -> left = BinaryInsnTree.mul (left, this.nextPrefix());
+				case "/"   -> left = BinaryInsnTree.div (left, this.nextPrefix());
+				case "%"   -> left = BinaryInsnTree.mod (left, this.nextPrefix());
+				case "<<"  -> left = BinaryInsnTree.shl (left, this.nextPrefix());
+				case ">>"  -> left = BinaryInsnTree.shr (left, this.nextPrefix());
+				case ">>>" -> left = BinaryInsnTree.ushr(left, this.nextPrefix());
+				default -> { this.reader.setCursor(revert); return left; }
 			}
 		}
 	}
@@ -453,7 +468,15 @@ public class ExpressionParser<I> {
 		InsnTree term = this.nextTerm();
 		while (true) {
 			if (this.reader.hasOperatorAfterWhitespace(".")) {
-				term = this.scope.environment.getField(this, term, this.reader.expectIdentifierAfterWhitespace());
+				String name = this.reader.expectIdentifierAfterWhitespace();
+				if (this.reader.hasAfterWhitespace('(')) {
+					InsnTree[] params = this.nextExpressionList();
+					this.reader.expectAfterWhitespace(')');
+					term = this.scope.environment.getMethod(this, term, name, params);
+				}
+				else {
+					term = this.scope.environment.getField(this, term, name);
+				}
 			}
 			else if (this.reader.hasAfterWhitespace('[')) {
 				InsnTree[] params = this.nextExpressionList();
@@ -591,7 +614,7 @@ public class ExpressionParser<I> {
 	}
 
 	public InsnTree[] nextExpressionList() throws ScriptParsingException {
-		if (this.reader.hasAfterWhitespace(')')) return new InsnTree[0];
+		if (this.reader.peekAfterWhitespace() == ')') return new InsnTree[0];
 		List<InsnTree> expressions = new ArrayList<>();
 		while (true) {
 			expressions.add(this.nextExpression());
