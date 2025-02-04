@@ -2,8 +2,6 @@ package builderb0y.notgimp.scripting.tree;
 
 import java.lang.invoke.MethodHandle;
 
-import jdk.incubator.vector.VectorOperators;
-
 import builderb0y.notgimp.scripting.util.BinaryCombiner.UnaryValue;
 import builderb0y.notgimp.scripting.util.ConstantFolder;
 import builderb0y.notgimp.scripting.util.UnaryOperatorWrapper;

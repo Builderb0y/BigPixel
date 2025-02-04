@@ -3,21 +3,16 @@ package builderb0y.notgimp;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonWriter;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener.Change;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabDragPolicy;
@@ -28,7 +23,6 @@ import javafx.scene.input.DataFormat;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
@@ -37,7 +31,8 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.ColorSelector.SavedColor;
 import builderb0y.notgimp.HDRImage.SaveProgress;
-import builderb0y.notgimp.sources.ManualLayerSource;
+import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.json.JsonReader;
 import builderb0y.notgimp.tools.Tool;
 
 public class MainWindow {
@@ -318,10 +313,11 @@ public class MainWindow {
 		OpenImage openImage;
 		try {
 			if (Util.getExtension(file).equals("json")) {
-				JsonObject object = JsonParser.parseReader(new BufferedReader(new FileReader(file, StandardCharsets.UTF_8))).getAsJsonObject();
-				SaveVersions.process(object);
+				String contents = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+				JsonMap map = new JsonReader(contents).readValueAfterWhitespace().asMap();
+				SaveVersions.process(map);
 				openImage = new OpenImage(this);
-				openImage.load(object);
+				openImage.load(map);
 			}
 			else {
 				Image image = new Image(new FileInputStream(file));
@@ -340,10 +336,6 @@ public class MainWindow {
 		openImage.file.set(file);
 		this.addOpenImage(file.getName(), openImage);
 	}
-
-	//such a colossal waste.
-	//literally all I need is access to Streams.write().
-	public static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
 	public void save(ActionEvent event) {
 		OpenImage openImage = this.getCurrentImage();
@@ -371,11 +363,9 @@ public class MainWindow {
 
 	public void doSave(OpenImage openImage, File file) {
 		try {
-			JsonObject object = openImage.save();
-			try (JsonWriter writer = new JsonWriter(new FileWriter(file, StandardCharsets.UTF_8))) {
-				writer.setIndent("\t");
-				writer.setHtmlSafe(false);
-				GSON.toJson(object, writer);
+			JsonMap map = openImage.save();
+			try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8))) {
+				map.write(writer, 0);
 			}
 		}
 		catch (Exception exception) {

@@ -3,16 +3,9 @@ package builderb0y.notgimp.sources;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableMap;
 import javafx.scene.Cursor;
@@ -26,6 +19,9 @@ import org.jetbrains.annotations.Nullable;
 import builderb0y.notgimp.*;
 import builderb0y.notgimp.HDRImage.HdrImageWatcher;
 import builderb0y.notgimp.RateLimiter.NonPeriodicRateLimiter;
+import builderb0y.notgimp.json.JsonArray;
+import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.json.JsonValue;
 import builderb0y.notgimp.scripting.parsing.ExpressionParser;
 import builderb0y.notgimp.scripting.parsing.ScriptEnvironment;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.KeywordHandler;
@@ -49,18 +45,21 @@ public class DerivedLayerSource extends LayerSource implements MapChangeListener
 	};
 	public boolean loading;
 
-	public JsonObject save() {
-		JsonObject object = new JsonObject();
+	@Override
+	public JsonMap save() {
+		JsonMap map = new JsonMap();
+		map.add("type", "derived");
 		JsonArray source = new JsonArray();
 		this.textArea.getText().lines().forEachOrdered(source::add);
-		object.add("code", source);
-		return object;
+		map.add("code", source);
+		return map;
 	}
 
-	public void load(JsonObject object) {
+	@Override
+	public void load(JsonMap map) {
 		this.loading = true;
 		try {
-			this.textArea.setText(StreamSupport.stream(object.getAsJsonArray("code").spliterator(), false).map(JsonElement::getAsString).collect(Collectors.joining(System.lineSeparator())));
+			this.textArea.setText(map.getArray("code").stream().map(JsonValue::asString).collect(Collectors.joining(System.lineSeparator())));
 		}
 		finally {
 			this.loading = false;

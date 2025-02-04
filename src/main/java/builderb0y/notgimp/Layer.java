@@ -2,9 +2,6 @@ package builderb0y.notgimp;
 
 import java.util.stream.IntStream;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TreeItem;
@@ -15,6 +12,9 @@ import javafx.scene.image.WritableImage;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 
+import builderb0y.notgimp.json.JsonArray;
+import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.json.JsonValue;
 import builderb0y.notgimp.sources.LayerSources;
 
 import static builderb0y.notgimp.HDRImage.*;
@@ -30,32 +30,36 @@ public class Layer {
 	public LayerSources sources;
 	public History history;
 
-	public JsonObject save() {
-		JsonObject object = new JsonObject();
-		object.addProperty("name", this.name.get());
-		object.addProperty("width", this.image.width);
-		object.addProperty("height", this.image.height);
+	public JsonMap save() {
+		JsonMap map = new JsonMap();
+		map.add("name", this.name.get());
+		map.add("width", this.image.width);
+		map.add("height", this.image.height);
 		JsonArray jsonChildren = new JsonArray(this.item.getChildren().size());
 		for (TreeItem<Layer> child : this.item.getChildren()) {
 			jsonChildren.add(child.getValue().save());
 		}
-		object.add("children", jsonChildren);
-		object.add("sources", this.sources.save());
-		object.addProperty("expanded", this.item.isExpanded());
-		return object;
+		map.add("children", jsonChildren);
+		map.add("sources", this.sources.save());
+		map.add("expanded", this.item.isExpanded());
+		return map;
 	}
 
-	public Layer(OpenImage openImage, JsonObject saveData) {
+	public Layer(OpenImage openImage, JsonMap saveData) {
 		this(
 			openImage,
-			saveData.get("name").getAsString(),
-			saveData.get("width").getAsInt(),
-			saveData.get("height").getAsInt()
+			saveData.getString("name"),
+			saveData.getInt("width"),
+			saveData.getInt("height")
 		);
-		for (JsonElement element : saveData.getAsJsonArray("children")) {
-			this.item.getChildren().add(new Layer(openImage, element.getAsJsonObject()).item);
-		}
-		this.sources.load(saveData.get("sources").getAsJsonObject());
+		saveData
+		.getArray("children")
+		.stream()
+		.map(JsonValue::asMap)
+		.map((JsonMap child) -> new Layer(openImage, child))
+		.map((Layer layer) -> layer.item)
+		.forEachOrdered(this.item.getChildren()::add);
+		this.sources.load(saveData.getMap("sources"));
 		this.item.setExpanded(true);
 	}
 

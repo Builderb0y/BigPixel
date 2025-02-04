@@ -3,6 +3,7 @@ histogram.
 tools:
 	ellipse (+ filled variant)
 multi-window support.
-
-add float(boolean).
+scripting:
+	float(boolean)
+	user-defined methods
 make animation not draw canvas when open image tab is not selected.

@@ -3,7 +3,10 @@ package builderb0y.notgimp.tools;
 import javafx.scene.Node;
 import javafx.scene.input.MouseButton;
 
-import builderb0y.notgimp.*;
+import builderb0y.notgimp.ColorHelper;
+import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.Util;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class ColorPickerTool extends Tool<Void> {

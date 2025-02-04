@@ -1,6 +1,5 @@
 package builderb0y.notgimp;
 
-import com.google.gson.JsonObject;
 import javafx.animation.Animation;
 import javafx.animation.Interpolator;
 import javafx.animation.Transition;
@@ -11,11 +10,15 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
+
+import builderb0y.notgimp.json.JsonMap;
 
 public class AnimationSource {
 
@@ -134,13 +137,13 @@ public class AnimationSource {
 		});
 	}
 
-	public JsonObject save() {
-		JsonObject object = new JsonObject();
-		object.addProperty("frames", this.frames.get());
-		return object;
+	public JsonMap save() {
+		JsonMap map = new JsonMap();
+		map.add("frames", this.frames.get());
+		return map;
 	}
 
-	public void load(JsonObject object) {
-		this.spinner.getValueFactory().setValue(object.get("frames").getAsInt());
+	public void load(JsonMap map) {
+		this.spinner.getValueFactory().setValue(map.getInt("frames"));
 	}
 }

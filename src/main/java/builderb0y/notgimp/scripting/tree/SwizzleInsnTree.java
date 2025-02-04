@@ -1,7 +1,5 @@
 package builderb0y.notgimp.scripting.tree;
 
-import java.lang.classfile.MethodModel;
-
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 import builderb0y.notgimp.scripting.types.VectorType;

@@ -3,7 +3,6 @@ package builderb0y.notgimp.sources;
 import java.util.Collection;
 import java.util.Collections;
 
-import com.google.gson.JsonObject;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.scene.Cursor;
@@ -16,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.tools.*;
 
 public class ManualLayerSource extends LayerSource {
@@ -41,14 +41,17 @@ public class ManualLayerSource extends LayerSource {
 	public SimpleObjectProperty<@Nullable Tool<?>>
 		currentTool = new SimpleObjectProperty<>();
 
-	public JsonObject save() {
-		JsonObject object = new JsonObject();
-		object.add("image", this.toollessImage.save());
-		return object;
+	@Override
+	public JsonMap save() {
+		JsonMap map = new JsonMap();
+		map.add("type", "derived");
+		map.add("image", this.toollessImage.save());
+		return map;
 	}
 
-	public void load(JsonObject object) {
-		this.toollessImage = new HDRImage(object.getAsJsonObject("image"));
+	@Override
+	public void load(JsonMap map) {
+		this.toollessImage = new HDRImage(map.getMap("image"));
 	}
 
 	public ManualLayerSource(LayerSources sources) {
@@ -63,7 +66,9 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	public void init(boolean fromSave) {
-		if (!fromSave) this.toollessImage = new HDRImage(this.sources.layer.image);
+		if (this.toollessImage == null) {
+			this.toollessImage = new HDRImage(this.sources.layer.image);
+		}
 	}
 
 	public Button button(Tool<?> tool) {

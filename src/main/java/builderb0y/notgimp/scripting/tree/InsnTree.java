@@ -4,8 +4,8 @@ import java.util.Arrays;
 
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.notgimp.scripting.tree.condition.InsnConditionTree;
 import builderb0y.notgimp.scripting.tree.condition.ConditionTree;
+import builderb0y.notgimp.scripting.tree.condition.InsnConditionTree;
 import builderb0y.notgimp.scripting.types.VectorType;
 
 public abstract class InsnTree implements CodeEmitter {

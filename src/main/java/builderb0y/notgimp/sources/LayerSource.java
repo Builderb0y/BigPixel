@@ -1,7 +1,6 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Collection;
-import java.util.Set;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Cursor;
@@ -10,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
+import builderb0y.notgimp.json.JsonMap;
 
 public abstract class LayerSource {
 
@@ -24,6 +24,10 @@ public abstract class LayerSource {
 			}
 		}));
 	}
+
+	public abstract JsonMap save();
+
+	public abstract void load(JsonMap map);
 
 	public boolean isSelected() {
 		return this.sources.getCurrentSource() == this;

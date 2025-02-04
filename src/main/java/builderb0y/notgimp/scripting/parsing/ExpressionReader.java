@@ -6,179 +6,16 @@ import java.math.MathContext;
 
 import org.jetbrains.annotations.Nullable;
 
-@SuppressWarnings({ "deprecation", "DeprecatedIsStillUsed", "unused", "ImplicitNumericConversion", "MethodParameterNamingConvention", "LocalVariableNamingConvention" })
-public class ExpressionReader {
+import builderb0y.notgimp.CommonReader;
 
-	public String input;
-	public int cursor, line, column;
+@SuppressWarnings({ "deprecation", "DeprecatedIsStillUsed", "unused", "ImplicitNumericConversion", "MethodParameterNamingConvention", "LocalVariableNamingConvention" })
+public class ExpressionReader extends CommonReader<ScriptParsingException> {
 
 	public ExpressionReader(String input) {
-		this.input = canonicalizeLineEndings(input);
-		this.line = 1;
-		this.column = 1;
+		super(input);
 	}
 
-	/** replaces "\r" and "\r\n" with "\n". */
-	public static String canonicalizeLineEndings(String input) {
-		int length = input.length();
-		StringBuilder builder = new StringBuilder(length);
-		for (int index = 0; index < length; ) {
-			char c = input.charAt(index);
-			if (c == '\r') {
-				index++;
-				if (index < length && input.charAt(index) == '\n') {
-					index++;
-				}
-				builder.append('\n');
-			}
-			else {
-				builder.append(c);
-				index++;
-			}
-		}
-		return builder.toString();
-	}
-
-	@Deprecated
-	public char getChar(int index) {
-		return index < this.input.length() ? this.input.charAt(index) : 0;
-	}
-
-	@Deprecated
-	public boolean canRead() {
-		return this.cursor < this.input.length();
-	}
-
-	public boolean canReadAfterWhitespace() throws ScriptParsingException {
-		this.skipWhitespace();
-		return this.canRead();
-	}
-
-	public void onCharRead(char c) {
-		this.cursor++;
-		if (c == '\n') {
-			this.line++;
-			this.column = 1;
-		}
-		else {
-			this.column++;
-		}
-	}
-
-	public void onCharsRead(String s) {
-		for (int index = 0, length = s.length(); index < length; index++) {
-			this.onCharRead(s.charAt(index));
-		}
-	}
-
-	@Deprecated
-	public char read() throws ScriptParsingException {
-		if (this.canRead()) {
-			char c = this.input.charAt(this.cursor);
-			this.onCharRead(c);
-			if (c == 0) {
-				throw new ScriptParsingException("Encountered NUL character in input", this);
-			}
-			return c;
-		}
-		return 0;
-	}
-
-	public char readAfterWhitespace() throws ScriptParsingException {
-		this.skipWhitespace();
-		return this.read();
-	}
-
-	@Deprecated
-	public char peek() {
-		return this.canRead() ? this.input.charAt(this.cursor) : 0;
-	}
-
-	public char peekAfterWhitespace() throws ScriptParsingException {
-		this.skipWhitespace();
-		return this.peek();
-	}
-
-	@Deprecated
-	public boolean skip() throws ScriptParsingException {
-		return this.read() != 0;
-	}
-
-	@Deprecated
-	public int skip(int count) {
-		count = Math.min(count, this.input.length() - this.cursor);
-		for (int i = 0; i < count; i++) {
-			this.onCharRead(this.input.charAt(this.cursor));
-		}
-		return count;
-	}
-
-	@Deprecated
-	public String read(int count) {
-		int startIndex = this.cursor;
-		int endIndex = Math.min(startIndex + count, this.input.length());
-		String read = this.input.substring(startIndex, endIndex);
-		this.onCharsRead(read);
-		return read;
-	}
-
-	@Deprecated
-	public boolean has(char expected) {
-		if (!this.canRead()) return false;
-		char got = this.input.charAt(this.cursor);
-		if (got != expected) return false;
-		this.onCharRead(got);
-		return true;
-	}
-
-	public boolean hasAfterWhitespace(char expected) throws ScriptParsingException {
-		this.skipWhitespace();
-		return this.has(expected);
-	}
-
-	@Deprecated
-	public boolean has(String expected) {
-		if (this.input.regionMatches(this.cursor, expected, 0, expected.length())) {
-			this.onCharsRead(expected);
-			return true;
-		}
-		return false;
-	}
-
-	public boolean hasAfterWhitespace(String expected) throws ScriptParsingException {
-		this.skipWhitespace();
-		return this.has(expected);
-	}
-
-	@Deprecated
-	public boolean has(CharPredicate predicate) {
-		if (!this.canRead()) return false;
-		char got = this.input.charAt(this.cursor);
-		if (!predicate.test(got)) return false;
-		this.onCharRead(got);
-		return true;
-	}
-
-	public boolean hasAfterWhitespace(CharPredicate predicate) throws ScriptParsingException {
-		this.skipWhitespace();
-		return this.has(predicate);
-	}
-
-	@Deprecated
-	public void skipWhile(CharPredicate predicate) {
-		char c;
-		while (this.canRead() && predicate.test(c = this.input.charAt(this.cursor))) {
-			this.onCharRead(c);
-		}
-	}
-
-	@Deprecated
-	public String readWhile(CharPredicate predicate) {
-		int start = this.cursor;
-		this.skipWhile(predicate);
-		return this.input.substring(start, this.cursor);
-	}
-
+	@Override
 	public void skipWhitespace() throws ScriptParsingException {
 		while (true) {
 			this.skipWhile(Character::isWhitespace);
@@ -195,14 +32,14 @@ public class ExpressionReader {
 				}
 				/*
 				else if (this.has(';')) {
-					end = this.input.indexOf(";;", this.cursor);
+					end = this.source.indexOf(";;", this.cursor);
 					if (end < 0) throw new ScriptParsingException("Un-terminated multi-line comment", this);
 					this.skip(end + 2 - this.cursor);
 				}
 				*/
 				else {
-					end = this.input.indexOf('\n', this.cursor);
-					if (end < 0) end = this.input.length();
+					end = this.source.indexOf('\n', this.cursor);
+					if (end < 0) end = this.source.length();
 					this.skip(end + 1 - this.cursor);
 				}
 			}
@@ -210,30 +47,6 @@ public class ExpressionReader {
 				break;
 			}
 		}
-	}
-
-	@Deprecated
-	public void expect(char expected) throws ScriptParsingException {
-		if (!this.has(expected)) {
-			throw new ScriptParsingException("Expected '" + expected + '\'', this);
-		}
-	}
-
-	public void expectAfterWhitespace(char expected) throws ScriptParsingException {
-		this.skipWhitespace();
-		this.expect(expected);
-	}
-
-	@Deprecated
-	public void expect(String expected) throws ScriptParsingException {
-		if (!this.has(expected)) {
-			throw new ScriptParsingException("Expected '" + expected + '\'', this);
-		}
-	}
-
-	public void expectAfterWhitespace(String expected) throws ScriptParsingException {
-		this.skipWhitespace();
-		this.expect(expected);
 	}
 
 	@Deprecated
@@ -311,7 +124,7 @@ public class ExpressionReader {
 				c = this.peek();
 			}
 			while (isLetterNumberOrUnderscore(c));
-			return this.input.substring(startIndex, this.cursor);
+			return this.source.substring(startIndex, this.cursor);
 		}
 		else if (c == '`') {
 			this.onCharRead('`');
@@ -328,7 +141,7 @@ public class ExpressionReader {
 				}
 				this.onCharRead(c);
 			}
-			return this.input.substring(start.cursor, this.cursor - 1);
+			return this.source.substring(start.cursor(), this.cursor - 1);
 		}
 		else {
 			return null;
@@ -354,11 +167,11 @@ public class ExpressionReader {
 	}
 
 	@Deprecated
-	public boolean hasIdentifier(String identifier) throws ScriptParsingException {
+	public boolean hasIdentifier(String identifier) {
 		char c = this.peek();
 		if (isLetterOrUnderscore(c)) {
 			if (
-				this.input.regionMatches(this.cursor, identifier, 0, identifier.length()) &&
+				this.source.regionMatches(this.cursor, identifier, 0, identifier.length()) &&
 				!isLetterNumberOrUnderscore(this.getChar(this.cursor + identifier.length()))
 			) {
 				this.onCharsRead(identifier);
@@ -367,7 +180,7 @@ public class ExpressionReader {
 		}
 		else if (c == '`') {
 			if (
-				this.input.regionMatches(this.cursor + 1, identifier, 0, identifier.length()) &&
+				this.source.regionMatches(this.cursor + 1, identifier, 0, identifier.length()) &&
 				this.getChar(this.cursor + identifier.length() + 2) == '`'
 			) {
 				this.onCharRead('`');
@@ -470,48 +283,8 @@ public class ExpressionReader {
 		return this.readNumber0(10);
 	}
 
-	public String getSource() {
-		return this.input;
-	}
-
-	public String getSourceForError() {
-		//grab the last 10 lines leading up to the error.
-		int start = this.cursor;
-		for (int loop = 0; loop < 10; loop++) {
-			start = this.input.lastIndexOf('\n', start - 1);
-			if (start < 0) return this.input.substring(0, this.cursor);
-		}
-		return this.input.substring(start + 1, this.cursor);
-	}
-
-	public void unread() {
-		int newCursor = this.cursor - 1;
-		char c = this.input.charAt(newCursor);
-		if (c == '\n') throw new IllegalStateException("Cannot unread newline");
-		this.cursor = newCursor;
-		this.column--;
-	}
-
-	public CursorPos getCursor() {
-		return new CursorPos(this.cursor, this.line, this.column);
-	}
-
-	public CursorPos getCursorAfterWhitespace() throws ScriptParsingException {
-		this.skipWhitespace();
-		return this.getCursor();
-	}
-
-	public void setCursor(CursorPos position) {
-		this.cursor = position.cursor;
-		this.line   = position.line  ;
-		this.column = position.column;
-	}
-
-	public static record CursorPos(int cursor, int line, int column) {}
-
-	@FunctionalInterface
-	public static interface CharPredicate {
-
-		public abstract boolean test(char c);
+	@Override
+	public ScriptParsingException newException(String message) {
+		return new ScriptParsingException(message, this);
 	}
 }

@@ -1,9 +1,9 @@
+import java.nio.file.Files
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
 plugins {
 	id 'java'
-	id 'application'
-	//id 'org.javamodularity.moduleplugin' version '1.8.12'
-	id 'org.openjfx.javafxplugin' version '0.0.13'
-	id 'org.beryx.jlink' version '2.25.0'
 }
 
 group 'builderb0y'
@@ -22,16 +22,13 @@ targetCompatibility = '22'
 
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
-	options.compilerArgs.addAll([ '--enable-preview', '-parameters' ])
+	options.compilerArgs.addAll([ '--enable-preview', '-parameters', '--add-modules jdk.incubator.vector' ])
 }
 
-application {
-	mainClass = 'builderb0y.notgimp.NotGimp'
-}
-
-javafx {
-	version = '21'
-	modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.media' ]
+configurations {
+	implementation {
+		canBeResolved = true
+	}
 }
 
 dependencies {
@@ -39,7 +36,12 @@ dependencies {
 	implementation('net.synedra:validatorfx:0.5.0') {
 		exclude(group: 'org.openjfx')
 	}
-	implementation('com.google.code.gson:gson:2.11.0')
+	implementation('org.openjfx:javafx-base:21')
+	implementation('org.openjfx:javafx-controls:21')
+	implementation('org.openjfx:javafx-graphics:21')
+	implementation('org.openjfx:javafx-base:21:linux')
+	implementation('org.openjfx:javafx-controls:21:linux')
+	implementation('org.openjfx:javafx-graphics:21:linux')
 
 	testImplementation("org.junit.jupiter:junit-jupiter-api:${ junitVersion }")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${ junitVersion }")
@@ -47,18 +49,14 @@ dependencies {
 	implementation('org.jetbrains:annotations:25.0.0')
 }
 
+File dependencies = file('dependencies')
+dependencies.mkdir()
+for (File from in getConfigurations().getByName('implementation').getResolvedConfiguration().getResolvedArtifacts().file) {
+	String fileName = from.getName()
+	File to = new File(dependencies, fileName)
+	if (!to.exists()) Files.copy(from.toPath(), to.toPath())
+}
+
 test {
 	useJUnitPlatform()
-}
-
-jlink {
-	imageZip = project.file("${ buildDir }/distributions/app-${ javafx.platform.classifier }.zip")
-	options = [ '--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages' ]
-	launcher {
-		name = 'app'
-	}
-}
-
-jlinkZip {
-	group = 'distribution'
 }

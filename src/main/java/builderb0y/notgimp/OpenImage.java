@@ -5,8 +5,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -25,6 +23,7 @@ import javafx.scene.layout.HBox;
 import javafx.util.StringConverter;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.sources.LayerSource;
 
 public class OpenImage {
@@ -69,23 +68,23 @@ public class OpenImage {
 	public AnimationSource
 		animationSource = new AnimationSource(this);
 
-	public JsonObject save() {
-		JsonObject root = new JsonObject();
-		root.addProperty("version", SaveVersions.CURRENT);
+	public JsonMap save() {
+		JsonMap root = new JsonMap();
+		root.add("version", SaveVersions.CURRENT);
 		TreeItem<Layer> rootItem = this.layerTree.getRoot();
 		root.add("root_layer", rootItem.getValue().save());
-		root.addProperty("showing_layer", this.getVisibleLayer().name.get());
-		root.addProperty("selected_layer", this.getSelectedLayer().name.get());
-		root.addProperty("wrap", this.wrap.getValue());
+		root.add("showing_layer", this.getVisibleLayer().name.get());
+		root.add("selected_layer", this.getSelectedLayer().name.get());
+		root.add("wrap", this.wrap.getValue());
 		root.add("animation", this.animationSource.save());
 		return root;
 	}
 
-	public void load(JsonObject object) {
-		this.initFirstLayer(new Layer(this, object.getAsJsonObject("root_layer")), true);
-		this.showingLayer.selectToggle((RadioButton)(this.layerMap.get(object.get("showing_layer").getAsString()).item.getGraphic()));
-		this.layerTree.getSelectionModel().select(this.layerMap.get(object.get("selected_layer").getAsString()).item);
-		this.animationSource.load(object.getAsJsonObject("animation"));
+	public void load(JsonMap map) {
+		this.initFirstLayer(new Layer(this, map.getMap("root_layer")), true);
+		this.showingLayer.selectToggle((RadioButton)(this.layerMap.get(map.getString("showing_layer")).item.getGraphic()));
+		this.layerTree.getSelectionModel().select(this.layerMap.get(map.getString("selected_layer")).item);
+		this.animationSource.load(map.getMap("animation"));
 	}
 
 	public OpenImage(MainWindow mainWindow) {
@@ -229,9 +228,9 @@ public class OpenImage {
 		}
 		newLayer.item.getChildren().add(old);
 		newLayer.item.setExpanded(true);
-		newLayer.init(false);
 		this.layerTree.getSelectionModel().select(newLayer.item);
 		this.layerTree.edit(newLayer.item);
+		newLayer.init(false);
 	}
 
 	public void addLayerAbove(ActionEvent event) {
@@ -241,9 +240,9 @@ public class OpenImage {
 		this.addToMap(newLayer);
 		ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
 		children.add(children.indexOf(old), newLayer.item);
-		newLayer.init(false);
 		this.layerTree.getSelectionModel().select(newLayer.item);
 		this.layerTree.edit(newLayer.item);
+		newLayer.init(false);
 	}
 
 	public void addChildLayer(ActionEvent event) {
@@ -253,9 +252,9 @@ public class OpenImage {
 		this.addToMap(newLayer);
 		old.getChildren().addFirst(newLayer.item);
 		old.setExpanded(true);
-		newLayer.init(false);
 		this.layerTree.getSelectionModel().select(newLayer.item);
 		this.layerTree.edit(newLayer.item);
+		newLayer.init(false);
 	}
 
 	public void addLayerBelow(ActionEvent event) {
@@ -265,9 +264,9 @@ public class OpenImage {
 		this.addToMap(newLayer);
 		ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
 		children.add(children.indexOf(old) + 1, newLayer.item);
-		newLayer.init(false);
 		this.layerTree.getSelectionModel().select(newLayer.item);
 		this.layerTree.edit(newLayer.item);
+		newLayer.init(false);
 	}
 
 	public void removeLayer(ActionEvent event) {

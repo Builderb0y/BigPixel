@@ -1,6 +1,9 @@
 package builderb0y.notgimp.scripting.types;
 
-import jdk.incubator.vector.*;
+import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.LongVector;
 
 import builderb0y.notgimp.scripting.types.VectorType.Vec;
 

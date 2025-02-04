@@ -14,12 +14,13 @@ import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 
-import com.google.gson.JsonObject;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
+
+import builderb0y.notgimp.json.JsonMap;
 
 public class HDRImage {
 
@@ -33,10 +34,10 @@ public class HDRImage {
 	public float[] pixels;
 	public Set<HdrImageWatcher> watchers;
 
-	public JsonObject save() {
-		JsonObject object = new JsonObject();
-		object.addProperty("width", this.width);
-		object.addProperty("height", this.height);
+	public JsonMap save() {
+		JsonMap map = new JsonMap();
+		map.add("width", this.width);
+		map.add("height", this.height);
 		try {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream(this.pixels.length * Float.BYTES);
 			GZIPOutputStream compressor = new GZIPOutputStream(baos);
@@ -45,18 +46,18 @@ public class HDRImage {
 				dos.writeFloat(pixel);
 			}
 			dos.close();
-			object.addProperty("pixels", Base64.getEncoder().encodeToString(baos.toByteArray()));
+			map.add("pixels", Base64.getEncoder().encodeToString(baos.toByteArray()));
 		}
 		catch (IOException unexpected) {
 			throw new SaveException(unexpected);
 		}
-		return object;
+		return map;
 	}
 
-	public HDRImage(JsonObject saveData) {
-		this(saveData.get("width").getAsInt(), saveData.get("height").getAsInt());
+	public HDRImage(JsonMap saveData) {
+		this(saveData.getInt("width"), saveData.getInt("height"));
 		try {
-			String base64Pixels = saveData.get("pixels").getAsString();
+			String base64Pixels = saveData.getString("pixels");
 			byte[] compressedPixels = Base64.getDecoder().decode(base64Pixels);
 			ByteArrayInputStream bais = new ByteArrayInputStream(compressedPixels);
 			GZIPInputStream decompressor = new GZIPInputStream(bais);

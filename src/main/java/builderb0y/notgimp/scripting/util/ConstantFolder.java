@@ -4,17 +4,18 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 
+import org.jetbrains.annotations.Nullable;
+
 public class ConstantFolder extends BinaryCombiner<MethodHandle> {
 
 	public static final ConstantFolder INSTANCE = new ConstantFolder();
 
 	@Override
-	public MethodHandle invoker(Class<?> owner, String name, Class<?>... paramTypes) {
+	public @Nullable MethodHandle invoker(Method method) {
 		try {
-			Method method = owner.getMethod(name, paramTypes);
 			return MethodHandles.lookup().unreflect(method);
 		}
-		catch (ReflectiveOperationException exception) {
+		catch (IllegalAccessException _) {
 			return null;
 		}
 	}

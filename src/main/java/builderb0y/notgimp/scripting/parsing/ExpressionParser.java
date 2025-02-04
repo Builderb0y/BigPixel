@@ -24,9 +24,9 @@ import java.util.stream.Collectors;
 import javafx.scene.control.TreeItem;
 import org.jetbrains.annotations.NotNull;
 
+import builderb0y.notgimp.CommonReader.CursorPos;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
-import builderb0y.notgimp.scripting.parsing.ExpressionReader.CursorPos;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.FunctionHandler;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.KeywordHandler;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.VariableHandler;
@@ -194,6 +194,7 @@ public class ExpressionParser<I> {
 		this.scope.environment.addVariable("false", VariableHandler.constant(VectorType.BOOLEAN, Boolean.FALSE));
 		this.scope.environment.addKeyword("if", KeywordHandler.makeIf());
 		this.scope.environment.addKeyword("unless", KeywordHandler.makeIf());
+		this.scope.environment.addKeyword("switch", KeywordHandler.switcher());
 		return this;
 	}
 
@@ -322,14 +323,17 @@ public class ExpressionParser<I> {
 		if (this.reader.peekAfterWhitespace() == '}') return NoopInsnTree.INSTANCE;
 		List<InsnTree> statements = new ArrayList<>();
 		do {
-			InsnTree statement = this.nextStatement();
+			InsnTree statement = this.nextStatement(true);
+			if (!statements.isEmpty() && statements.getLast().jumpsUnconditionally()) {
+				throw new ScriptParsingException("Unreachable statement", this.reader);
+			}
 			statements.add(statement);
 		}
 		while (this.reader.canReadAfterWhitespace() && this.reader.peekAfterWhitespace() != '}');
 		return new SequenceInsnTree(statements.toArray(new InsnTree[statements.size()]));
 	}
 
-	public @NotNull InsnTree nextStatement() throws ScriptParsingException {
+	public @NotNull InsnTree nextStatement(boolean allowDeclarations) throws ScriptParsingException {
 		if (this.reader.hasAfterWhitespace('{')) {
 			InsnTree result;
 			try (Scope _ = this.pushScope()) {
@@ -340,7 +344,7 @@ public class ExpressionParser<I> {
 		}
 		String maybeKeyword = this.reader.readIdentifierAfterWhitespace();
 		if (maybeKeyword != null) {
-			return this.nextIdentifier(maybeKeyword, true);
+			return this.nextIdentifier(maybeKeyword, true, allowDeclarations);
 		}
 		InsnTree result = this.nextExpression();
 		this.reader.expectOperatorAfterWhitespace(";");
@@ -541,7 +545,7 @@ public class ExpressionParser<I> {
 				'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 				'_', '`'
 			-> {
-				yield this.nextIdentifier(this.reader.readIdentifier(), false);
+				yield this.nextIdentifier(this.reader.readIdentifier(), false, false);
 			}
 			default -> {
 				this.reader.onCharRead(first);
@@ -550,7 +554,7 @@ public class ExpressionParser<I> {
 		};
 	}
 
-	public @NotNull InsnTree nextIdentifier(String name, boolean statement) throws ScriptParsingException {
+	public @NotNull InsnTree nextIdentifier(String name, boolean statement, boolean allowDeclarations) throws ScriptParsingException {
 		InsnTree result = this.scope.environment.getKeyword(this, name, statement);
 		if (result != null) return result;
 
@@ -574,19 +578,24 @@ public class ExpressionParser<I> {
 				else throw new ScriptParsingException("No such static function or incorrect arguments", this.reader);
 			}
 			else if (statement) {
-				String declarationName = this.reader.expectIdentifierAfterWhitespace();
-				if (this.scope.environment.variables.containsKey(declarationName)) {
-					throw new ScriptParsingException("Duplicate variable: " + declarationName, this.reader);
-				}
-				this.reader.expectOperatorAfterWhitespace("=");
-				InsnTree initializer = this.nextExpression();
-				this.reader.expectOperatorAfterWhitespace(";");
-				if (initializer.type() == type) {
-					this.scope.environment.addVariable(declarationName, VariableHandler.userVar(type));
-					return new VariableDeclarationInsnTree(declarationName, initializer);
+				if (allowDeclarations) {
+					String declarationName = this.reader.expectIdentifierAfterWhitespace();
+					if (this.scope.environment.variables.containsKey(declarationName)) {
+						throw new ScriptParsingException("Duplicate variable: " + declarationName, this.reader);
+					}
+					this.reader.expectOperatorAfterWhitespace("=");
+					InsnTree initializer = this.nextExpression();
+					this.reader.expectOperatorAfterWhitespace(";");
+					if (initializer.type() == type) {
+						this.scope.environment.addVariable(declarationName, VariableHandler.userVar(type));
+						return new VariableDeclarationInsnTree(declarationName, initializer);
+					}
+					else {
+						throw new ScriptParsingException(STR."Attempt to initialize \{type} with \{initializer.type()}", this.reader);
+					}
 				}
 				else {
-					throw new ScriptParsingException(STR."Attempt to initialize \{type} with \{initializer.type()}", this.reader);
+					throw new ScriptParsingException("Declarations are not allowed here", this.reader);
 				}
 			}
 			else {

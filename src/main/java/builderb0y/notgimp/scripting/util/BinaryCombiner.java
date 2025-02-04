@@ -1,5 +1,6 @@
 package builderb0y.notgimp.scripting.util;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -50,21 +51,36 @@ public abstract class BinaryCombiner<T> {
 		else throw new InvalidOperandException(STR."Can't \{operator.name().toLowerCase(Locale.ROOT)} \{left} and \{right}");
 	}
 
-	public UnaryValue<T> createUnary(VectorType type, UnaryOperatorWrapper operator) {
+	public @Nullable UnaryValue<T> createUnary(VectorType type, UnaryOperatorWrapper operator) {
 		String name = operator.name().toLowerCase(Locale.ROOT) + '_' + type.name;
-		T handler = this.invoker(VectorOperations.class, name, type.holderClass());
-		return handler != null ? new UnaryValue<>(type, type, handler) : null;
+		Method method = method(VectorOperations.class, name, type.holderClass());
+		if (method == null) return null;
+		T handler = this.invoker(method);
+		if (handler == null) return null;
+		return new UnaryValue<>(type, VectorType.get(method.getAnnotatedReturnType()), handler);
 	}
 
 	public static VectorType unit(VectorType type) {
 		return VectorType.get(type.componentType, GroupShape.UNIT);
 	}
 
-	public BinaryValue<T> createBinary(VectorType left, VectorType right, BinaryOperatorWrapper operator) {
+	public @Nullable BinaryValue<T> createBinary(VectorType left, VectorType right, BinaryOperatorWrapper operator) {
 		String name = operator.name().toLowerCase(Locale.ROOT) + '_' + left.name + '_' + right.name;
-		T handler = this.invoker(VectorOperations.class, name, left.holderClass(), right.holderClass());
-		return handler != null ? new BinaryValue<>(left, right, left.shape == GroupShape.UNIT ? right : left, handler) : null;
+		Method method = method(VectorOperations.class, name, left.holderClass(), right.holderClass());
+		if (method == null) return null;
+		T handler = this.invoker(method);
+		if (handler == null) return null;
+		return new BinaryValue<>(left, right, VectorType.get(method.getAnnotatedReturnType()), handler);
 	}
 
-	public abstract @Nullable T invoker(Class<?> owner, String name, Class<?>... paramTypes);
+	public static @Nullable Method method(Class<?> clazz, String name, Class<?>... paramTypes) {
+		try {
+			return clazz.getMethod(name, paramTypes);
+		}
+		catch (NoSuchMethodException _) {
+			return null;
+		}
+	}
+
+	public abstract @Nullable T invoker(Method method);
 }

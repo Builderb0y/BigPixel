@@ -1,7 +1,10 @@
 package builderb0y.notgimp.scripting.parsing;
 
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -160,14 +163,73 @@ public class ScriptHandlers {
 				parser.reader.expectAfterWhitespace(')');
 				ConditionTree conditionTree = condition.toCondition();
 				if (name.equals("unless")) conditionTree = conditionTree.not();
-				InsnTree body = parser.nextStatement();
+				InsnTree body = parser.nextStatement(false);
 				if (parser.reader.hasIdentifierAfterWhitespace("else")) {
-					InsnTree falseBranch = parser.nextStatement();
+					InsnTree falseBranch = parser.nextStatement(false);
 					return new IfElseInsnTree(conditionTree, body, falseBranch, true);
 				}
 				else {
 					return new IfInsnTree(conditionTree, body);
 				}
+			};
+		}
+
+		public static KeywordHandler switcher() {
+			return (ExpressionParser<?> parser, String name, boolean statement) -> {
+				parser.reader.expectAfterWhitespace('(');
+				InsnTree value = parser.nextExpression();
+				parser.reader.expectAfterWhitespace(')');
+				parser.reader.expectAfterWhitespace('{');
+				HashSet<Integer> allCases = new HashSet<>();
+				List<SwitchInsnTree.Case> cases = new ArrayList<>();
+				InsnTree defaultCase = null;
+				while (true) {
+					if (parser.reader.hasIdentifierAfterWhitespace("case")) {
+						parser.reader.expectAfterWhitespace('(');
+						int[] matchedValues = new int[1];
+						int valueCount = 0;
+						if (parser.nextExpression() instanceof ConstantInsnTree first && first.type() == VectorType.INT) {
+							if (!allCases.add(first.get())) {
+								throw new ScriptParsingException("Duplicate case", parser.reader);
+							}
+							matchedValues[valueCount++] = first.get();
+						}
+						else {
+							throw new ScriptParsingException("Case value must be constant int", parser.reader);
+						}
+						while (parser.reader.hasOperatorAfterWhitespace(",")) {
+							if (parser.nextExpression() instanceof ConstantInsnTree next && next.type() == VectorType.INT) {
+								if (valueCount == matchedValues.length) {
+									matchedValues = Arrays.copyOf(matchedValues, valueCount << 1);
+								}
+								if (!allCases.add(first.get())) {
+									throw new ScriptParsingException("Duplicate case", parser.reader);
+								}
+								matchedValues[valueCount++] = next.get();
+							}
+							else {
+								throw new ScriptParsingException("Case value must be constant int", parser.reader);
+							}
+						}
+						parser.reader.expectAfterWhitespace(')');
+						InsnTree tree = parser.nextStatement(false);
+						if (valueCount != matchedValues.length) {
+							matchedValues = Arrays.copyOf(matchedValues, valueCount);
+						}
+						cases.add(new SwitchInsnTree.Case(matchedValues, tree));
+					}
+					else if (parser.reader.hasIdentifierAfterWhitespace("default")) {
+						if (defaultCase != null) {
+							throw new ScriptParsingException("Duplicate default case", parser.reader);
+						}
+						defaultCase = parser.nextStatement(false);
+					}
+					else {
+						break;
+					}
+				}
+				parser.reader.expectAfterWhitespace('}');
+				return SwitchInsnTree.create(value, cases, defaultCase);
 			};
 		}
 	}

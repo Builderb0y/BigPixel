@@ -1,6 +1,5 @@
 package builderb0y.notgimp.sources;
 
-import com.google.gson.JsonObject;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -8,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.SaveException;
+import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.sources.LayerSource.ActiveState;
 import builderb0y.notgimp.tools.ColorPickerTool;
 import builderb0y.notgimp.tools.Tool;
@@ -26,33 +26,35 @@ public class LayerSources {
 	public ProceduralLayerSource proceduralSource = new ProceduralLayerSource(this);
 	public ManualLayerSource manualSource = new ManualLayerSource(this);
 
-	public JsonObject save() {
-		JsonObject object = new JsonObject();
-		object.add("derived", this.derivedSource.save());
-		object.add("procedural", this.proceduralSource.save());
-		object.add("manual", this.manualSource.save());
-		LayerSource source = this.getCurrentSource();
-		object.addProperty("current", switch (source) {
-			case DerivedLayerSource _ -> "derived";
-			case ProceduralLayerSource _ -> "procedural";
-			case ManualLayerSource _ -> "manual";
-			default -> throw new SaveException("Unhandled current layer source: " + source);
-		});
-		return object;
+	public JsonMap save() {
+		JsonMap map = new JsonMap();
+		map.add("tab", this.getCurrentSource().save());
+		return map;
 	}
 
-	public void load(JsonObject saveData) {
-		this.derivedSource.load(saveData.getAsJsonObject("derived"));
-		this.proceduralSource.load(saveData.getAsJsonObject("procedural"));
-		this.manualSource.load(saveData.getAsJsonObject("manual"));
-		String current = saveData.get("current").getAsString();
-		this.tabPane.getSelectionModel().select(switch (current) {
-			case "derived"    -> { this.   derivedSource.state.set(ActiveState.ACTIVE); yield this.   derivedTab; }
-			case "procedural" -> { this.proceduralSource.state.set(ActiveState.ACTIVE); yield this.proceduralTab; }
-			case "manual"     -> { this.    manualSource.state.set(ActiveState.ACTIVE); yield this.    manualTab; }
-			default -> throw new SaveException("Unknown current layer source: " + current);
-		});
-		this.getCurrentSource().redraw(false);
+	public void load(JsonMap saveData) {
+		JsonMap tab = saveData.getMap("tab");
+		String type = tab.getString("type");
+		switch (type) {
+			case "derived" -> {
+				this.derivedSource.load(tab);
+				this.derivedSource.state.set(ActiveState.ACTIVE);
+				this.tabPane.getSelectionModel().select(this.derivedTab);
+			}
+			case "procedural" -> {
+				this.proceduralSource.load(tab);
+				this.proceduralSource.state.set(ActiveState.ACTIVE);
+				this.tabPane.getSelectionModel().select(this.proceduralTab);
+			}
+			case "manual" -> {
+				this.manualSource.load(tab);
+				this.manualSource.state.set(ActiveState.ACTIVE);
+				this.tabPane.getSelectionModel().select(this.manualTab);
+			}
+			default -> {
+				throw new SaveException("Unknown current layer source: " + type);
+			}
+		}
 	}
 
 	public LayerSources(Layer layer) {
@@ -89,6 +91,7 @@ public class LayerSources {
 		this.   derivedSource.init(fromSave);
 		this.proceduralSource.init(fromSave);
 		this.    manualSource.init(fromSave);
+		this.getCurrentSource().redraw(false);
 	}
 
 	public void invalidateAll() {
