@@ -1,32 +1,38 @@
 package builderb0y.notgimp.tools;
 
-import javafx.scene.Node;
 import javafx.scene.input.MouseButton;
 
-import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.Util;
-import builderb0y.notgimp.sources.ManualLayerSource;
+import builderb0y.notgimp.OpenImage;
+import builderb0y.notgimp.tools.ColorPickerTool.ColorPickerCallback;
+import builderb0y.notgimp.tools.Tool.ToolType;
 
-public class ColorPickerTool extends Tool<Void> {
+public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 
 	public static final ToolType TYPE = new ToolType("color_picker", 1.0D, 23.0D);
 
-	public ColorPickerTool(ManualLayerSource source) {
-		super(TYPE, source);
+	public final OpenImage openImage;
+
+	public ColorPickerTool(OpenImage openImage) {
+		super(TYPE);
+		this.openImage = openImage;
 	}
 
 	@Override
 	public void mouseDown(int x, int y, MouseButton button) {
-		Layer layer = this.layer();
-		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
+		if (this.work == null) {
+			this.escape();
+			return;
+		}
+		Layer layer = this.openImage.getVisibleLayer();
 		int baseIndex = layer.image.baseIndex(x, y);
-		color.setRed  (Util.clampF(layer.image.pixels[baseIndex | HDRImage.  RED_OFFSET]));
-		color.setGreen(Util.clampF(layer.image.pixels[baseIndex | HDRImage.GREEN_OFFSET]));
-		color.setBlue (Util.clampF(layer.image.pixels[baseIndex | HDRImage. BLUE_OFFSET]));
-		color.setAlpha(Util.clampF(layer.image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]));
-		color.markDirty();
+		this.work.onColorPicked(
+			layer.image.pixels[baseIndex | HDRImage.  RED_OFFSET],
+			layer.image.pixels[baseIndex | HDRImage.GREEN_OFFSET],
+			layer.image.pixels[baseIndex | HDRImage. BLUE_OFFSET],
+			layer.image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]
+		);
 	}
 
 	@Override
@@ -46,16 +52,12 @@ public class ColorPickerTool extends Tool<Void> {
 
 	@Override
 	public void escape() {
-		this.source.currentTool.set(null);
+		this.openImage.stopPickingColor();
 	}
 
-	@Override
-	public Node getConfiguration() {
-		return null;
-	}
+	@FunctionalInterface
+	public static interface ColorPickerCallback {
 
-	@Override
-	public void updateLabelText() {
-		this.labelText.set("Color picker tool active");
+		public abstract void onColorPicked(float red, float green, float blue, float alpha);
 	}
 }

@@ -2,8 +2,11 @@ package builderb0y.notgimp;
 
 import javafx.beans.property.SimpleFloatProperty;
 import javafx.beans.value.ObservableValueBase;
+import jdk.incubator.vector.FloatVector;
 
-public class ColorHelper {
+import builderb0y.notgimp.tools.ColorPickerTool.ColorPickerCallback;
+
+public class ColorHelper implements ColorPickerCallback {
 
 	public final SimpleFloatProperty
 		red   = new SimpleFloatProperty(1.0F),
@@ -37,6 +40,15 @@ public class ColorHelper {
 		this.fullBlue  = from.fullBlue;
 	}
 
+	public FloatVector toFloatVector() {
+		float[] array = new float[4];
+		array[HDRImage.  RED_OFFSET] = this.red  .get();
+		array[HDRImage.GREEN_OFFSET] = this.green.get();
+		array[HDRImage. BLUE_OFFSET] = this.blue .get();
+		array[HDRImage.ALPHA_OFFSET] = this.alpha.get();
+		return FloatVector.fromArray(FloatVector.SPECIES_128, array, 0);
+	}
+
 	public void markDirty() {
 		this.any.fireValueChangedEvent();
 	}
@@ -63,6 +75,17 @@ public class ColorHelper {
 			case LIGHT -> this.setLight(value);
 			case ALPHA -> this.setAlpha(value);
 		}
+	}
+
+	@Override
+	public void onColorPicked(float red, float green, float blue, float alpha) {
+		this.setRGBA(
+			Util.clampF(red),
+			Util.clampF(green),
+			Util.clampF(blue),
+			Util.clampF(alpha)
+		);
+		this.markDirty();
 	}
 
 	public void setRed(float red) {

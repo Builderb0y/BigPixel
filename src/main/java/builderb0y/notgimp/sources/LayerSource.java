@@ -3,9 +3,7 @@ package builderb0y.notgimp.sources;
 import java.util.Collection;
 
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.scene.Cursor;
 import javafx.scene.Node;
-import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
@@ -50,8 +48,6 @@ public abstract class LayerSource {
 	public abstract Node getRootNode();
 
 	public abstract void redraw(boolean fromAnimation);
-
-	public abstract @Nullable Cursor getCursor();
 
 	public static enum ActiveState {
 		ACTIVE,

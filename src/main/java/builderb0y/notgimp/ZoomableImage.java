@@ -10,7 +10,6 @@ import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
 import javafx.scene.canvas.Canvas;
-import javafx.scene.control.TreeItem;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.input.MouseButton;
@@ -19,7 +18,7 @@ import javafx.scene.input.ScrollEvent;
 
 import builderb0y.notgimp.RateLimiter.PeriodicRateLimiter;
 import builderb0y.notgimp.sources.ManualLayerSource;
-import builderb0y.notgimp.tools.ColorPickerTool;
+import builderb0y.notgimp.tools.SourcelessTool;
 import builderb0y.notgimp.tools.Tool;
 import builderb0y.notgimp.tools.Tool.Selection;
 
@@ -103,15 +102,7 @@ public class ZoomableImage {
 				this.redraw();
 			}
 		});
-		this.display.getRootPane().cursorProperty().bind(
-			this
-			.openImage
-			.layerTree
-			.getSelectionModel()
-			.selectedItemProperty()
-			.flatMap((TreeItem<Layer> item) -> item.getValue().sources.manualSource.currentTool)
-			.map((Tool<?> tool) -> tool instanceof ColorPickerTool || tool.source.isSelected() ? tool.type.cursor() : null)
-		);
+		this.display.getRootPane().cursorProperty().bind(this.openImage.cursorProperty);
 		EventHandler<MouseEvent> handler = new EventHandler<>() {
 
 			public double pressX, pressY;
@@ -143,7 +134,7 @@ public class ZoomableImage {
 				}
 				else if (event.getButton() == MouseButton.PRIMARY || event.getButton() == MouseButton.SECONDARY) {
 					Layer layer = ZoomableImage.this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue();
-					Tool<?> tool = layer.sources.getCurrentTool();
+					SourcelessTool<?> tool = ZoomableImage.this.openImage.toolWithColorPicker.get();
 					if (tool != null) {
 						double zoom = ZoomableImage.this.zoom.getValue();
 						int x = (int)(Math.floor((event.getX() - ZoomableImage.this.offsetX) * zoom));
@@ -255,7 +246,7 @@ public class ZoomableImage {
 			y2 = image.height;
 		if (this.openImage.getSelectedLayer().sources.getCurrentSource() instanceof ManualLayerSource manual) {
 			Selection selection = new Selection();
-			Tool<?> tool = manual.currentTool.get();
+			Tool<?> tool = manual.toolWithoutColorPicker.get();
 			if (tool != null && tool.getSelection(selection)) {
 				x1 = selection.minX;
 				y1 = selection.minY;

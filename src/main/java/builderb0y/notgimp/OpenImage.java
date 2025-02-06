@@ -6,8 +6,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javafx.beans.binding.BooleanBinding;
+import javafx.beans.binding.ObjectBinding;
+import javafx.beans.binding.When;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ObservableObjectValue;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,6 +18,7 @@ import javafx.collections.ObservableMap;
 import javafx.event.ActionEvent;
 import javafx.geometry.Orientation;
 import javafx.geometry.Side;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTreeCell;
@@ -25,6 +29,10 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.sources.LayerSource;
+import builderb0y.notgimp.tools.ColorPickerTool;
+import builderb0y.notgimp.tools.ColorPickerTool.ColorPickerCallback;
+import builderb0y.notgimp.tools.SourcelessTool;
+import builderb0y.notgimp.tools.Tool;
 
 public class OpenImage {
 
@@ -62,11 +70,31 @@ public class OpenImage {
 	public ToggleGroup
 		showingLayer = new ToggleGroup();
 	public ObservableValue<Layer>
-		showingLayerProperty = this.showingLayer.selectedToggleProperty().map((Toggle toggle) -> (Layer)(toggle.getUserData()));
+		showingLayerProperty = this.showingLayer.selectedToggleProperty().map((Toggle toggle) -> (Layer)(toggle.getUserData())),
+		selectedLayerProperty = this.layerTree.getSelectionModel().selectedItemProperty().map(TreeItem<Layer>::getValue);
 	public SimpleBooleanProperty
 		wrap = new SimpleBooleanProperty();
 	public AnimationSource
 		animationSource = new AnimationSource(this);
+	public ColorPickerTool
+		colorPickerTool = new ColorPickerTool(this);
+	public SimpleBooleanProperty
+		usingColorPicker = new SimpleBooleanProperty();
+	public ObjectBinding<@Nullable Tool<?>>
+		toolWithoutColorPicker = (ObjectBinding<Tool<?>>)(
+			this.selectedLayerProperty.flatMap(
+				(Layer layer) -> layer.sources.toolWithoutColorPicker
+			)
+		);
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public ObservableObjectValue<@Nullable SourcelessTool<?>>
+		toolWithColorPicker = (
+		new When(this.usingColorPicker)
+		.<SourcelessTool<?>>then(this.colorPickerTool)
+		.otherwise((ObjectBinding)(this.toolWithoutColorPicker))
+	);
+	public ObservableValue<Cursor>
+		cursorProperty = this.toolWithColorPicker.map((SourcelessTool<?> tool) -> tool.type.cursor());
 
 	public JsonMap save() {
 		JsonMap root = new JsonMap();
@@ -354,5 +382,15 @@ public class OpenImage {
 			siblings.get(oldIndex).getChildren().add(0, toMove);
 		}
 		this.layerTree.getSelectionModel().select(toMove);
+	}
+
+	public void pickColor(ColorPickerCallback callback) {
+		this.colorPickerTool.work = callback;
+		this.usingColorPicker.set(true);
+	}
+
+	public void stopPickingColor() {
+		this.colorPickerTool.work = null;
+		this.usingColorPicker.set(false);
 	}
 }

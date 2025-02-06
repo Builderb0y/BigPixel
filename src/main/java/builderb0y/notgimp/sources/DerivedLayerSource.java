@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableMap;
-import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
 import javafx.scene.text.Font;
@@ -93,11 +92,6 @@ public class DerivedLayerSource extends LayerSource implements MapChangeListener
 	@Override
 	public Node getRootNode() {
 		return this.textArea;
-	}
-
-	@Override
-	public @Nullable Cursor getCursor() {
-		return null;
 	}
 
 	@Override

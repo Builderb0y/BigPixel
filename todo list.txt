@@ -7,3 +7,33 @@ scripting:
 	float(boolean)
 	user-defined methods
 make animation not draw canvas when open image tab is not selected.
+
+blend modes:
+	zero inputs:
+		zero
+		one
+	one input:
+		negate
+		invert
+		clamp
+	many inputs:
+		alpha
+		add
+		average
+		multiply
+		inverse multiply
+		min
+		max
+
+effects:
+	convolve
+	blur
+	gradient
+	un-gradient
+	normalize
+		option: per-channel or global.
+	cliff curve
+		per-channel mode (4 sliders).
+		linear mode.
+	dual cliff curve
+		extra slider for mid value.

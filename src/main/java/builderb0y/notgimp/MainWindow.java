@@ -33,7 +33,7 @@ import builderb0y.notgimp.ColorSelector.SavedColor;
 import builderb0y.notgimp.HDRImage.SaveProgress;
 import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.json.JsonReader;
-import builderb0y.notgimp.tools.Tool;
+import builderb0y.notgimp.tools.SourcelessTool;
 
 public class MainWindow {
 
@@ -234,8 +234,7 @@ public class MainWindow {
 				default -> {
 					OpenImage image = openImage;
 					if (image != null) {
-						Layer layer = image.layerTree.getSelectionModel().getSelectedItem().getValue();
-						Tool<?> tool = layer.sources.getCurrentTool();
+						SourcelessTool<?> tool = image.toolWithColorPicker.get();
 						if (tool != null) tool.keyPressed(event.getCode());
 					}
 				}

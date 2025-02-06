@@ -16,7 +16,6 @@ import javafx.scene.layout.*;
 import javafx.util.converter.FloatStringConverter;
 
 import builderb0y.notgimp.ColorHelper.ColorComponent;
-import builderb0y.notgimp.sources.ManualLayerSource;
 import builderb0y.notgimp.tools.ColorPickerTool;
 import builderb0y.notgimp.tools.Tool;
 
@@ -73,7 +72,7 @@ public class ColorSelector {
 		this.currentColor.any.addListener((Observable observable) -> {
 			OpenImage openImage = this.mainWindow.getCurrentImage();
 			if (openImage != null) {
-				Tool<?> tool = openImage.getSelectedLayer().sources.getCurrentTool();
+				Tool<?> tool = openImage.toolWithoutColorPicker.get();
 				if (tool != null) tool.colorChanged();
 			}
 		});
@@ -90,8 +89,7 @@ public class ColorSelector {
 		this.colorPickerButton.setOnAction((ActionEvent event) -> {
 			OpenImage image = this.mainWindow.getCurrentImage();
 			if (image != null) {
-				ManualLayerSource manual = image.getSelectedLayer().sources.manualSource;
-				manual.currentTool.set(manual.colorPickerTool);
+				image.pickColor(this.currentColor);
 			}
 		});
 		this.red.init();

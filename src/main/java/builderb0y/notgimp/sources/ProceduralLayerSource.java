@@ -4,10 +4,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
-import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
-import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.json.JsonArray;
@@ -61,11 +59,6 @@ public class ProceduralLayerSource extends LayerSource {
 	@Override
 	public Node getRootNode() {
 		return this.textArea;
-	}
-
-	@Override
-	public @Nullable Cursor getCursor() {
-		return null;
 	}
 
 	@Override

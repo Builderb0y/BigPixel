@@ -5,23 +5,19 @@ import javafx.scene.Cursor;
 import javafx.scene.ImageCursor;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.MouseButton;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.NotGimp;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
-public abstract class Tool<W> {
+public abstract class Tool<W> extends SourcelessTool<W> {
 
-	public final ToolType type;
 	public final ManualLayerSource source;
-	public @Nullable W work;
 	public SimpleStringProperty labelText;
 
 	public Tool(ToolType type, ManualLayerSource source) {
-		this.type = type;
+		super(type);
 		this.source = source;
 		this.labelText = new SimpleStringProperty();
 		this.updateLabelText();
@@ -31,21 +27,7 @@ public abstract class Tool<W> {
 		return this.source.sources.layer;
 	}
 
-	public abstract void mouseDown(int x, int y, MouseButton button);
-
-	public abstract void mouseDragged(int x, int y, MouseButton button);
-
-	public abstract void colorChanged();
-
-	public void keyPressed(KeyCode key) {
-		if (key == KeyCode.ENTER) {
-			this.enter();
-		}
-		else if (key == KeyCode.ESCAPE) {
-			this.escape();
-		}
-	}
-
+	@Override
 	public void enter() {
 		if (this.work != null) this.layer().history.save(this.labelText.get());
 		this.source.finishUsingTool();
@@ -53,13 +35,14 @@ public abstract class Tool<W> {
 		this.updateLabelText();
 	}
 
+	@Override
 	public void escape() {
 		if (this.work != null) {
 			this.work = null;
 			this.updateLabelText();
 		}
 		else {
-			this.source.currentTool.set(null);
+			this.source.toolWithoutColorPicker.set(null);
 		}
 		this.source.cancelToolAction();
 	}

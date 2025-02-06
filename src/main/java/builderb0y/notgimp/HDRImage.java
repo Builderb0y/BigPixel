@@ -19,6 +19,7 @@ import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
+import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.json.JsonMap;
 
@@ -139,6 +140,14 @@ public class HDRImage {
 		return packRgbaToArgb(red, green, blue, alpha);
 	}
 
+	public FloatVector getPixel(int x, int y) {
+		return FloatVector.fromArray(FloatVector.SPECIES_128, this.pixels, this.baseIndex(x, y));
+	}
+
+	public void setPixel(int x, int y, FloatVector vector) {
+		vector.intoArray(this.pixels, this.baseIndex(x, y));
+	}
+
 	public void setRgba(int x, int y, float red, float green, float blue, float alpha) {
 		int baseIndex = this.baseIndex(x, y);
 		this.pixels[baseIndex |   RED_OFFSET] = red;
@@ -157,6 +166,10 @@ public class HDRImage {
 
 	public void setColor(int x, int y, ColorHelper color) {
 		this.setRgba(x, y, color.red.get(), color.green.get(), color.blue.get(), color.alpha.get());
+	}
+
+	public void setColor(int x, int y, FloatVector color) {
+		color.intoArray(this.pixels, this.baseIndex(x, y));
 	}
 
 	public static int packRgbaToArgb(float red, float green, float blue, float alpha) {

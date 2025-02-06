@@ -5,7 +5,6 @@ import java.util.Collections;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
-import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
@@ -21,13 +20,11 @@ import builderb0y.notgimp.tools.*;
 public class ManualLayerSource extends LayerSource {
 
 	public HDRImage toollessImage;
-	public Tool<?>
-		freehandTool    = new    FreehandTool(this),
-		lineTool        = new        LineTool(this),
-		rectangleTool   = new   RectangleTool(this),
-		moveTool        = new        MoveTool(this),
-		bucketTool      = new      BucketTool(this),
-		colorPickerTool = new ColorPickerTool(this);
+	public FreehandTool   freehandTool = new    FreehandTool(this);
+	public LineTool           lineTool = new        LineTool(this);
+	public RectangleTool rectangleTool = new   RectangleTool(this);
+	public MoveTool           moveTool = new        MoveTool(this);
+	public BucketTool       bucketTool = new      BucketTool(this);
 	public GridPane
 		toolSelection = new GridPane();
 	public Button
@@ -39,7 +36,7 @@ public class ManualLayerSource extends LayerSource {
 	public BorderPane
 		toolConfig = new BorderPane();
 	public SimpleObjectProperty<@Nullable Tool<?>>
-		currentTool = new SimpleObjectProperty<>();
+		toolWithoutColorPicker = new SimpleObjectProperty<>();
 
 	@Override
 	public JsonMap save() {
@@ -62,7 +59,7 @@ public class ManualLayerSource extends LayerSource {
 		this.toolSelection.add(this.moveButton, 0, 1);
 		this.toolSelection.add(this.bucketButton, 1, 1);
 		this.toolSelection.add(this.toolConfig, 0, 2, 3, 1);
-		this.toolConfig.centerProperty().bind(this.currentTool.map(Tool::getConfiguration));
+		this.toolConfig.centerProperty().bind(this.toolWithoutColorPicker.map(Tool::getConfiguration));
 	}
 
 	public void init(boolean fromSave) {
@@ -74,7 +71,7 @@ public class ManualLayerSource extends LayerSource {
 	public Button button(Tool<?> tool) {
 		Button button = new Button();
 		button.setGraphic(new ImageView(tool.type.icon()));
-		button.setOnAction((ActionEvent event) -> this.currentTool.set(tool));
+		button.setOnAction((ActionEvent event) -> this.toolWithoutColorPicker.set(tool));
 		return button;
 	}
 
@@ -124,11 +121,5 @@ public class ManualLayerSource extends LayerSource {
 		HDRImage layerImage = this.sources.layer.image;
 		System.arraycopy(this.toollessImage.pixels, 0, layerImage.pixels, 0, layerImage.pixels.length);
 		layerImage.markDirty(fromAnimation);
-	}
-
-	@Override
-	public Cursor getCursor() {
-		Tool<?> tool = this.currentTool.get();
-		return tool != null ? tool.type.cursor() : null;
 	}
 }
