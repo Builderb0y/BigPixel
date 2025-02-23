@@ -40,17 +40,10 @@ public class HDRImage {
 		map.add("width", this.width);
 		map.add("height", this.height);
 		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream(this.pixels.length * Float.BYTES);
-			GZIPOutputStream compressor = new GZIPOutputStream(baos);
-			DataOutputStream dos = new DataOutputStream(compressor);
-			for (float pixel : this.pixels) {
-				dos.writeFloat(pixel);
-			}
-			dos.close();
-			map.add("pixels", Base64.getEncoder().encodeToString(baos.toByteArray()));
+			map.add("pixels", Base64.getEncoder().encodeToString(this.compressPixels()));
 		}
-		catch (IOException unexpected) {
-			throw new SaveException(unexpected);
+		catch (IOException exception) {
+			throw new SaveException(exception);
 		}
 		return map;
 	}
@@ -60,13 +53,7 @@ public class HDRImage {
 		try {
 			String base64Pixels = saveData.getString("pixels");
 			byte[] compressedPixels = Base64.getDecoder().decode(base64Pixels);
-			ByteArrayInputStream bais = new ByteArrayInputStream(compressedPixels);
-			GZIPInputStream decompressor = new GZIPInputStream(bais);
-			DataInputStream in = new DataInputStream(decompressor);
-			for (int index = 0, length = this.pixels.length; index < length; index++) {
-				this.pixels[index] = in.readFloat();
-			}
-			if (in.available() != 0) throw new IOException("Trailing data");
+			this.decompressPixels(compressedPixels);
 		}
 		catch (IOException exception) {
 			throw new SaveException(exception);
@@ -96,6 +83,27 @@ public class HDRImage {
 		this.height = from.height;
 		this.pixels = from.pixels.clone();
 		this.watchers = new HashSet<>();
+	}
+
+	public byte[] compressPixels() throws IOException{
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(this.pixels.length * Float.BYTES);
+		GZIPOutputStream compressor = new GZIPOutputStream(baos);
+		DataOutputStream dos = new DataOutputStream(compressor);
+		for (float pixel : this.pixels) {
+			dos.writeFloat(pixel);
+		}
+		dos.close();
+		return baos.toByteArray();
+	}
+
+	public void decompressPixels(byte[] pixels) throws IOException {
+		ByteArrayInputStream bais = new ByteArrayInputStream(pixels);
+		GZIPInputStream decompressor = new GZIPInputStream(bais);
+		DataInputStream in = new DataInputStream(decompressor);
+		for (int index = 0, length = this.pixels.length; index < length; index++) {
+			this.pixels[index] = in.readFloat();
+		}
+		if (in.available() != 0) throw new IOException("Trailing data");
 	}
 
 	public void addWatcher(HdrImageWatcher watcher) {

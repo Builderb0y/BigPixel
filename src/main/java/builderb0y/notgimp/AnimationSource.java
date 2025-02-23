@@ -65,7 +65,8 @@ public class AnimationSource {
 					this.setValue(newValue);
 				}
 			}
-		)
+		),
+		80.0D
 	);
 	public Button
 		play  = new Button("⏵"),
@@ -124,8 +125,6 @@ public class AnimationSource {
 	public AnimationSource(OpenImage openImage) {
 		this.openImage = openImage;
 		this.label.setPadding(new Insets(4.0D));
-		this.spinner.setPrefWidth(80.0D);
-		this.spinner.setEditable(true);
 		this.hbox.getChildren().addAll(this.label, this.spinner, this.play, this.pause, this.stop);
 		this.play.setOnAction((ActionEvent event) -> this.timer.play());
 		this.pause.setOnAction((ActionEvent event) -> this.timer.pause());

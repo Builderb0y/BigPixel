@@ -100,28 +100,6 @@ public class ExpressionParser<I> {
 					);
 				});
 			}
-			/*
-			switch (type.shape) {
-				case UNIT -> {}
-				case VEC2, VEC4, VEC8 -> {
-					MethodInfo model = new MethodInfo(type.holderClass(), type.componentType == ComponentType.BOOLEAN ? "laneIsSet" : "lane", int.class);
-					this.scope.environment.addIndex(type, (ExpressionParser<?> parser, InsnTree receiver, InsnTree[] params) -> {
-						InsnTree[] cast = ScriptHandlers.multiCast(params, VectorType.INT);
-						if (cast == null) return null;
-						return new InvokeInsnTree(VectorType.get(type.componentType, GroupShape.UNIT), receiver, cast, model);
-					});
-				}
-				case MAT2, MAT4, MAT8 -> {
-					VectorType unit = VectorType.get(type.componentType, GroupShape.UNIT);
-					VectorType vector = VectorType.get(type.componentType, GroupShape.VALUES[type.shape.ordinal() - 3]);
-					this.scope.environment.addStaticFunction(type, "columns",  StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "columns" ), type, Util.fill(new VectorType[type.shape.columns], vector)));
-					this.scope.environment.addStaticFunction(type, "rows",     StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "rows"    ), type, Util.fill(new VectorType[type.shape.columns], vector)));
-					this.scope.environment.addStaticFunction(type, "diagonal", StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "diagonal"), type, Util.fill(new VectorType[1], vector)));
-					this.scope.environment.addStaticFunction(type, "scalar",   StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "scalar"  ), type, Util.fill(new VectorType[1], unit)));
-					this.scope.environment.addStaticFunction(type, "fill",     StaticFunctionHandler.invoker(new MethodInfo(type.holderClass(), "fill"    ), type, Util.fill(new VectorType[1], unit)));
-				}
-			}
-			*/
 		}
 		for (UnaryOperatorWrapper operator : UnaryOperatorWrapper.VALUES) {
 			this.scope.environment.addFunction(operator.name().toLowerCase(Locale.ROOT), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
@@ -138,7 +116,7 @@ public class ExpressionParser<I> {
 				};
 			});
 		}
-		for (String name : new String[] { "dot", "lengthSquared", "length", "normalize", "mix" }) {
+		for (String name : new String[] { "dot", "lengthSquared", "length", "normalize", "mix", "unmix" }) {
 			this.scope.environment.addFunction(name, (ExpressionParser<?> parser, String name_, InsnTree[] params) -> {
 				String fullName = name_ + '_' + Arrays.stream(params).map(InsnTree::types).flatMap(Arrays::stream).map((VectorType t) -> t.name).collect(Collectors.joining("_"));
 				try {

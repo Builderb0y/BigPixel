@@ -188,7 +188,7 @@ public class OpenImage {
 		this.moveLayerDownButton.disableProperty().bind(this.layerTree.getSelectionModel().selectedItemProperty().map(this::cantMoveDown));
 		this.sourcePane.centerProperty().bind(
 			this.layerTree.getSelectionModel().selectedItemProperty().map(
-				(TreeItem<Layer> item) -> item.getValue().sources.tabPane
+				(TreeItem<Layer> item) -> item.getValue().sources.rootPane
 			)
 		);
 		this.imageDisplay.init();
@@ -257,8 +257,8 @@ public class OpenImage {
 		newLayer.item.getChildren().add(old);
 		newLayer.item.setExpanded(true);
 		this.layerTree.getSelectionModel().select(newLayer.item);
-		this.layerTree.edit(newLayer.item);
 		newLayer.init(false);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void addLayerAbove(ActionEvent event) {
@@ -269,8 +269,8 @@ public class OpenImage {
 		ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
 		children.add(children.indexOf(old), newLayer.item);
 		this.layerTree.getSelectionModel().select(newLayer.item);
-		this.layerTree.edit(newLayer.item);
 		newLayer.init(false);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void addChildLayer(ActionEvent event) {
@@ -281,8 +281,8 @@ public class OpenImage {
 		old.getChildren().addFirst(newLayer.item);
 		old.setExpanded(true);
 		this.layerTree.getSelectionModel().select(newLayer.item);
-		this.layerTree.edit(newLayer.item);
 		newLayer.init(false);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void addLayerBelow(ActionEvent event) {
@@ -293,8 +293,8 @@ public class OpenImage {
 		ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
 		children.add(children.indexOf(old) + 1, newLayer.item);
 		this.layerTree.getSelectionModel().select(newLayer.item);
-		this.layerTree.edit(newLayer.item);
 		newLayer.init(false);
+		this.layerTree.edit(newLayer.item);
 	}
 
 	public void removeLayer(ActionEvent event) {
@@ -345,7 +345,7 @@ public class OpenImage {
 			int parentIndex = grandparent.getChildren().indexOf(parent);
 			siblings.remove(oldIndex);
 			grandparent.getChildren().add(parentIndex, toMove);
-			parent.getValue().sources.invalidateAll();
+			parent.getValue().sources.invalidateStructure();
 		}
 		else {
 			int newIndex = oldIndex - 1;
@@ -375,7 +375,7 @@ public class OpenImage {
 			int parentIndex = grandparent.getChildren().indexOf(parent);
 			siblings.remove(oldIndex);
 			grandparent.getChildren().add(parentIndex + 1, toMove);
-			parent.getValue().sources.invalidateAll();
+			parent.getValue().sources.invalidateStructure();
 		}
 		else {
 			siblings.remove(oldIndex);

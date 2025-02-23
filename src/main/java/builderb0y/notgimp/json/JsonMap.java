@@ -139,6 +139,41 @@ public class JsonMap extends LinkedHashMap<@NotNull String, @NotNull JsonValue> 
 		this.add(key, new JsonString(value));
 	}
 
+	public JsonMap with(String key, boolean value) {
+		this.add(key, value);
+		return this;
+	}
+
+	public JsonMap with(String key, int value) {
+		this.add(key, value);
+		return this;
+	}
+
+	public JsonMap with(String key, long value) {
+		this.add(key, value);
+		return this;
+	}
+
+	public JsonMap with(String key, float value) {
+		this.add(key, value);
+		return this;
+	}
+
+	public JsonMap with(String key, double value) {
+		this.add(key, value);
+		return this;
+	}
+
+	public JsonMap with(String key, String value) {
+		this.add(key, value);
+		return this;
+	}
+
+	public JsonMap with(String key, JsonValue value) {
+		this.add(key, value);
+		return this;
+	}
+
 	public JsonValue put(String key, boolean value) {
 		return this.put(key, JsonBoolean.valueOf(value));
 	}

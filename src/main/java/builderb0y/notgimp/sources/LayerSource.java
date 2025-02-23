@@ -2,44 +2,38 @@ package builderb0y.notgimp.sources;
 
 import java.util.Collection;
 
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.MapChangeListener;
 import javafx.scene.Node;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.Tooltip;
 
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 
-public abstract class LayerSource {
+public abstract class LayerSource implements MapChangeListener<String, Layer> {
 
 	public LayerSources sources;
-	public ActiveStateProperty state = new ActiveStateProperty();
+	public String displayName;
 
-	public LayerSource(LayerSources sources) {
+	public LayerSource(LayerSources sources, String displayName) {
 		this.sources = sources;
-		this.state.addListener(Util.change((ActiveState oldState, ActiveState newState) -> {
-			if (newState == ActiveState.ACTIVE && oldState != ActiveState.INACTIVE) {
-				this.onInvalidated();
-			}
-		}));
+		this.displayName = displayName;
 	}
 
 	public abstract JsonMap save();
 
 	public abstract void load(JsonMap map);
 
-	public boolean isSelected() {
-		return this.sources.getCurrentSource() == this;
+	public void onSelected() {
+		this.sources.layer.openImage.layerMap.addListener(this);
+		this.invalidateStructure();
 	}
 
-	public void invalidate() {
-		switch (this.state.get()) {
-			case ACTIVE -> this.state.fireValueChangedEvent();
-			case INACTIVE -> this.state.setValue(ActiveState.INACTIVE_CHANGED);
-			case INACTIVE_CHANGED -> {}
-		}
+	public void onDeselected() {
+		this.sources.layer.openImage.layerMap.removeListener(this);
 	}
 
-	public abstract void onInvalidated();
+	public abstract void invalidateStructure();
 
 	public abstract Collection<Layer> getDependencies();
 
@@ -47,23 +41,36 @@ public abstract class LayerSource {
 
 	public abstract Node getRootNode();
 
-	public abstract void redraw(boolean fromAnimation);
-
-	public static enum ActiveState {
-		ACTIVE,
-		INACTIVE,
-		INACTIVE_CHANGED;
+	public void redraw(boolean fromAnimation) {
+		try {
+			this.doRedraw(fromAnimation);
+			this.sources.layer.item.getGraphic().setStyle(null);
+			((RadioButton)(this.sources.layer.item.getGraphic())).setTooltip(null);
+		}
+		catch (RedrawException exception) {
+			this.sources.layer.item.getGraphic().setStyle("-fx-text-fill: #FF3F3F;");
+			RadioButton graphic = (RadioButton)(this.sources.layer.item.getGraphic());
+			Tooltip tooltip = graphic.getTooltip();
+			if (tooltip != null) {
+				tooltip.setText(exception.getLocalizedMessage());
+			}
+			else {
+				graphic.setTooltip(new Tooltip(exception.getLocalizedMessage()));
+			}
+		}
 	}
 
-	public static class ActiveStateProperty extends SimpleObjectProperty<ActiveState> {
+	public abstract void doRedraw(boolean fromAnimation) throws RedrawException;
 
-		public ActiveStateProperty() {
-			super(ActiveState.INACTIVE);
-		}
+	@Override
+	public String toString() {
+		return this.displayName;
+	}
 
-		@Override
-		public void fireValueChangedEvent() {
-			super.fireValueChangedEvent();
+	public static class RedrawException extends Exception {
+
+		public RedrawException(String reason) {
+			super(reason, null, false, false);
 		}
 	}
 }

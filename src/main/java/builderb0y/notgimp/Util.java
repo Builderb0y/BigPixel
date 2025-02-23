@@ -13,10 +13,14 @@ import javafx.scene.input.ScrollEvent;
 
 public class Util {
 
-	public static <T> Spinner<T> setupSpinner(Spinner<T> spinner) {
+	public static <T> Spinner<T> setupSpinner(Spinner<T> spinner, double width) {
+		spinner.setEditable(true);
+		spinner.setPrefWidth(width);
 		spinner.setOnScroll((ScrollEvent event) -> {
-			if (event.getDeltaY() > 0.0D) spinner.increment();
-			else if (event.getDeltaY() < 0.0D) spinner.decrement();
+			if (spinner.isEditable()) {
+				if (event.getDeltaY() > 0.0D) spinner.increment();
+				else if (event.getDeltaY() < 0.0D) spinner.decrement();
+			}
 		});
 		return spinner;
 	}

@@ -32,7 +32,7 @@ public class ProceduralLayerSource extends LayerSource {
 	}
 
 	public ProceduralLayerSource(LayerSources sources) {
-		super(sources);
+		super(sources, "Procedural");
 	}
 
 	public void init(boolean fromSave) {}
@@ -52,7 +52,12 @@ public class ProceduralLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void onInvalidated() {
+	public void onChanged(Change<? extends String, ? extends Layer> change) {
+		//no-op.
+	}
+
+	@Override
+	public void invalidateStructure() {
 
 	}
 
@@ -62,7 +67,7 @@ public class ProceduralLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void redraw(boolean markDirty) {
+	public void doRedraw(boolean markDirty) throws RedrawException {
 
 	}
 }

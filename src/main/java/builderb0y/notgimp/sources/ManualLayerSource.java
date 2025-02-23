@@ -20,11 +20,11 @@ import builderb0y.notgimp.tools.*;
 public class ManualLayerSource extends LayerSource {
 
 	public HDRImage toollessImage;
-	public FreehandTool   freehandTool = new    FreehandTool(this);
-	public LineTool           lineTool = new        LineTool(this);
-	public RectangleTool rectangleTool = new   RectangleTool(this);
-	public MoveTool           moveTool = new        MoveTool(this);
-	public BucketTool       bucketTool = new      BucketTool(this);
+	public FreehandTool   freehandTool = new  FreehandTool(this);
+	public LineTool           lineTool = new      LineTool(this);
+	public RectangleTool rectangleTool = new RectangleTool(this);
+	public MoveTool           moveTool = new      MoveTool(this);
+	public BucketTool       bucketTool = new    BucketTool(this);
 	public GridPane
 		toolSelection = new GridPane();
 	public Button
@@ -41,7 +41,7 @@ public class ManualLayerSource extends LayerSource {
 	@Override
 	public JsonMap save() {
 		JsonMap map = new JsonMap();
-		map.add("type", "derived");
+		map.add("type", "manual");
 		map.add("image", this.toollessImage.save());
 		return map;
 	}
@@ -52,7 +52,7 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	public ManualLayerSource(LayerSources sources) {
-		super(sources);
+		super(sources, "Manual");
 		this.toolSelection.add(this.rectButton, 0, 0);
 		this.toolSelection.add(this.lineButton, 1, 0);
 		this.toolSelection.add(this.freehandButton, 2, 0);
@@ -93,11 +93,29 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	public void copyFrom(ManualLayerSource that) {
+		if (this.toollessImage == null) {
+			this.toollessImage = new HDRImage(this.sources.layer.image);
+		}
 		System.arraycopy(that.toollessImage.pixels, 0, this.toollessImage.pixels, 0, that.toollessImage.pixels.length);
 	}
 
 	@Override
-	public void onInvalidated() {
+	public void onDeselected() {
+
+	}
+
+	@Override
+	public void onSelected() {
+
+	}
+
+	@Override
+	public void invalidateStructure() {
+
+	}
+
+	@Override
+	public void onChanged(Change<? extends String, ? extends Layer> change) {
 
 	}
 
@@ -117,7 +135,7 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void redraw(boolean fromAnimation) {
+	public void doRedraw(boolean fromAnimation) throws RedrawException {
 		HDRImage layerImage = this.sources.layer.image;
 		System.arraycopy(this.toollessImage.pixels, 0, layerImage.pixels, 0, layerImage.pixels.length);
 		layerImage.markDirty(fromAnimation);

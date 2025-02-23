@@ -73,10 +73,31 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	}
 
 	public void spread() {
+		this.work.endingPoints.clear();
+		this.work.enqueue(this.work.start.origin, 1.0F);
+		this.doSpread();
+	}
+
+	public void spreadAll() {
 		Work work = this.work;
 		work.endingPoints.clear();
 		HDRImage image = this.source.toollessImage;
-		work.enqueue(work.start.origin, 1.0F);
+		FloatVector startingColor = work.start.color;
+		for (int y = 0; y < image.height; y++) {
+			for (int x = 0; x < image.width; x++) {
+				Point point = new Point(x, y);
+				FloatVector currentPixel = image.getPixel(x, y);
+				if (currentPixel.sub(startingColor).abs().compare(VectorOperators.LE, 1.0F / 512.0F).allTrue()) {
+					work.enqueue(point, 1.0F);
+				}
+			}
+		}
+		this.doSpread();
+	}
+
+	public void doSpread() {
+		Work work = this.work;
+		HDRImage image = this.source.toollessImage;
 		float threshold = work.start.borderColor != null ? work.start.borderColor.sub(work.start.color).abs().reduceLanes(VectorOperators.MAX) : 1.0F / 512.0F;
 		boolean blend = this.blend.isSelected();
 		while (!work.spreadingPoints.isEmpty()) {
@@ -99,31 +120,6 @@ public class BucketTool extends Tool<BucketTool.Work> {
 						if (adjacentColor.sub(work.start.color).abs().compare(VectorOperators.LE, threshold).allTrue()) {
 							work.enqueue(adjacentPoint, 1.0F);
 						}
-					}
-				}
-			}
-		}
-	}
-
-	public void spreadAll() {
-		Work work = this.work;
-		work.endingPoints.clear();
-		HDRImage image = this.source.toollessImage;
-		float threshold = work.start.borderColor != null ? work.start.borderColor.sub(work.start.color).abs().reduceLanes(VectorOperators.MAX) : 1.0F / 512.0F;
-		boolean blend = this.blend.isSelected();
-		for (int y = 0; y < image.height; y++) {
-			for (int x = 0; x < image.width; x++) {
-				Point point = new Point(x, y);
-				FloatVector currentPixel = image.getPixel(x, y);
-				if (blend && work.start.borderColor != null && !work.start.color.equals(work.start.borderColor)) {
-					float fraction = UtilityOperations.projectLineFrac_float4_float4_float4(work.start.borderColor, work.start.color, currentPixel);
-					if (fraction >= 1.0F / 512.0F && fraction < 1.0F + 1.0F / 512.0F) {
-						work.endingPoints.put(point, fraction);
-					}
-				}
-				else {
-					if (currentPixel.sub(work.start.color).abs().compare(VectorOperators.LE, threshold).allTrue()) {
-						work.endingPoints.put(point, 1.0F);
 					}
 				}
 			}

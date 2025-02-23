@@ -30,7 +30,7 @@ import builderb0y.notgimp.scripting.types.VectorOperations;
 import builderb0y.notgimp.scripting.types.VectorType;
 import builderb0y.notgimp.scripting.types.VectorType.Vec;
 
-public class DerivedLayerSource extends LayerSource implements MapChangeListener<String, Layer> {
+public class DerivedLayerSource extends LayerSource {
 
 	public TextArea textArea = new TextArea();
 	public RateLimiter recompiler = new NonPeriodicRateLimiter(500L, () -> this.doRecompile(true));
@@ -66,14 +66,12 @@ public class DerivedLayerSource extends LayerSource implements MapChangeListener
 	}
 
 	public DerivedLayerSource(LayerSources sources) {
-		super(sources);
+		super(sources, "Derived");
 		this.textArea.setFont(Font.font("monospace"));
 		this.textArea.textProperty().addListener(Util.change(this::recompile));
 	}
 
-	public void init(boolean fromSave) {
-		this.sources.layer.openImage.layerMap.addListener(this);
-	}
+	public void init(boolean fromSave) {}
 
 	public void copyFrom(DerivedLayerSource that) {
 		this.textArea.setText(that.textArea.getText());
@@ -104,14 +102,21 @@ public class DerivedLayerSource extends LayerSource implements MapChangeListener
 		}
 		else {
 			if (this.script == null) {
-				this.invalidate();
+				this.recompile();
 			}
 		}
 	}
 
 	@Override
-	public void onInvalidated() {
-		this.doRecompile(true);
+	public void onDeselected() {
+		super.onDeselected();
+		this.script = null;
+		this.setWatching(Collections.emptyMap(), false);
+	}
+
+	@Override
+	public void invalidateStructure() {
+		this.recompile();
 	}
 
 	public void setWatching(Map<String, Layer> watching, boolean animated) {
@@ -126,8 +131,8 @@ public class DerivedLayerSource extends LayerSource implements MapChangeListener
 	}
 
 	@Override
-	public void redraw(boolean fromAnimation) {
-		if (this.script == null) return;
+	public void doRedraw(boolean fromAnimation) throws RedrawException {
+		if (this.script == null) throw new RedrawException("Script failed to compile");
 		AnimationSource animation = this.sources.layer.openImage.animationSource;
 		HDRImage image = this.sources.layer.image;
 		int width = image.width;

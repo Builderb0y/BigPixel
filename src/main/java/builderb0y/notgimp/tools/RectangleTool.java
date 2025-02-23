@@ -18,7 +18,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 
 	public RectangleTool(ManualLayerSource source) {
 		super(TYPE, source);
-		this.thickness = Util.setupSpinner(new Spinner<>(0, Integer.MAX_VALUE, 1));
+		this.thickness = Util.setupSpinner(new Spinner<>(0, Integer.MAX_VALUE, 1), 64);
 		this.thickness.valueProperty().addListener(
 			(ObservableValue<? extends Integer> observable, Integer oldValue, Integer newValue) -> {
 				if (this.work != null) {

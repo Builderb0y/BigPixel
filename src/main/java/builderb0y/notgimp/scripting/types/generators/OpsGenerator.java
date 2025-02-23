@@ -590,6 +590,30 @@ public class OpsGenerator {
 				else {
 					file.append("(b - a) * f + a; }\n");
 				}
+
+				file
+				.append("\tpublic static ")
+				.append(typeName(primary))
+				.append(" unmix_")
+				.append(primary.name)
+				.append('_')
+				.append(primary.name)
+				.append('_')
+				.append(primary.name)
+				.append('(')
+				.append(typeName(primary))
+				.append(" a, ")
+				.append(typeName(primary))
+				.append(" b, ")
+				.append(typeName(primary))
+				.append(" f) { return ");
+
+				if (primary.shape != GroupShape.UNIT) {
+					file.append("f.sub(a).div(b.sub(a)); }\n");
+				}
+				else {
+					file.append("(f - a) / (b - a); }\n");
+				}
 			}
 			if (newline) file.append('\n');
 		}

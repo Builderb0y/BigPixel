@@ -1,5 +1,7 @@
 package builderb0y.notgimp;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.TreeSet;
 
 import javafx.beans.property.SimpleObjectProperty;
@@ -75,7 +77,10 @@ public class History implements Comparable<History> {
 		while (currentMemory > MAX_MEMORY) {
 			History history = ALL_HISTORIES.removeFirst();
 			System.out.println("Removing oldest history entry from layer " + history.layer.name.get() + " to free up memory.");
+			//todo; this will NPE if history is empty.
 			history.removeEntry(history.oldestEntry);
+			//todo: shouldn't history be re-added to ALL_HISTORIES?
+			//	but if an empty history was removed, we will infinite loop.
 		}
 		Entry next = new Entry(name, this.layer.image);
 		Entry current = this.currentEntry.get();
@@ -94,7 +99,7 @@ public class History implements Comparable<History> {
 		else this.oldestEntry = entry.next;
 		entry.prev = null;
 		entry.next = null;
-		currentMemory -= ((long)(entry.image.pixels.length)) * ((long)(Float.BYTES));
+		currentMemory -= entry.pixels.length;
 	}
 
 	public void clear() {
@@ -105,7 +110,7 @@ public class History implements Comparable<History> {
 				entry.next = null;
 				next.prev = null;
 			}
-			currentMemory -= ((long)(entry.image.pixels.length)) * ((long)(Float.BYTES));
+			currentMemory -= entry.pixels.length;
 			entry = next;
 		}
 		this.oldestEntry = null;
@@ -122,16 +127,26 @@ public class History implements Comparable<History> {
 	public static class Entry {
 
 		public String name;
-		public HDRImage image;
+		public byte[] pixels;
 		public @Nullable Entry prev, next;
 
 		public Entry(String name, HDRImage image) {
 			this.name = name;
-			this.image = new HDRImage(image);
+			try {
+				this.pixels = image.compressPixels();
+			}
+			catch (IOException exception) {
+				throw new UncheckedIOException(exception);
+			}
 		}
 
 		public void restore(HDRImage image) {
-			System.arraycopy(this.image.pixels, 0, image.pixels, 0, image.pixels.length);
+			try {
+				image.decompressPixels(this.pixels);
+			}
+			catch (IOException exception) {
+				throw new UncheckedIOException(exception);
+			}
 			image.markDirty(false);
 		}
 

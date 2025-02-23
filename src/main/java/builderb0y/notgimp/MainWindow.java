@@ -273,9 +273,9 @@ public class MainWindow {
 		Dialog<ButtonType> dialog = new Dialog<>();
 		dialog.initOwner(this.stage);
 		dialog.setTitle("New image");
-		Spinner<Integer> width = Util.setupSpinner(new Spinner<>(1, 32767, 16));
+		Spinner<Integer> width = Util.setupSpinner(new Spinner<>(1, 32767, 16), 80);
 		width.setEditable(true);
-		Spinner<Integer> height = Util.setupSpinner(new Spinner<>(1, 32767, 16));
+		Spinner<Integer> height = Util.setupSpinner(new Spinner<>(1, 32767, 16), 80);
 		height.setEditable(true);
 		Label widthLabel = new Label("Width: ");
 		Label heightLabel = new Label("Height: ");
@@ -302,6 +302,7 @@ public class MainWindow {
 			new ExtensionFilter("NotGimp files", "*.png", "*.jpg", "*.jpeg", "*.json"),
 			new ExtensionFilter("All files", "*.*")
 		);
+		fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
 		File file = fileChooser.showOpenDialog(this.stage);
 		if (file != null) {
 			this.doOpen(file);
@@ -351,6 +352,9 @@ public class MainWindow {
 		if (openImage == null) return;
 		FileChooser fileChooser = new FileChooser();
 		fileChooser.getExtensionFilters().add(new ExtensionFilter("JSON files", "*.json"));
+		if (openImage.file.get() != null) {
+			fileChooser.setInitialDirectory(openImage.file.get().getParentFile());
+		}
 		File file = fileChooser.showSaveDialog(this.stage);
 		if (file == null) {
 			return;
@@ -405,6 +409,9 @@ public class MainWindow {
 		CompletableFuture<byte[]> future = CompletableFuture.supplyAsync(() -> HDRImage.toPngByteArray(bufferedImage, progress));
 		FileChooser fileChooser = new FileChooser();
 		fileChooser.getExtensionFilters().add(new ExtensionFilter("PNG files", "*.png"));
+		if (openImage.file.get() != null) {
+			fileChooser.setInitialDirectory(openImage.file.get().getParentFile());
+		}
 		File file = fileChooser.showSaveDialog(this.stage);
 		if (file == null) {
 			progress.cancel();

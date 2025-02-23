@@ -18,7 +18,7 @@ public class LineTool extends Tool<LineTool.Work> {
 
 	public LineTool(ManualLayerSource source) {
 		super(TYPE, source);
-		this.radius = Util.setupSpinner(new Spinner<>(0.0D, Double.MAX_VALUE, 0.0D, 0.5D));
+		this.radius = Util.setupSpinner(new Spinner<>(0.0D, Double.MAX_VALUE, 0.0D, 0.5D), 80);
 		this.radius.valueProperty().addListener(
 			(ObservableValue<? extends Double> observable, Double oldValue, Double newValue) -> {
 				if (this.work != null) {

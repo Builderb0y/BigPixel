@@ -144,6 +144,35 @@ public class JsonArray extends ArrayList<@NotNull JsonValue> implements JsonValu
 		this.add(new JsonString(value));
 	}
 
+	public JsonArray with(JsonValue value) {
+		this.add(value);
+		return this;
+	}
+
+	public JsonArray with(boolean value) {
+		return this.with(JsonBoolean.valueOf(value));
+	}
+
+	public JsonArray with(int value) {
+		return this.with(new JsonFixedPoint(value));
+	}
+
+	public JsonArray with(long value) {
+		return this.with(new JsonFixedPoint(value));
+	}
+
+	public JsonArray with(float value) {
+		return this.with(new JsonFloatingPoint(value));
+	}
+
+	public JsonArray with(double value) {
+		return this.with(new JsonFloatingPoint(value));
+	}
+
+	public JsonArray with(String value) {
+		return this.with(new JsonString(value));
+	}
+
 	@Override
 	public void write(Appendable appendable, int indentation) throws IOException {
 		if (this.isEmpty()) {

@@ -106,7 +106,6 @@ public class Layer {
 		showing.setSelected(true);
 		this.item.setGraphic(showing);
 
-		this.sources.init(fromSave);
 		this.history.init(fromSave);
 
 		if (fromSave) {
@@ -114,6 +113,8 @@ public class Layer {
 				child.getValue().init(true);
 			}
 		}
+
+		this.sources.init(fromSave);
 	}
 
 	public void setName(String name) {
