@@ -26,7 +26,6 @@ public class BucketTool extends Tool<BucketTool.Work> {
 
 	public static final ToolType TYPE = new ToolType("bucket", 6.0D, 24.0D);
 	public static final short OFFSETS = 0b0001_0011_0100_1100;
-	public static final VectorMask<Float> RGB_MASK = VectorMask.fromValues(FloatVector.SPECIES_128, true, true, true, false);
 
 	public CheckBox fillAll = new CheckBox("Fill all");
 	public CheckBox blend   = new CheckBox("Blend");
@@ -59,7 +58,6 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	@Override
 	public void mouseDragged(int x, int y, MouseButton button) {
 		if (this.work != null && this.work.start != null) {
-			this.source.beforeToolChanged();
 			this.work.start = this.work.start.withBorder(this.source.toollessImage.getPixel(x, y));
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
@@ -68,7 +66,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	public void spreadAutoAndRedraw(boolean all) {
 		if (all) this.spreadAll();
 		else this.spread();
-		this.redraw();
+		this.requestRedraw();
 		this.updateLabelText();
 	}
 
@@ -128,13 +126,13 @@ public class BucketTool extends Tool<BucketTool.Work> {
 
 	@Override
 	public void colorChanged() {
-		this.redraw();
+		this.requestRedraw();
 	}
 
+	@Override
 	public void redraw() {
 		Work work = this.work;
 		if (work == null || work.endingPoints.isEmpty()) return;
-		this.source.beforeToolChanged();
 		Layer layer = this.layer();
 		FloatVector to = layer.openImage.mainWindow.colorPicker.currentColor.toFloatVector();
 		FloatVector from = this.work.start.borderColor;
@@ -142,7 +140,6 @@ public class BucketTool extends Tool<BucketTool.Work> {
 		for (Map.Entry<Point, Float> entry : work.endingPoints.entrySet()) {
 			layer.image.setColor(entry.getKey().x, entry.getKey().y, VectorOperations.mix_float3_float3_float(from, to, entry.getValue()));
 		}
-		layer.image.markDirty(false);
 	}
 
 	@Override

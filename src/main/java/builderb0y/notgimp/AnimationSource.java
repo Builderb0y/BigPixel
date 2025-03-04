@@ -14,6 +14,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory;
+import javafx.scene.control.TreeItem;
 import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
@@ -118,7 +119,7 @@ public class AnimationSource {
 			int nextFrame = AnimationSource.this.frame.get() + 1;
 			if (nextFrame >= AnimationSource.this.frames.get()) nextFrame = 0;
 			AnimationSource.this.frame.set(nextFrame);
-			AnimationSource.this.openImage.tickAnimation();
+			AnimationSource.this.tickAnimation();
 		}
 	};
 
@@ -132,7 +133,7 @@ public class AnimationSource {
 			this.timer.stop();
 			this.timer.jumpTo(Duration.ZERO);
 			this.frame.set(0);
-			this.openImage.tickAnimation();
+			this.tickAnimation();
 		});
 	}
 
@@ -144,5 +145,23 @@ public class AnimationSource {
 
 	public void load(JsonMap map) {
 		this.spinner.getValueFactory().setValue(map.getInt("frames"));
+	}
+
+	public void tickAnimation() {
+		if (this.recursiveTickAnimation(this.openImage.layerTree.getRoot())) {
+			this.openImage.requestRedraw();
+		}
+	}
+
+	public boolean recursiveTickAnimation(TreeItem<Layer> item) {
+		boolean anyChanged = false;
+		for (TreeItem<Layer> child : item.getChildren()) {
+			anyChanged |= this.recursiveTickAnimation(child);
+		}
+		if (item.getValue().sources.getCurrentSource().isAnimated()) {
+			item.getValue().needsRedraw = true;
+			anyChanged = true;
+		}
+		return anyChanged;
 	}
 }

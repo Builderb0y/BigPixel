@@ -59,7 +59,6 @@ public class ZoomableImage {
 	public ObservableValue<Double> zoom = this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]);
 	public ChangeListener<Number> centerer;
 	public RateLimiter redrawer;
-	public HdrImageWatcher watcher = (HDRImage image, boolean fromAnimation) -> this.redraw();
 
 	public ZoomableImage(OpenImage openImage) {
 		this.openImage = openImage;
@@ -72,13 +71,9 @@ public class ZoomableImage {
 		this.display.canvas. widthProperty().addListener(this.centerer);
 		this.display.canvas.heightProperty().addListener(this.centerer);
 		Canvas canvas = this.display.canvas;
-		this.openImage.wrap.addListener(Util.change(this::redraw));
-		this.openImage.showingLayerProperty.addListener(Util.change((Layer oldLayer, Layer newLayer) -> {
-			oldLayer.image.removeWatcher(this.watcher);
-			newLayer.image.addWatcher(this.watcher);
-			this.redraw();
-		}));
-		this.openImage.showingLayerProperty.getValue().image.addWatcher(this.watcher);
+		ChangeListener<Object> redrawer = Util.change(this::redraw);
+		this.openImage.wrap.addListener(redrawer);
+		this.openImage.showingLayerProperty.addListener(redrawer);
 		canvas.setOnScroll((ScrollEvent event) -> {
 			int oldZoomIndex = this.zoomIndex.get();
 			int newZoomIndex;

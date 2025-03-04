@@ -2,6 +2,7 @@ package builderb0y.notgimp;
 
 import java.util.stream.IntStream;
 
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TreeItem;
@@ -29,6 +30,8 @@ public class Layer {
 	public ImageView thumbnailView;
 	public LayerSources sources;
 	public History history;
+	public boolean needsRedraw = true;
+	public SimpleObjectProperty<Throwable> redrawException = new SimpleObjectProperty<>();
 
 	public JsonMap save() {
 		JsonMap map = new JsonMap();
@@ -95,8 +98,6 @@ public class Layer {
 			this.thumbnailView.setFitHeight(32.0D);
 		}
 		this.thumbnailView.setPreserveRatio(true);
-		this.redrawThumbnail();
-		this.image.addWatcher((HDRImage image, boolean fromAnimation) -> this.redrawThumbnail());
 
 		RadioButton showing = new RadioButton();
 		showing.setGraphic(this.thumbnailView);
@@ -133,6 +134,11 @@ public class Layer {
 		}
 		this.name.set(name);
 		this.openImage.layerMap.put(name, this);
+	}
+
+	public void requestRedraw() {
+		this.needsRedraw = true;
+		this.openImage.requestRedraw();
 	}
 
 	public FloatVector getPixelWrapped(int x, int y) {

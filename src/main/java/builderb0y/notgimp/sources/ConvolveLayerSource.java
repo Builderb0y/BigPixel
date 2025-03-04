@@ -79,7 +79,7 @@ public class ConvolveLayerSource extends EffectLayerSource {
 	public void init(boolean fromSave) {
 		ChangeListener<Object> listener = Util.change(() -> {
 			this.layout();
-			this.redraw(false);
+			this.requestRedraw();
 		});
 		this.shape.valueProperty().addListener(listener);
 		this.weight.valueProperty().addListener(listener);
@@ -203,7 +203,7 @@ public class ConvolveLayerSource extends EffectLayerSource {
 		});
 		textField.getTextFormatter().valueProperty().addListener(Util.change(() -> {
 			if (textField.isEditable()) {
-				this.redraw(false);
+				this.requestRedraw();
 			}
 		}));
 		return textField;
@@ -218,7 +218,7 @@ public class ConvolveLayerSource extends EffectLayerSource {
 	}
 
 	@Override
-	public void doRedraw(boolean fromAnimation) throws RedrawException {
+	public void doRedraw() throws RedrawException {
 		if (this.watching.size() != 1) {
 			throw new RedrawException("Expected exactly 1 child layer");
 		}
@@ -322,7 +322,6 @@ public class ConvolveLayerSource extends EffectLayerSource {
 				}
 			}
 		}
-		destination.markDirty(fromAnimation);
 	}
 
 	public static int concentricPos(int imageR, int r, int position, int sideLength, boolean even) {

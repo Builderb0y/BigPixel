@@ -47,7 +47,7 @@ public class InvertLayerSource extends EffectLayerSource {
 		this.blue.setSelected(true);
 		this.alpha.setSelected(false);
 		this.channels.getChildren().addAll(this.red, this.green, this.blue, this.alpha);
-		ChangeListener<Boolean> redrawer = Util.change(() -> this.redraw(false));
+		ChangeListener<Boolean> redrawer = Util.change(this::requestRedraw);
 		this.red  .selectedProperty().addListener(redrawer);
 		this.green.selectedProperty().addListener(redrawer);
 		this.blue .selectedProperty().addListener(redrawer);
@@ -60,7 +60,7 @@ public class InvertLayerSource extends EffectLayerSource {
 	}
 
 	@Override
-	public void doRedraw(boolean fromAnimation) throws RedrawException {
+	public void doRedraw() throws RedrawException {
 		if (this.watching.size() != 1) {
 			throw new RedrawException("Expected exactly one child layer");
 		}
@@ -76,7 +76,6 @@ public class InvertLayerSource extends EffectLayerSource {
 			FloatVector pixel = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
 			pixel.blend(pixel.broadcast(1.0F).sub(pixel), mask).intoArray(destination.pixels, index);
 		}
-		destination.markDirty(fromAnimation);
 	}
 
 	public void copyFrom(InvertLayerSource from) {

@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableMap;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
@@ -16,7 +15,6 @@ import jdk.incubator.vector.IntVector;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.*;
-import builderb0y.notgimp.HDRImage.HdrImageWatcher;
 import builderb0y.notgimp.RateLimiter.NonPeriodicRateLimiter;
 import builderb0y.notgimp.json.JsonArray;
 import builderb0y.notgimp.json.JsonMap;
@@ -37,11 +35,6 @@ public class DerivedLayerSource extends LayerSource {
 	public @Nullable DerivedImageScript script;
 	public Map<String, Layer> watching = Collections.emptyMap();
 	public boolean isAnimated;
-	public HdrImageWatcher imageWatcher = (HDRImage image, boolean fromAnimation) -> {
-		//if this change was triggered by an animation,
-		//redraw() will be called automatically later.
-		if (!fromAnimation) this.redraw(false);
-	};
 	public boolean loading;
 
 	@Override
@@ -120,18 +113,12 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	public void setWatching(Map<String, Layer> watching, boolean animated) {
-		for (Layer layer : this.watching.values()) {
-			layer.image.removeWatcher(this.imageWatcher);
-		}
-		for (Layer layer : watching.values()) {
-			layer.image.addWatcher(this.imageWatcher);
-		}
 		this.watching = watching;
 		this.isAnimated = animated;
 	}
 
 	@Override
-	public void doRedraw(boolean fromAnimation) throws RedrawException {
+	public void doRedraw() throws RedrawException {
 		if (this.script == null) throw new RedrawException("Script failed to compile");
 		AnimationSource animation = this.sources.layer.openImage.animationSource;
 		HDRImage image = this.sources.layer.image;
@@ -155,7 +142,6 @@ public class DerivedLayerSource extends LayerSource {
 				.intoArray(image.pixels, image.baseIndex(x, y));
 			}
 		}
-		image.markDirty(fromAnimation);
 	}
 
 	public void recompile() {
@@ -187,12 +173,14 @@ public class DerivedLayerSource extends LayerSource {
 				.parse(layerMap)
 			);
 			this.setWatching(parser.usedLayers.keySet().stream().collect(Collectors.toMap(Function.identity(), layerMap::get)), animationTracer.used);
-			if (redraw) this.redraw(false);
+			if (redraw) this.requestRedraw();
+			this.sources.layer.redrawException.set(null);
 		}
 		catch (Throwable throwable) {
 			this.script = null;
 			this.setWatching(Collections.emptyMap(), false);
 			throwable.printStackTrace();
+			this.sources.layer.redrawException.set(throwable);
 		}
 	}
 

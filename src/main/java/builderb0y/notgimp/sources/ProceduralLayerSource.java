@@ -67,7 +67,7 @@ public class ProceduralLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void doRedraw(boolean markDirty) throws RedrawException {
+	public void doRedraw() throws RedrawException {
 
 	}
 }

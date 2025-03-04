@@ -37,15 +37,12 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 		if (x >= 0 && x < layer.image.width && y >= 0 && y < layer.image.height) {
 			if (button == MouseButton.PRIMARY) {
 				this.work.points.add(new Point(x, y));
-				layer.image.setColor(x, y, layer.openImage.mainWindow.colorPicker.currentColor);
-				layer.image.markDirty(false);
+				layer.requestRedraw();
 				this.updateLabelText();
 			}
 			else if (button == MouseButton.SECONDARY) {
 				this.work.points.remove(new Point(x, y));
-				int index = layer.image.baseIndex(x, y);
-				System.arraycopy(layer.sources.manualSource.toollessImage.pixels, index, layer.image.pixels, index, 4);
-				layer.image.markDirty(false);
+				layer.requestRedraw();
 				this.updateLabelText();
 			}
 		}
@@ -53,18 +50,18 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 
 	@Override
 	public void colorChanged() {
-		if (this.work != null) this.redraw();
+		if (this.work != null) this.requestRedraw();
 	}
 
+	@Override
 	public void redraw() {
 		Work work = this.work;
-		this.source.beforeToolChanged();
+		if (work == null) return;
 		Layer layer = this.layer();
 		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
 		for (Point point : work.points) {
 			layer.image.setColor(point.x, point.y, color);
 		}
-		layer.image.markDirty(false);
 	}
 
 	@Override

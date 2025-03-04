@@ -103,7 +103,6 @@ public class LayerSources {
 		this. normalizeSource.init(fromSave);
 		this.   derivedSource.init(fromSave);
 		this.proceduralSource.init(fromSave);
-		this.getCurrentSource().redraw(false);
 	}
 
 	public void invalidateStructure() {

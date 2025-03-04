@@ -47,6 +47,12 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 		this.source.cancelToolAction();
 	}
 
+	public abstract void redraw();
+
+	public void requestRedraw() {
+		this.layer().requestRedraw();
+	}
+
 	public boolean getSelection(Selection selection) {
 		return false;
 	}

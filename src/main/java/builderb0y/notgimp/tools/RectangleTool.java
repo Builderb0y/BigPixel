@@ -20,11 +20,11 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 		super(TYPE, source);
 		this.thickness = Util.setupSpinner(new Spinner<>(0, Integer.MAX_VALUE, 1), 64);
 		this.thickness.valueProperty().addListener(
-			(ObservableValue<? extends Integer> observable, Integer oldValue, Integer newValue) -> {
+			Util.change(() -> {
 				if (this.work != null) {
-					this.redraw();
+					this.requestRedraw();
 				}
-			}
+			})
 		);
 	}
 
@@ -51,7 +51,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 			this.source.beginUsingTool();
 			this.work = new Work(x, y);
 		}
-		this.redraw();
+		this.requestRedraw();
 	}
 
 	@Override
@@ -76,18 +76,19 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 			}
 			case OUTSIDE -> throw new IllegalStateException(work.moving.toString());
 		}
-		this.redraw();
+		this.requestRedraw();
 	}
 
 	@Override
 	public void colorChanged() {
-		if (this.work != null) this.redraw();
+		if (this.work != null) this.requestRedraw();
 	}
 
+	@Override
 	public void redraw() {
 		Work work = this.work;
+		if (work == null) return;
 		Layer layer = this.layer();
-		this.source.beforeToolChanged();
 		int
 			thickness = this.thickness.getValue(),
 			width = layer.image.width,
@@ -121,7 +122,6 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 				}
 			}
 		}
-		layer.image.markDirty(false);
 		this.updateLabelText();
 	}
 

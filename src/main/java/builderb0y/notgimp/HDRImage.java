@@ -33,7 +33,6 @@ public class HDRImage {
 
 	public int width, height;
 	public float[] pixels;
-	public Set<HdrImageWatcher> watchers;
 
 	public JsonMap save() {
 		JsonMap map = new JsonMap();
@@ -64,7 +63,6 @@ public class HDRImage {
 		this.width = width;
 		this.height = height;
 		this.pixels = new float[width * height * 4];
-		this.watchers = new HashSet<>();
 	}
 
 	public HDRImage(Image image) {
@@ -82,7 +80,6 @@ public class HDRImage {
 		this.width = from.width;
 		this.height = from.height;
 		this.pixels = from.pixels.clone();
-		this.watchers = new HashSet<>();
 	}
 
 	public byte[] compressPixels() throws IOException{
@@ -104,20 +101,6 @@ public class HDRImage {
 			this.pixels[index] = in.readFloat();
 		}
 		if (in.available() != 0) throw new IOException("Trailing data");
-	}
-
-	public void addWatcher(HdrImageWatcher watcher) {
-		this.watchers.add(watcher);
-	}
-
-	public void removeWatcher(HdrImageWatcher watcher) {
-		this.watchers.remove(watcher);
-	}
-
-	public void markDirty(boolean fromAnimation) {
-		for (HdrImageWatcher watcher : this.watchers) {
-			watcher.onImageChanged(this, fromAnimation);
-		}
 	}
 
 	public int baseIndex(int x, int y) {
@@ -212,7 +195,7 @@ public class HDRImage {
 		int oldFrame = animation.frame.get();
 		for (int frame = 0; frame < frames; frame++) {
 			animation.frame.set(frame);
-			animation.openImage.tickAnimation();
+			animation.openImage.redrawAll(false);
 			for (int y = 0; y < this.height; y++) {
 				for (int x = 0; x < this.height; x++) {
 					pixel[0] = this.getPackedArgb(x, y);
@@ -221,7 +204,7 @@ public class HDRImage {
 			}
 		}
 		animation.frame.set(oldFrame);
-		animation.openImage.tickAnimation();
+		animation.openImage.redrawAll(false);
 		return image;
 	}
 
@@ -263,11 +246,5 @@ public class HDRImage {
 		public synchronized boolean isCanceled() {
 			return this.canceled;
 		}
-	}
-
-	@FunctionalInterface
-	public static interface HdrImageWatcher {
-
-		public abstract void onImageChanged(HDRImage image, boolean fromAnimation);
 	}
 }

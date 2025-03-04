@@ -31,6 +31,7 @@ public abstract class LayerSource implements MapChangeListener<String, Layer> {
 
 	public void onDeselected() {
 		this.sources.layer.openImage.layerMap.removeListener(this);
+		this.sources.layer.redrawException.set(null);
 	}
 
 	public abstract void invalidateStructure();
@@ -41,10 +42,14 @@ public abstract class LayerSource implements MapChangeListener<String, Layer> {
 
 	public abstract Node getRootNode();
 
-	public void redraw(boolean fromAnimation) {
+	public void requestRedraw() {
+		this.sources.layer.requestRedraw();
+	}
+
+	public void redraw() {
 		try {
-			this.doRedraw(fromAnimation);
-			this.sources.layer.item.getGraphic().setStyle(null);
+			this.doRedraw();
+			this.sources.layer.redrawException.set(null);
 			((RadioButton)(this.sources.layer.item.getGraphic())).setTooltip(null);
 		}
 		catch (RedrawException exception) {
@@ -60,7 +65,7 @@ public abstract class LayerSource implements MapChangeListener<String, Layer> {
 		}
 	}
 
-	public abstract void doRedraw(boolean fromAnimation) throws RedrawException;
+	public abstract void doRedraw() throws RedrawException;
 
 	@Override
 	public String toString() {

@@ -1,7 +1,6 @@
 package builderb0y.notgimp;
 
 import javafx.beans.Observable;
-import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -14,6 +13,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.*;
 import javafx.util.converter.FloatStringConverter;
+import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.ColorHelper.ColorComponent;
 import builderb0y.notgimp.tools.ColorPickerTool;
@@ -153,14 +153,15 @@ public class ColorSelector {
 		writer.setPixels(0, 0, 96, 96, PixelFormat.getByteBgraPreInstance(), pixels, 0, 96 << 2);
 	}
 
-	public class ColorSlider {
+	public class ColorSlider extends GradientSlider {
 
 		public ColorComponent component;
+		public ColorHelper scratchColor = new ColorHelper();
 		public Label label = new Label();
-		public CanvasHelper bar = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 16.0D);
 		public TextField numberBox = new TextField();
 
 		public ColorSlider(ColorComponent component) {
+			this.checkerboard().popIn().fixedSize(257.0D, 16.0D);
 			this.component = component;
 			this.label.setText(component.name.charAt(0) + ":");
 			this.numberBox.setPrefWidth(96.0D);
@@ -168,22 +169,36 @@ public class ColorSelector {
 
 		public void init() {
 			this.addToGrid(ColorSelector.this.mainPane, this.component.ordinal() + 3);
-			EventHandler<MouseEvent> mouseHandler = new RateLimitedMouseEventHandler(
-				(MouseEvent event) -> {
-					ColorSelector.this.currentColor.setComponent(
-						this.component,
-						Math.clamp(((float)(int)(event.getX())) / 256.0F, 0.0F, 1.0F)
-					);
-					ColorSelector.this.currentColor.markDirty();
-				}
-			);
-			this.bar.canvas.setOnMousePressed(mouseHandler);
-			this.bar.canvas.setOnMouseDragged(mouseHandler);
-			this.bar.canvas.setOnMouseReleased(mouseHandler);
+			boolean[] changing = new boolean[1];
 			ColorSelector.this.currentColor.getComponent(this.component).addListener(
-				(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
+				Util.change((Number number) -> {
+					if (changing[0]) return;
+					changing[0] = true;
+					try {
+						this.clickedPosition.set((int)(number.floatValue() * 256.0F));
+					}
+					finally {
+						changing[0] = false;
+					}
+				})
+			);
+			this.clickedPosition.addListener(
+				Util.change((Number number) -> {
+					if (changing[0]) return;
+					changing[0] = true;
+					try {
+						ColorSelector.this.currentColor.setComponent(this.component, number.floatValue() / 256.0F);
+						ColorSelector.this.currentColor.markDirty();
+					}
+					finally {
+						changing[0] = false;
+					}
+				})
+			);
+			ColorSelector.this.currentColor.getComponent(this.component).addListener(
+				Util.change((Number newValue) -> {
 					((TextFormatter)(this.numberBox.getTextFormatter())).setValue(newValue);
-				}
+				})
 			);
 			this.numberBox.textFormatterProperty().bind(
 				ColorSelector.this.fractionalDisplay.selectedProperty().map((Boolean fractional) -> {
@@ -221,7 +236,7 @@ public class ColorSelector {
 				ColorSelector.this.currentColor.setComponent(this.component, value);
 				ColorSelector.this.currentColor.markDirty();
 			};
-			this.bar.canvas.setOnScroll(eventHandler);
+			this.canvas.setOnScroll(eventHandler);
 			this.numberBox.setOnScroll(eventHandler);
 			ColorSelector.this.currentColor.any.addListener((Observable observable) -> this.redraw());
 			this.redraw();
@@ -233,34 +248,23 @@ public class ColorSelector {
 			labelPane.setBorder(INSET_BORDER);
 			pane.add(labelPane, 0, row);
 
-			pane.add(this.bar.getRootPane(), 1, row);
+			pane.add(this.getRootPane(), 1, row);
 
 			BorderPane numberBoxPane = new BorderPane(this.numberBox);
 			numberBoxPane.setBorder(INSET_BORDER);
 			pane.add(numberBoxPane, 2, row);
 		}
 
+		@Override
+		public FloatVector computeColor0(int pixelPos, float fraction) {
+			this.scratchColor.setComponent(this.component, fraction);
+			return this.scratchColor.toFloatVector();
+		}
+
+		@Override
 		public void redraw() {
-			PixelWriter writer = this.bar.canvas.getGraphicsContext2D().getPixelWriter();
-			ColorHelper helper = new ColorHelper(ColorSelector.this.currentColor);
-			byte[] colors = new byte[257 * 4];
-			for (int x = 0; x <= 256; x++) {
-				helper.setComponent(this.component, x / 256.0F);
-				int baseIndex = x << 2;
-				float alpha = helper.alpha.get();
-				colors[baseIndex    ] = Util.clampB(helper.blue .get() * alpha);
-				colors[baseIndex | 1] = Util.clampB(helper.green.get() * alpha);
-				colors[baseIndex | 2] = Util.clampB(helper.red  .get() * alpha);
-				colors[baseIndex | 3] = Util.clampB(alpha);
-			}
-			float component = ColorSelector.this.currentColor.getComponent(this.component).get();
-			helper.setComponent(this.component, component);
-			int invertIndex = ((int)(component * 256.0F)) << 2;
-			colors[invertIndex    ] = Util.clampB(1.0F - helper.blue .get());
-			colors[invertIndex | 1] = Util.clampB(1.0F - helper.green.get());
-			colors[invertIndex | 2] = Util.clampB(1.0F - helper.red  .get());
-			colors[invertIndex | 3] = -1;
-			writer.setPixels(0, 0, 257, 18, PixelFormat.getByteBgraPreInstance(), colors, 0, 0);
+			this.scratchColor.setFrom(ColorSelector.this.currentColor);
+			super.redraw();
 		}
 	}
 

@@ -50,7 +50,7 @@ public class History implements Comparable<History> {
 		Entry entry = this.currentEntry.get();
 		if (entry != null && entry.prev != null) {
 			this.currentEntry.set(entry.prev);
-			entry.prev.restore(this.layer.image);
+			entry.prev.restore(this.layer);
 		}
 	}
 
@@ -58,7 +58,7 @@ public class History implements Comparable<History> {
 		Entry entry = this.currentEntry.get();
 		if (entry != null && entry.next != null) {
 			this.currentEntry.set(entry.next);
-			entry.next.restore(this.layer.image);
+			entry.next.restore(this.layer);
 		}
 	}
 
@@ -140,14 +140,14 @@ public class History implements Comparable<History> {
 			}
 		}
 
-		public void restore(HDRImage image) {
+		public void restore(Layer layer) {
 			try {
-				image.decompressPixels(this.pixels);
+				layer.image.decompressPixels(this.pixels);
 			}
 			catch (IOException exception) {
 				throw new UncheckedIOException(exception);
 			}
-			image.markDirty(false);
+			layer.requestRedraw();
 		}
 
 		@Override

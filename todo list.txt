@@ -15,6 +15,7 @@ blend modes:
 	one input:
 		negate
 		clamp
+		levels
 	many inputs:
 		alpha
 		add
@@ -28,6 +29,3 @@ blend modes:
 
 effects:
 	gradient re-mapper.
-	normalize
-		per-channel or global.
-		per-pixel. stacks with per-channel mode.

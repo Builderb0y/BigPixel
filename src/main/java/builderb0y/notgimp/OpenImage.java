@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import javafx.application.Platform;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.binding.ObjectBinding;
 import javafx.beans.binding.When;
@@ -95,6 +96,10 @@ public class OpenImage {
 	);
 	public ObservableValue<Cursor>
 		cursorProperty = this.toolWithColorPicker.map((SourcelessTool<?> tool) -> tool.type.cursor());
+	public boolean
+		redrawQueued;
+	public Runnable
+		redrawer = () -> this.redrawAll(true);
 
 	public JsonMap save() {
 		JsonMap root = new JsonMap();
@@ -144,12 +149,13 @@ public class OpenImage {
 		this.layerTree.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 		this.layerTree.setEditable(true);
 		this.layerTree.setCellFactory((TreeView<Layer> view) -> {
+			TextFieldTreeCell<Layer> cell = new TextFieldTreeCell<>();
 			StringConverter<Layer> converter = new StringConverter<>() {
 
 				@Override
 				public Layer fromString(String string) {
-					Layer layer = view.getSelectionModel().getSelectedItem().getValue();
-					layer.setName(string);
+					Layer layer = cell.getItem();
+					if (layer != null) layer.setName(string);
 					return layer;
 				}
 
@@ -160,7 +166,22 @@ public class OpenImage {
 					return object != null ? object.name.get() : "";
 				}
 			};
-			return new TextFieldTreeCell<>(converter);
+			cell.setConverter(converter);
+			cell.styleProperty().bind(
+				cell
+				.itemProperty()
+				.flatMap((Layer layer) -> layer.redrawException)
+				.map((Throwable _) -> "-fx-text-fill: #FF3F3F;")
+			);
+			Tooltip tooltip = new Tooltip();
+			tooltip.textProperty().bind(
+				cell
+				.itemProperty()
+				.flatMap((Layer layer) -> layer.redrawException)
+				.map(Throwable::getLocalizedMessage)
+			);
+			cell.setTooltip(tooltip);
+			return cell;
 		});
 	}
 
@@ -192,6 +213,7 @@ public class OpenImage {
 			)
 		);
 		this.imageDisplay.init();
+		this.requestRedraw();
 	}
 
 	public Node getMainNode() {
@@ -210,19 +232,33 @@ public class OpenImage {
 		return this.layerMap.get(name);
 	}
 
-	public void tickAnimation() {
-		this.tickAnimation(this.layerTree.getRoot());
+	public void requestRedraw() {
+		if (!this.redrawQueued) {
+			this.redrawQueued = true;
+			Platform.runLater(this.redrawer);
+		}
 	}
 
-	public Set<Layer> tickAnimation(TreeItem<Layer> layer) {
+	public void redrawAll(boolean updateView) {
+		this.redrawLayer(this.layerTree.getRoot());
+		this.redrawQueued = false;
+		if (updateView) {
+			this.imageDisplay.redraw();
+		}
+	}
+
+	public Set<Layer> redrawLayer(TreeItem<Layer> layer) {
 		Set<Layer> changedLayers = new HashSet<>();
 		for (TreeItem<Layer> child : layer.getChildren()) {
-			changedLayers.addAll(this.tickAnimation(child));
+			changedLayers.addAll(this.redrawLayer(child));
 		}
-		LayerSource source = layer.getValue().sources.getCurrentSource();
-		if (source.isAnimated() || !Collections.disjoint(source.getDependencies(), changedLayers)) {
-			source.redraw(true);
-			changedLayers.add(layer.getValue());
+		Layer actualLayer = layer.getValue();
+		LayerSource source = actualLayer.sources.getCurrentSource();
+		if (actualLayer.needsRedraw || source.isAnimated() || !Collections.disjoint(source.getDependencies(), changedLayers)) {
+			source.redraw();
+			actualLayer.redrawThumbnail();
+			actualLayer.needsRedraw = false;
+			changedLayers.add(actualLayer);
 		}
 		return changedLayers;
 	}

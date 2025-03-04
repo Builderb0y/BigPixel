@@ -86,7 +86,7 @@ public class CliffCurveLayerSource extends EffectLayerSource {
 		this.alphaMid.disableProperty().bind(disableMid);
 		this.linear.setSelected(true);
 		this.layout();
-		ChangeListener<Object> listener = Util.change(() -> this.redraw(false));
+		ChangeListener<Object> listener = Util.change(this::requestRedraw);
 		this.splitRgb        .selectedProperty().addListener(listener);
 		this.dual            .selectedProperty().addListener(listener);
 		this.linear          .selectedProperty().addListener(listener);
@@ -179,7 +179,7 @@ public class CliffCurveLayerSource extends EffectLayerSource {
 	}
 
 	@Override
-	public void doRedraw(boolean fromAnimation) throws RedrawException {
+	public void doRedraw() throws RedrawException {
 		if (this.watching.size() != 1) {
 			throw new RedrawException("Expected exactly 1 child layer");
 		}
@@ -229,7 +229,6 @@ public class CliffCurveLayerSource extends EffectLayerSource {
 				value.intoArray(destination.pixels, index);
 			}
 		}
-		destination.markDirty(fromAnimation);
 	}
 
 	@Override

@@ -20,15 +20,14 @@ public class LineTool extends Tool<LineTool.Work> {
 		super(TYPE, source);
 		this.radius = Util.setupSpinner(new Spinner<>(0.0D, Double.MAX_VALUE, 0.0D, 0.5D), 80);
 		this.radius.valueProperty().addListener(
-			(ObservableValue<? extends Double> observable, Double oldValue, Double newValue) -> {
+			Util.change(() -> {
 				if (this.work != null) {
-					this.redraw();
+					this.requestRedraw();
 				}
-			}
+			})
 		);
 	}
 
-	public static int square(int n) { return n * n; }
 	public static int square(int a, int b) { return a * a + b * b; }
 	public static double square(double n) { return n * n; }
 
@@ -63,7 +62,7 @@ public class LineTool extends Tool<LineTool.Work> {
 			this.source.beginUsingTool();
 			this.work = new Work(x, y);
 		}
-		this.redraw();
+		this.requestRedraw();
 	}
 
 	@Override
@@ -79,18 +78,19 @@ public class LineTool extends Tool<LineTool.Work> {
 		}
 		work.prevX = x;
 		work.prevY = y;
-		this.redraw();
+		this.requestRedraw();
 	}
 
 	@Override
 	public void colorChanged() {
-		if (this.work != null) this.redraw();
+		if (this.work != null) this.requestRedraw();
 	}
 
+	@Override
 	public void redraw() {
 		Work work = this.work;
+		if (work == null) return;
 		Layer layer = this.layer();
-		layer.sources.manualSource.beforeToolChanged();
 		double radius = this.radius.getValue();
 		int width = layer.image.width;
 		int height = layer.image.height;
@@ -163,7 +163,6 @@ public class LineTool extends Tool<LineTool.Work> {
 				}
 			}
 		}
-		layer.image.markDirty(false);
 		this.updateLabelText();
 	}
 

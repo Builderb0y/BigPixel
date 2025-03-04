@@ -79,17 +79,12 @@ public class ManualLayerSource extends LayerSource {
 		System.arraycopy(this.sources.layer.image.pixels, 0, this.toollessImage.pixels, 0, this.toollessImage.pixels.length);
 	}
 
-	public void beforeToolChanged() {
-		System.arraycopy(this.toollessImage.pixels, 0, this.sources.layer.image.pixels, 0, this.toollessImage.pixels.length);
-	}
-
 	public void finishUsingTool() {
 		System.arraycopy(this.sources.layer.image.pixels, 0, this.toollessImage.pixels, 0, this.toollessImage.pixels.length);
 	}
 
 	public void cancelToolAction() {
-		System.arraycopy(this.toollessImage.pixels, 0, this.sources.layer.image.pixels, 0, this.toollessImage.pixels.length);
-		this.sources.layer.image.markDirty(false);
+		this.requestRedraw();
 	}
 
 	public void copyFrom(ManualLayerSource that) {
@@ -135,9 +130,10 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void doRedraw(boolean fromAnimation) throws RedrawException {
+	public void doRedraw() throws RedrawException {
 		HDRImage layerImage = this.sources.layer.image;
 		System.arraycopy(this.toollessImage.pixels, 0, layerImage.pixels, 0, layerImage.pixels.length);
-		layerImage.markDirty(fromAnimation);
+		Tool<?> tool = this.toolWithoutColorPicker.get();
+		if (tool != null) tool.redraw();
 	}
 }

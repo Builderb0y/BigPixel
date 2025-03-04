@@ -94,7 +94,7 @@ public class GradientRemapLayerSource extends EffectLayerSource {
 	}
 
 	@Override
-	public void doRedraw(boolean fromAnimation) throws RedrawException {
+	public void doRedraw() throws RedrawException {
 
 	}
 
