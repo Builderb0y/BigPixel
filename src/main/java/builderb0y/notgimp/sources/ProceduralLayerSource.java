@@ -52,11 +52,6 @@ public class ProceduralLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void onChanged(Change<? extends String, ? extends Layer> change) {
-		//no-op.
-	}
-
-	@Override
 	public void invalidateStructure() {
 
 	}

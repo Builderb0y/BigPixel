@@ -1,9 +1,7 @@
 package builderb0y.notgimp;
 
 import java.io.File;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import javafx.application.Platform;
 import javafx.beans.binding.BooleanBinding;
@@ -47,8 +45,8 @@ public class OpenImage {
 		sourcePane = new BorderPane();
 	public TreeView<Layer>
 		layerTree = new TreeView<>();
-	public ObservableMap<String, Layer>
-		layerMap = FXCollections.observableHashMap();
+	public Map<String, Layer>
+		layerMap = new HashMap<>();
 	public HBox
 		layerButtons = new HBox();
 	public MenuButton
@@ -180,7 +178,11 @@ public class OpenImage {
 				.flatMap((Layer layer) -> layer.redrawException)
 				.map(Throwable::getLocalizedMessage)
 			);
-			cell.setTooltip(tooltip);
+			cell.tooltipProperty().bind(
+				new When(tooltip.textProperty().isNotEmpty())
+				.then(tooltip)
+				.otherwise((Tooltip)(null))
+			);
 			return cell;
 		});
 	}
@@ -335,19 +337,22 @@ public class OpenImage {
 
 	public void removeLayer(ActionEvent event) {
 		TreeItem<Layer> toRemove = this.layerTree.getSelectionModel().getSelectedItem();
+		this.removeLayerRecursive(toRemove);
 		toRemove.getParent().getChildren().remove(toRemove);
 		this.layerTree.getSelectionModel().select(0);
 		if (toRemove.getValue() == this.showingLayerProperty.getValue()) {
 			((RadioButton)(this.layerTree.getRoot().getGraphic())).setSelected(true);
 		}
-		this.removeLayerRecursive(toRemove);
 	}
 
 	public void removeLayerRecursive(TreeItem<Layer> toRemove) {
-		this.layerMap.remove(toRemove.getValue().name.get());
-		History.onLayerDeleted(toRemove);
 		for (TreeItem<Layer> child : toRemove.getChildren()) {
 			this.removeLayerRecursive(child);
+		}
+		History.onLayerDeleted(toRemove);
+		Layer removed = this.layerMap.remove(toRemove.getValue().name.get());
+		if (toRemove.getValue() != removed) {
+			System.err.println("Removed " + toRemove.getValue() + ", but got " + removed + " instead?");
 		}
 	}
 

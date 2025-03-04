@@ -1,12 +1,11 @@
 package builderb0y.notgimp.sources;
 
+import java.util.Collection;
+
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.value.ChangeListener;
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
 import jdk.incubator.vector.FloatVector;
@@ -14,6 +13,7 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 
@@ -180,10 +180,11 @@ public class CliffCurveLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		if (this.watching.size() != 1) {
+		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
+		if (watching.size() != 1) {
 			throw new RedrawException("Expected exactly 1 child layer");
 		}
-		HDRImage source = this.watching.iterator().next().image;
+		HDRImage source = watching.iterator().next().getValue().image;
 		HDRImage destination = this.sources.layer.image;
 		FloatVector coefficients = this.getCoefficients();
 		boolean linear = this.linear.isSelected();

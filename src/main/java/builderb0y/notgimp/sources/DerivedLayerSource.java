@@ -86,21 +86,6 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void onChanged(Change<? extends String, ? extends Layer> change) {
-		if (change.wasRemoved()) {
-			if (this.watching.containsKey(change.getKey())) {
-				this.script = null;
-				this.setWatching(Collections.emptyMap(), false);
-			}
-		}
-		else {
-			if (this.script == null) {
-				this.recompile();
-			}
-		}
-	}
-
-	@Override
 	public void onDeselected() {
 		super.onDeselected();
 		this.script = null;
@@ -152,7 +137,7 @@ public class DerivedLayerSource extends LayerSource {
 	public void doRecompile(boolean redraw) {
 		try {
 			ExpressionParser<DerivedImageScript> parser = new ExpressionParser<>(this.textArea.getText(), DerivedImageScript.class);
-			ObservableMap<String, Layer> layerMap = this.sources.layer.openImage.layerMap;
+			Map<String, Layer> layerMap = this.sources.layer.openImage.layerMap;
 			UsageTracker animationTracer = new UsageTracker();
 			this.script = (
 				parser

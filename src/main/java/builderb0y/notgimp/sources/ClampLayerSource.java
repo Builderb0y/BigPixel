@@ -9,13 +9,14 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
+import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 
-public class InvertLayerSource extends EffectLayerSource {
+public class ClampLayerSource extends EffectLayerSource {
 
 	public VBox channels = new VBox();
 	public CheckBox
@@ -28,7 +29,7 @@ public class InvertLayerSource extends EffectLayerSource {
 	public JsonMap save() {
 		return (
 			new JsonMap()
-			.with("type", "invert")
+			.with("type", "clamp")
 			.with("red",   this.red  .isSelected())
 			.with("green", this.green.isSelected())
 			.with("blue",  this.blue .isSelected())
@@ -44,8 +45,8 @@ public class InvertLayerSource extends EffectLayerSource {
 		this.alpha.setSelected(map.getBoolean("alpha"));
 	}
 
-	public InvertLayerSource(LayerSources sources) {
-		super(sources, "Invert");
+	public ClampLayerSource(LayerSources sources) {
+		super(sources, "Clamp");
 		this.red.setSelected(true);
 		this.green.setSelected(true);
 		this.blue.setSelected(true);
@@ -58,9 +59,11 @@ public class InvertLayerSource extends EffectLayerSource {
 		this.alpha.selectedProperty().addListener(redrawer);
 	}
 
-	@Override
-	public Node getRootNode() {
-		return this.channels;
+	public void copyFrom(ClampLayerSource from) {
+		this.red  .setSelected(from.red  .isSelected());
+		this.green.setSelected(from.green.isSelected());
+		this.blue .setSelected(from.blue .isSelected());
+		this.alpha.setSelected(from.alpha.isSelected());
 	}
 
 	@Override
@@ -77,17 +80,17 @@ public class InvertLayerSource extends EffectLayerSource {
 		VectorMask<Float> mask = VectorMask.fromArray(FloatVector.SPECIES_128, channels, 0);
 		HDRImage source = watching.iterator().next().getValue().image;
 		HDRImage destination = this.sources.layer.image;
-		FloatVector one = FloatVector.broadcast(FloatVector.SPECIES_128, 1.0F);
+		FloatVector
+			zero = FloatVector.zero(FloatVector.SPECIES_128),
+			one = FloatVector.broadcast(FloatVector.SPECIES_128, 1.0F);
 		for (int index = 0, length = source.pixels.length; index < length; index += 4) {
 			FloatVector pixel = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-			pixel.blend(one.sub(pixel), mask).intoArray(destination.pixels, index);
+			pixel.lanewise(VectorOperators.MAX, zero, mask).lanewise(VectorOperators.MIN, one, mask).intoArray(destination.pixels, index);
 		}
 	}
 
-	public void copyFrom(InvertLayerSource from) {
-		this.red  .setSelected(from.red  .isSelected());
-		this.green.setSelected(from.green.isSelected());
-		this.blue .setSelected(from.blue .isSelected());
-		this.alpha.setSelected(from.alpha.isSelected());
+	@Override
+	public Node getRootNode() {
+		return this.channels;
 	}
 }

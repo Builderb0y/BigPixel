@@ -171,10 +171,11 @@ public class Layer {
 				float green   = this.image.pixels[baseIndex | GREEN_OFFSET];
 				float blue    = this.image.pixels[baseIndex |  BLUE_OFFSET];
 				float alpha   = this.image.pixels[baseIndex | ALPHA_OFFSET];
-				pixels[baseIndex    ] = Util.clampB(blue  * alpha);
-				pixels[baseIndex | 1] = Util.clampB(green * alpha);
-				pixels[baseIndex | 2] = Util.clampB(red   * alpha);
-				pixels[baseIndex | 3] = Util.clampB(alpha);
+				float clampedAlpha = Util.clampF(alpha);
+				pixels[baseIndex    ] = Util.clampB(blue  * clampedAlpha);
+				pixels[baseIndex | 1] = Util.clampB(green * clampedAlpha);
+				pixels[baseIndex | 2] = Util.clampB(red   * clampedAlpha);
+				pixels[baseIndex | 3] = Util.clampB(               alpha);
 			}
 		});
 		writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);

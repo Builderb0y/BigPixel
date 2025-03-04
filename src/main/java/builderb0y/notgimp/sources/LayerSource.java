@@ -10,7 +10,7 @@ import javafx.scene.control.Tooltip;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.json.JsonMap;
 
-public abstract class LayerSource implements MapChangeListener<String, Layer> {
+public abstract class LayerSource {
 
 	public LayerSources sources;
 	public String displayName;
@@ -25,12 +25,10 @@ public abstract class LayerSource implements MapChangeListener<String, Layer> {
 	public abstract void load(JsonMap map);
 
 	public void onSelected() {
-		this.sources.layer.openImage.layerMap.addListener(this);
 		this.invalidateStructure();
 	}
 
 	public void onDeselected() {
-		this.sources.layer.openImage.layerMap.removeListener(this);
 		this.sources.layer.redrawException.set(null);
 	}
 

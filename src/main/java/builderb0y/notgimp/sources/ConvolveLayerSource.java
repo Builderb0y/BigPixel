@@ -1,15 +1,13 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Locale;
 
 import javafx.beans.value.ChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextFormatter;
+import javafx.scene.control.*;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -18,6 +16,7 @@ import javafx.util.StringConverter;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonArray;
 import builderb0y.notgimp.json.JsonMap;
@@ -219,10 +218,11 @@ public class ConvolveLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		if (this.watching.size() != 1) {
+		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
+		if (watching.size() != 1) {
 			throw new RedrawException("Expected exactly 1 child layer");
 		}
-		HDRImage source = this.watching.iterator().next().image;
+		HDRImage source = watching.iterator().next().getValue().image;
 		HDRImage destination = this.sources.layer.image;
 		int radius = this.radius.getValue();
 		float[] weights = this.weight.getValue().getWeights(this);

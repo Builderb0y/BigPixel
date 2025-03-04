@@ -228,10 +228,11 @@ public class ZoomableImage {
 					alpha = image.pixels[baseIndex | ALPHA_OFFSET];
 				}
 				int baseIndex = (y * width + x) << 2;
-				pixels[baseIndex    ] = Util.clampB(blue  * alpha);
-				pixels[baseIndex | 1] = Util.clampB(green * alpha);
-				pixels[baseIndex | 2] = Util.clampB(red   * alpha);
-				pixels[baseIndex | 3] = Util.clampB(        alpha);
+				float clampedAlpha = Util.clampF(alpha);
+				pixels[baseIndex    ] = Util.clampB(blue  * clampedAlpha);
+				pixels[baseIndex | 1] = Util.clampB(green * clampedAlpha);
+				pixels[baseIndex | 2] = Util.clampB(red   * clampedAlpha);
+				pixels[baseIndex | 3] = Util.clampB(               alpha);
 			}
 		});
 		int

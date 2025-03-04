@@ -177,10 +177,11 @@ public class HDRImage {
 				float green = this.pixels[baseIndex | GREEN_OFFSET];
 				float blue  = this.pixels[baseIndex |  BLUE_OFFSET];
 				float alpha = this.pixels[baseIndex | ALPHA_OFFSET];
-				pixels[baseIndex    ] = Util.clampB(blue * alpha);
-				pixels[baseIndex | 1] = Util.clampB(green * alpha);
-				pixels[baseIndex | 2] = Util.clampB(red * alpha);
-				pixels[baseIndex | 3] = Util.clampB(        alpha);
+				float clampedAlpha = Util.clampF(alpha);
+				pixels[baseIndex    ] = Util.clampB(blue  * clampedAlpha);
+				pixels[baseIndex | 1] = Util.clampB(green * clampedAlpha);
+				pixels[baseIndex | 2] = Util.clampB(red   * clampedAlpha);
+				pixels[baseIndex | 3] = Util.clampB(               alpha);
 			}
 		}
 		image.getPixelWriter().setPixels(0, 0, this.width, this.height, PixelFormat.getByteBgraPreInstance(), pixels, 0, this.width << 2);

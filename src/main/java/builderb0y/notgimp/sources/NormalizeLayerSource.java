@@ -1,14 +1,18 @@
 package builderb0y.notgimp.sources;
 
+import java.util.Collection;
+
 import javafx.beans.value.ChangeListener;
 import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.TreeItem;
 import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.scripting.types.VectorOperations;
@@ -75,7 +79,8 @@ public class NormalizeLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		if (this.watching.size() != 1) {
+		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
+		if (watching.size() != 1) {
 			throw new RedrawException("Expected exactly one child layer");
 		}
 		boolean[] channels = new boolean[4];
@@ -87,7 +92,7 @@ public class NormalizeLayerSource extends EffectLayerSource {
 		if (!mask.anyTrue()) {
 			throw new RedrawException("No channels selected");
 		}
-		HDRImage source = this.watching.iterator().next().image;
+		HDRImage source = watching.iterator().next().getValue().image;
 		HDRImage destination = this.sources.layer.image;
 		boolean perChannel = this.perChannel.isSelected();
 		FloatVector min = FloatVector.broadcast(FloatVector.SPECIES_128, Float.POSITIVE_INFINITY);

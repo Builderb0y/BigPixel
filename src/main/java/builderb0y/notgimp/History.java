@@ -38,12 +38,12 @@ public class History implements Comparable<History> {
 
 	public static void onLayerDeleted(TreeItem<Layer> layer) {
 		System.out.println("Deleting history for layer " + layer.getValue().name.get());
-		History history = layer.getValue().history;
-		history.clear();
-		ALL_HISTORIES.remove(history);
 		for (TreeItem<Layer> child : layer.getChildren()) {
 			onLayerDeleted(child);
 		}
+		History history = layer.getValue().history;
+		history.clear();
+		ALL_HISTORIES.remove(history);
 	}
 
 	public void undo() {

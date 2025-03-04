@@ -95,24 +95,13 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void onDeselected() {
-
-	}
+	public void onDeselected() {}
 
 	@Override
-	public void onSelected() {
-
-	}
+	public void onSelected() {}
 
 	@Override
-	public void invalidateStructure() {
-
-	}
-
-	@Override
-	public void onChanged(Change<? extends String, ? extends Layer> change) {
-
-	}
+	public void invalidateStructure() {}
 
 	@Override
 	public Collection<Layer> getDependencies() {

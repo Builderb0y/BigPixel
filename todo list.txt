@@ -8,24 +8,14 @@ scripting:
 	user-defined methods
 make animation not draw canvas when open image tab is not selected.
 better compression for history/tool actions.
-wrong layer draws to zoomable image when parent is showing but child is modified.
 probably need to separate save file from export file.
 
-blend modes:
+layer sources:
 	one input:
 		negate
-		clamp
-		levels
-	many inputs:
-		alpha
-		add
+		range remapper.
 		add constant
-		average
-		multiply
 		multiply constant
-		inverse multiply
-		min
-		max
 
 effects:
-	gradient re-mapper.
+	gradient remapper.
