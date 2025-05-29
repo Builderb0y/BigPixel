@@ -47,6 +47,8 @@ public class SaveVersions {
 
 	public static void recursiveProcessLayers(JsonMap layer, Consumer<JsonMap> action) {
 		action.accept(layer);
-		layer.getArray("children").stream().map(JsonValue::asMap).forEach((JsonMap child) -> recursiveProcessLayers(child, action));
+		for (JsonValue value : layer.getArray("children")) {
+			recursiveProcessLayers(value.asMap(), action);
+		}
 	}
 }

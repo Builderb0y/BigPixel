@@ -2,7 +2,6 @@ package builderb0y.notgimp.tools;
 
 import java.util.Arrays;
 
-import javafx.beans.value.ObservableValue;
 import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.input.KeyCode;
@@ -11,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Util;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class MoveTool extends Tool<MoveTool.Work> {
@@ -22,12 +22,12 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	public MoveTool(ManualLayerSource source) {
 		super(TYPE, source);
 		this.fill.selectedProperty().addListener(
-			(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
+			Util.change(() -> {
 				if (this.work != null) {
 					this.requestRedraw();
 					this.updateLabelText();
 				}
-			}
+			})
 		);
 	}
 
@@ -44,7 +44,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			);
 			if (moving == BoundaryPosition.OUTSIDE) {
 				this.enter();
-				this.work = new Work(x, y);
+				this.work = new Work(this.source.toollessImage, x, y);
 			}
 			else {
 				work.prevX = x;
@@ -54,7 +54,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		}
 		else {
 			this.source.beginUsingTool();
-			this.work = new Work(x, y);
+			this.work = new Work(this.source.toollessImage, x, y);
 			this.requestRedraw();
 			this.updateLabelText();
 		}
@@ -96,7 +96,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		Work work = this.work;
 		if (work == null) return;
 		HDRImage toImage = this.layer().image;
-		HDRImage fromImage = this.source.toollessImage;
+		HDRImage fromImage = this.work.source;
 		int minX = Math.min(work.x1, work.x2);
 		int minY = Math.min(work.y1, work.y2);
 		int maxX = Math.max(work.x1, work.x2);
@@ -152,7 +152,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			case V -> this.symmetrify(Symmetry.FLIP_V);
 			case T -> this.symmetrify(Symmetry.FLIP_L);
 			case Y -> this.symmetrify(Symmetry.FLIP_R);
-			case C -> this.copyInPlace();
+			case A -> this.again();
 			default -> super.keyPressed(key);
 		}
 	}
@@ -172,11 +172,11 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		if (hadWork) this.requestRedraw();
 	}
 
-	public void copyInPlace() {
+	public void again() {
 		Work work = this.work;
 		if (work != null) {
 			super.enter();
-			this.work = new Work();
+			this.work = new Work(this.source.toollessImage);
 			this.work.x1 = work.x1 + work.offsetX;
 			this.work.x2 = work.x2 + work.offsetX;
 			this.work.y1 = work.y1 + work.offsetY;
@@ -283,14 +283,18 @@ public class MoveTool extends Tool<MoveTool.Work> {
 
 	public static class Work {
 
+		public HDRImage source;
 		public int x1, x2, y1, y2;
 		public int prevX, prevY, offsetX, offsetY;
 		public BoundaryPosition moving;
 		public Symmetry symmetry = Symmetry.IDENTITY;
 
-		public Work() {}
+		public Work(HDRImage source) {
+			this.source = source;
+		}
 
-		public Work(int x, int y) {
+		public Work(HDRImage source, int x, int y) {
+			this.source = source;
 			this.x1 = this.x2 = x;
 			this.y1 = this.y2 = y;
 			this.moving = BoundaryPosition.CORNER_X2_Y2;

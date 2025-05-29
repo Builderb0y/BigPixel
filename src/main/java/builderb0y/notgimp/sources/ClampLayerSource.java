@@ -1,11 +1,7 @@
 package builderb0y.notgimp.sources;
 
-import java.util.Collection;
-
 import javafx.beans.value.ChangeListener;
-import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.TreeItem;
 import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
@@ -16,7 +12,7 @@ import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 
-public class ClampLayerSource extends EffectLayerSource {
+public class ClampLayerSource extends SingleInputEffectLayerSource {
 
 	public VBox channels = new VBox();
 	public CheckBox
@@ -52,6 +48,7 @@ public class ClampLayerSource extends EffectLayerSource {
 		this.blue.setSelected(true);
 		this.alpha.setSelected(false);
 		this.channels.getChildren().addAll(this.red, this.green, this.blue, this.alpha);
+		this.rootNode.setCenter(this.channels);
 		ChangeListener<Boolean> redrawer = Util.change(this::requestRedraw);
 		this.red  .selectedProperty().addListener(redrawer);
 		this.green.selectedProperty().addListener(redrawer);
@@ -68,17 +65,14 @@ public class ClampLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.size() != 1) {
-			throw new RedrawException("Expected exactly one child layer");
-		}
+		Layer input = this.getSingleInput(true);
 		boolean[] channels = new boolean[4];
 		channels[HDRImage.  RED_OFFSET] = this.red  .isSelected();
 		channels[HDRImage.GREEN_OFFSET] = this.green.isSelected();
 		channels[HDRImage. BLUE_OFFSET] = this.blue .isSelected();
 		channels[HDRImage.ALPHA_OFFSET] = this.alpha.isSelected();
 		VectorMask<Float> mask = VectorMask.fromArray(FloatVector.SPECIES_128, channels, 0);
-		HDRImage source = watching.iterator().next().getValue().image;
+		HDRImage source = input.image;
 		HDRImage destination = this.sources.layer.image;
 		FloatVector
 			zero = FloatVector.zero(FloatVector.SPECIES_128),
@@ -87,10 +81,5 @@ public class ClampLayerSource extends EffectLayerSource {
 			FloatVector pixel = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
 			pixel.lanewise(VectorOperators.MAX, zero, mask).lanewise(VectorOperators.MIN, one, mask).intoArray(destination.pixels, index);
 		}
-	}
-
-	@Override
-	public Node getRootNode() {
-		return this.channels;
 	}
 }

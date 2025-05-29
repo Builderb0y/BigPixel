@@ -2,6 +2,7 @@ package builderb0y.notgimp.sources;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
@@ -43,10 +44,8 @@ public class MultiplyLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.isEmpty()) {
-			throw new RedrawException("Expected at least one child layer");
-		}
+		List<TreeItem<Layer>> watching = this.getWatchedItems();
+		this.checkSameSize(watching);
 		HDRImage destination = this.sources.layer.image;
 		Arrays.fill(destination.pixels, 1.0F);
 		boolean alphaWeighting = this.alphaWeighting.isSelected();

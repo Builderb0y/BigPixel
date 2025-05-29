@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javafx.collections.ObservableMap;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
 import javafx.scene.text.Font;
@@ -164,7 +163,7 @@ public class DerivedLayerSource extends LayerSource {
 		catch (Throwable throwable) {
 			this.script = null;
 			this.setWatching(Collections.emptyMap(), false);
-			throwable.printStackTrace();
+			//throwable.printStackTrace();
 			this.sources.layer.redrawException.set(throwable);
 		}
 	}

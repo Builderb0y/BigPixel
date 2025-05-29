@@ -617,7 +617,24 @@ public class OpsGenerator {
 			}
 			if (newline) file.append('\n');
 		}
+		for (VectorType type : VECTOR_TYPES) {
+			if (type.shape != GroupShape.UNIT) {
+				file
+				.append("\tpublic static ")
+				.append(typeName(type))
+				.append(" pow_")
+				.append(type.name)
+				.append("_int(")
+				.append(typeName(type))
+				.append(" a, int b) { return (")
+				.append(type.holderClass().getSimpleName())
+				.append(')')
+				.append(type.componentType.isFloatingPoint ? 'f' : 'i')
+				.append("PowHelper(a, b); }\n");
+			}
+		}
 		file.append("""
+
 			public static int pow_int_int(int a, int b) {
 				if (b <= 0) return b == 0 ? 1 : 0;
 				int accum = a;
@@ -639,22 +656,75 @@ public class OpsGenerator {
 			}
 		
 			public static float pow_float_int(float a, int b) {
-				if (b <= 0) return b == 0 ? 1 : 0;
+				boolean negative;
+				if (b > 0) {
+					negative = false;
+				}
+				else if (b < 0) {
+					negative = true;
+					b = -b;
+				}
+				else {
+					return 1.0F;
+				}
 				float accum = a;
 				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
 					accum *= accum;
 					if ((b & mask) != 0) accum *= a;
 				}
+				if (negative) accum = 1.0F / accum;
 				return accum;
 			}
 		
 			public static double pow_double_int(double a, int b) {
-				if (b <= 0) return b == 0 ? 1 : 0;
+				boolean negative;
+				if (b > 0) {
+					negative = false;
+				}
+				else if (b < 0) {
+					negative = true;
+					b = -b;
+				}
+				else {
+					return 1.0D;
+				}
 				double accum = a;
 				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
 					accum *= accum;
 					if ((b & mask) != 0) accum *= a;
 				}
+				if (negative) accum = 1.0F / accum;
+				return accum;
+			}
+
+			public static <E> Vector<E> iPowHelper(Vector<E> a, int b) {
+				if (b <= 0) return a.broadcast(b == 0 ? 1 : 0);
+				Vector<E> accum = a;
+				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+					accum = accum.mul(accum);
+					if ((b & mask) != 0) accum = accum.mul(a);
+				}
+				return accum;
+			}
+
+			public static <E> Vector<E> fPowHelper(Vector<E> a, int b) {
+				boolean negative;
+				if (b > 0) {
+					negative = false;
+				}
+				else if (b < 0) {
+					negative = true;
+					b = -b;
+				}
+				else {
+					return a.broadcast(1);
+				}
+				Vector<E> accum = a;
+				for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+					accum = accum.mul(accum);
+					if ((b & mask) != 0) accum = accum.mul(a);
+				}
+				if (negative) accum = accum.broadcast(1).div(accum);
 				return accum;
 			}
 		}""");

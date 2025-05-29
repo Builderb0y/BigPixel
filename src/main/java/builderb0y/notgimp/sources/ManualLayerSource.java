@@ -120,8 +120,12 @@ public class ManualLayerSource extends LayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		HDRImage layerImage = this.sources.layer.image;
-		System.arraycopy(this.toollessImage.pixels, 0, layerImage.pixels, 0, layerImage.pixels.length);
+		HDRImage source = this.toollessImage;
+		HDRImage destination = this.sources.layer.image;
+		if (source.width != destination.width || source.height != destination.height) {
+			source.resize(destination.width, destination.height, true);
+		}
+		System.arraycopy(source.pixels, 0, destination.pixels, 0, destination.pixels.length);
 		Tool<?> tool = this.toolWithoutColorPicker.get();
 		if (tool != null) tool.redraw();
 	}

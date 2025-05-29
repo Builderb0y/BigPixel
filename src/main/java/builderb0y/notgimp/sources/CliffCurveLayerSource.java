@@ -1,6 +1,7 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Collection;
+import java.util.List;
 
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.value.ChangeListener;
@@ -17,7 +18,7 @@ import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 
-public class CliffCurveLayerSource extends EffectLayerSource {
+public class CliffCurveLayerSource extends SingleInputEffectLayerSource {
 
 	public CheckBox
 		splitRgb = new CheckBox(),
@@ -100,6 +101,7 @@ public class CliffCurveLayerSource extends EffectLayerSource {
 		this.greenMid        .getValueFactory().valueProperty().addListener(listener);
 		this.blueMid         .getValueFactory().valueProperty().addListener(listener);
 		this.alphaMid        .getValueFactory().valueProperty().addListener(listener);
+		this.rootNode.setCenter(this.gridPane);
 	}
 
 	public void copyFrom(CliffCurveLayerSource that) {
@@ -180,11 +182,7 @@ public class CliffCurveLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.size() != 1) {
-			throw new RedrawException("Expected exactly 1 child layer");
-		}
-		HDRImage source = watching.iterator().next().getValue().image;
+		HDRImage source = this.getSingleInput(true).image;
 		HDRImage destination = this.sources.layer.image;
 		FloatVector coefficients = this.getCoefficients();
 		boolean linear = this.linear.isSelected();
@@ -230,11 +228,6 @@ public class CliffCurveLayerSource extends EffectLayerSource {
 				value.intoArray(destination.pixels, index);
 			}
 		}
-	}
-
-	@Override
-	public Node getRootNode() {
-		return this.gridPane;
 	}
 
 	public static class CoefficientModel extends SpinnerValueFactory<Float> {

@@ -1,0 +1,271 @@
+package builderb0y.notgimp.sources;
+
+import java.util.*;
+import java.util.random.RandomGenerator;
+
+import javafx.beans.value.ChangeListener;
+import javafx.scene.Node;
+import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TreeItem;
+import javafx.scene.layout.GridPane;
+import jdk.incubator.vector.FloatVector;
+import org.jetbrains.annotations.NotNull;
+
+import builderb0y.notgimp.FastRandom;
+import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.Util;
+import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.tools.Symmetry;
+
+public class WFCLayerSource extends EffectLayerSource {
+
+	public Spinner<Integer>
+		seed = Util.setupSpinner(new Spinner<>(Integer.MIN_VALUE, Integer.MAX_VALUE, 0), 80.0D),
+		kernel = Util.setupSpinner(new Spinner<>(1, 7, 1), 80.0D);
+	public GridPane
+		rootPane = new GridPane();
+
+	@Override
+	public JsonMap save() {
+		return (
+			new JsonMap()
+			.with("type", "wfc")
+			.with("seed", this.seed.getValue())
+			.with("kernel", this.kernel.getValue())
+		);
+	}
+
+	@Override
+	public void load(JsonMap map) {
+		this.seed.getValueFactory().setValue(map.getInt("seed"));
+		this.kernel.getValueFactory().setValue(map.getInt("kernel"));
+	}
+
+	public WFCLayerSource(LayerSources sources) {
+		super(sources, "Wave Function Collapse");
+		this.rootPane.add(new Label("Seed: "), 0, 0);
+		this.rootPane.add(this.seed, 1, 0);
+		this.rootPane.add(new Label("Kernel: "), 0, 1);
+		this.rootPane.add(this.kernel, 1, 1);
+		ChangeListener<Object> listener = Util.change(this::requestRedraw);
+		this.seed.getValueFactory().valueProperty().addListener(listener);
+		this.kernel.getValueFactory().valueProperty().addListener(listener);
+	}
+
+	public void copyFrom(WFCLayerSource that) {
+		this.seed.getValueFactory().setValue(that.seed.getValue());
+		this.kernel.getValueFactory().setValue(that.kernel.getValue());
+	}
+
+	@Override
+	public void doRedraw() throws RedrawException {
+		List<TreeItem<Layer>> watching = this.getWatchedItems();
+		if (watching.size() != 1) {
+			throw new RedrawException("Expected exactly one child layer");
+		}
+		HDRImage source = watching.get(0).getValue().image;
+		if (source.width > 64 || source.height > 64) {
+			throw new RedrawException("Child layer too large");
+		}
+		HDRImage destination = this.sources.layer.image;
+		Arrays.fill(destination.pixels, 0.0F);
+		FastRandom random = new FastRandom(this.seed.getValue());
+		int kernel = this.kernel.getValue();
+		Tile[] tiles = new Tile[source.width * source.height * Symmetry.VALUES.length];
+		{
+			int tileIndex = 0;
+			for (Symmetry symmetry : Symmetry.VALUES) {
+				for (int y = 0; y < source.height; y++) {
+					for (int x = 0; x < source.width; x++) {
+						tiles[tileIndex++] = new Tile(x, y, symmetry);
+					}
+				}
+			}
+		}
+		UncertainPixel[] orderedPixels = new UncertainPixel[destination.pixels.length >> 2];
+		for (int index = 0; index < orderedPixels.length; index++) {
+			orderedPixels[index] = new UncertainPixel(index, tiles.length);
+		}
+		TreeSet<UncertainPixel> weightedPixels = new TreeSet<>(Arrays.asList(orderedPixels));
+		int firstPosition = random.nextInt(orderedPixels.length);
+		try {
+			this.collapseRandom(
+				orderedPixels,
+				firstPosition,
+				weightedPixels,
+				random,
+				source,
+				destination,
+				tiles,
+				kernel
+			);
+			while (!weightedPixels.isEmpty()) {
+				int chance = 1;
+				Iterator<UncertainPixel> iterator = weightedPixels.iterator();
+				UncertainPixel firstPixel = iterator.next();
+				UncertainPixel nextPixel;
+				while (iterator.hasNext() && (nextPixel = iterator.next()).count == firstPixel.count) {
+					if (random.nextInt(++chance) == 0) firstPixel = nextPixel;
+				}
+				this.collapseRandom(
+					orderedPixels,
+					firstPixel.position,
+					weightedPixels,
+					random,
+					source,
+					destination,
+					tiles,
+					kernel
+				);
+			}
+		}
+		finally {
+			for (UncertainPixel pixel : orderedPixels) {
+				if (pixel.count == 1) {
+					tiles[Short.toUnsignedInt(pixel.options[0])].getCenterColor(source).intoArray(destination.pixels, pixel.position << 2);
+				}
+			}
+		}
+	}
+
+	public void collapseRandom(
+		UncertainPixel[] positionedPixels,
+		int position,
+		TreeSet<UncertainPixel> weightedPixels,
+		FastRandom random,
+		HDRImage srcImage,
+		HDRImage dstImage,
+		Tile[] tiles,
+		int kernel
+	)
+	throws RedrawException {
+		positionedPixels[position].collapse(random, weightedPixels);
+		this.propagate(positionedPixels, position, weightedPixels, srcImage, dstImage, tiles, kernel);
+	}
+
+	public void propagate(
+		UncertainPixel[] positionedPixels,
+		int position,
+		TreeSet<UncertainPixel> weightedPixels,
+		HDRImage srcImage,
+		HDRImage dstImage,
+		Tile[] tiles,
+		int kernel
+	)
+	throws RedrawException {
+		int dstCenterX = position % dstImage.width;
+		int dstCenterY = position / dstImage.width;
+		Tile tile = tiles[Short.toUnsignedInt(positionedPixels[position].options[0])];
+		for (int fillOffsetY = -kernel; fillOffsetY <= kernel; fillOffsetY++) {
+			for (int fillOffsetX = -kernel; fillOffsetX <= kernel; fillOffsetX++) {
+				FloatVector setColor = tile.getColor(srcImage, fillOffsetX, fillOffsetY);
+
+				for (int propagateOffsetY = -kernel; propagateOffsetY <= kernel; propagateOffsetY++) {
+					int dstY = Math.floorMod(dstCenterY + fillOffsetY + propagateOffsetY, dstImage.height);
+					for (int propagateOffsetX = -kernel; propagateOffsetX <= kernel; propagateOffsetX++) {
+						int dstX = Math.floorMod(dstCenterX + fillOffsetX + propagateOffsetX, dstImage.width);
+						int dstBase = dstY * dstImage.width + dstX;
+						if (positionedPixels[dstBase].purge(weightedPixels, srcImage, dstImage, tiles, -propagateOffsetX, -propagateOffsetY, setColor)) {
+							this.propagate(positionedPixels, dstBase, weightedPixels, srcImage, dstImage, tiles, kernel);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	@Override
+	public Node getRootNode() {
+		return this.rootPane;
+	}
+
+	public static record Tile(int centerX, int centerY, Symmetry symmetry) {
+
+		public FloatVector getColor(HDRImage sourceImage, int x, int y) {
+			return sourceImage.getPixel(
+				Math.floorMod(this.symmetry.getX(x, y) + this.centerX, sourceImage.width),
+				Math.floorMod(this.symmetry.getY(x, y) + this.centerY, sourceImage.height)
+			);
+		}
+
+		public FloatVector getCenterColor(HDRImage sourceImage) {
+			return sourceImage.getPixel(this.centerX, this.centerY);
+		}
+	}
+
+	public static class UncertainPixel implements Comparable<UncertainPixel> {
+
+		public final int position;
+		public final short[] options;
+		public int count;
+
+		public UncertainPixel(int position, int tileCount) {
+			if (tileCount > 65536) throw new IllegalArgumentException("Too many tiles: " + tileCount);
+			this.position = position;
+			this.options = new short[tileCount];
+			for (int index = 0; index < tileCount; index++) {
+				this.options[index] = (short)(index);
+			}
+			this.count = tileCount;
+		}
+
+		public boolean purge(
+			TreeSet<UncertainPixel> weightedPixels,
+			HDRImage source,
+			HDRImage destination,
+			Tile[] tiles,
+			int changedOffsetX,
+			int changedOffsetY,
+			FloatVector changedColor
+		)
+		throws RedrawException {
+			if (this.count <= 1) return false;
+			//int selfX = this.position % destination.width;
+			//int selfY = this.position / destination.width;
+			//int dstX = Math.floorMod(selfX + changedOffsetX, destination.width);
+			//int dstY = Math.floorMod(selfY + changedOffsetY, destination.height);
+			//FloatVector changedColor = destination.getPixel(dstX, dstY);
+			weightedPixels.remove(this);
+			//int oldCount = this.count;
+			for (int index = 0; index < this.count;) {
+				FloatVector expectedColor = tiles[this.options[index]].getColor(source, changedOffsetX, changedOffsetY);
+				if (expectedColor.equals(changedColor)) {
+					index++;
+				}
+				else {
+					this.eliminate(index);
+				}
+			}
+			//System.out.println(STR."\{selfX}, \{selfY} purged at \{changedOffsetX}, \{changedOffsetY} (\{dstX}, \{dstY}) from \{oldCount} -> \{this.count}");
+			return switch (this.count) {
+				case 0 -> false; //throw new RedrawException("Contradiction: " + selfX + ", " + selfY);
+				case 1 -> true;
+				default -> {
+					weightedPixels.add(this);
+					yield false;
+				}
+			};
+		}
+
+		public void eliminate(int index) {
+			Objects.checkIndex(index, this.count);
+			this.options[index] = this.options[--this.count];
+		}
+
+		public void collapse(RandomGenerator random, TreeSet<UncertainPixel> weightedPixels) throws RedrawException {
+			if (this.count == 0) throw new RedrawException("Collapse failure");
+			weightedPixels.remove(this);
+			int index = random.nextInt(this.count);
+			this.count = 1;
+			this.options[0] = this.options[index];
+		}
+
+		@Override
+		public int compareTo(@NotNull UncertainPixel that) {
+			int compare = Integer.compare(this.count, that.count);
+			return compare != 0 ? compare : Integer.compare(this.position, that.position);
+		}
+	}
+}

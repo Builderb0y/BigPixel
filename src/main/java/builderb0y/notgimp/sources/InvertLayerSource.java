@@ -1,6 +1,7 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Collection;
+import java.util.List;
 
 import javafx.beans.value.ChangeListener;
 import javafx.scene.Node;
@@ -15,7 +16,7 @@ import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 
-public class InvertLayerSource extends EffectLayerSource {
+public class InvertLayerSource extends SingleInputEffectLayerSource {
 
 	public VBox channels = new VBox();
 	public CheckBox
@@ -56,26 +57,18 @@ public class InvertLayerSource extends EffectLayerSource {
 		this.green.selectedProperty().addListener(redrawer);
 		this.blue .selectedProperty().addListener(redrawer);
 		this.alpha.selectedProperty().addListener(redrawer);
-	}
-
-	@Override
-	public Node getRootNode() {
-		return this.channels;
+		this.rootNode.setCenter(this.channels);
 	}
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.size() != 1) {
-			throw new RedrawException("Expected exactly one child layer");
-		}
+		HDRImage source = this.getSingleInput(true).image;
 		boolean[] channels = new boolean[4];
 		channels[HDRImage.  RED_OFFSET] = this.red  .isSelected();
 		channels[HDRImage.GREEN_OFFSET] = this.green.isSelected();
 		channels[HDRImage. BLUE_OFFSET] = this.blue .isSelected();
 		channels[HDRImage.ALPHA_OFFSET] = this.alpha.isSelected();
 		VectorMask<Float> mask = VectorMask.fromArray(FloatVector.SPECIES_128, channels, 0);
-		HDRImage source = watching.iterator().next().getValue().image;
 		HDRImage destination = this.sources.layer.image;
 		FloatVector one = FloatVector.broadcast(FloatVector.SPECIES_128, 1.0F);
 		for (int index = 0, length = source.pixels.length; index < length; index += 4) {

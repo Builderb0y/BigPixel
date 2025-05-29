@@ -3,9 +3,13 @@ package builderb0y.notgimp;
 import java.io.File;
 import java.lang.constant.ClassDesc;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Spinner;
@@ -99,5 +103,54 @@ public class Util {
 
 	public static float unmix(float a, float b, float f) {
 		return (f - a) / (b - a);
+	}
+
+	public static int square(int x) {
+		return x * x;
+	}
+
+	public static float square(float x) {
+		return x * x;
+	}
+
+	public static double square(double x) {
+		return x * x;
+	}
+
+	public static void invokeAndWait(Runnable task) throws InterruptedException {
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		Platform.runLater(() -> {
+			try {
+				task.run();
+				future.complete(null);
+			}
+			catch (Throwable throwable) {
+				future.completeExceptionally(throwable);
+			}
+		});
+		try {
+			future.get();
+		}
+		catch (ExecutionException exception) {
+			throw new RuntimeException(exception);
+		}
+	}
+
+	public static <T> T getAndWait(Supplier<T> supplier) throws InterruptedException {
+		CompletableFuture<T> future = new CompletableFuture<>();
+		Platform.runLater(() -> {
+			try {
+				future.complete(supplier.get());
+			}
+			catch (Throwable throwable) {
+				future.completeExceptionally(throwable);
+			}
+		});
+		try {
+			return future.get();
+		}
+		catch (ExecutionException exception) {
+			throw new RuntimeException(exception);
+		}
 	}
 }

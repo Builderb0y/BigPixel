@@ -1,8 +1,8 @@
 package builderb0y.notgimp.sources;
 
-import java.util.Collection;
 import java.util.Iterator;
 
+import java.util.List;
 import javafx.scene.Node;
 import javafx.scene.control.TreeItem;
 import jdk.incubator.vector.FloatVector;
@@ -32,12 +32,10 @@ public class AlphaLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.isEmpty()) {
-			throw new RedrawException("Expected at least one child layer");
-		}
+		List<TreeItem<Layer>> watching = this.getWatchedItems();
+		this.checkSameSize(watching);
 		HDRImage destination = this.sources.layer.image;
-		Iterator<TreeItem<Layer>> iterator = watching.iterator();
+		Iterator<TreeItem<Layer>> iterator = watching.reversed().iterator();
 		HDRImage first = iterator.next().getValue().image;
 		System.arraycopy(first.pixels, 0, destination.pixels, 0, destination.pixels.length);
 		while (iterator.hasNext()) {
@@ -45,7 +43,13 @@ public class AlphaLayerSource extends EffectLayerSource {
 			for (int base = 0; base < source.pixels.length; base += 4) {
 				FloatVector oldValue = FloatVector.fromArray(FloatVector.SPECIES_128, destination.pixels, base);
 				FloatVector newValue = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, base);
-				VectorOperations.mix_float4_float4_float(oldValue, newValue.withLane(HDRImage.ALPHA_OFFSET, 1.0F), newValue.lane(HDRImage.ALPHA_OFFSET)).intoArray(destination.pixels, base);
+				float oldAlpha = oldValue.lane(HDRImage.ALPHA_OFFSET);
+				float newAlpha = newValue.lane(HDRImage.ALPHA_OFFSET);
+				float finalAlpha = 1.0F - (1.0F - oldAlpha) * (1.0F - newAlpha);
+				FloatVector result = oldValue.mul(oldAlpha - oldAlpha * newAlpha /* oldAlpha * (1 - newAlpha) */).add(newValue.mul(newAlpha));
+				if (finalAlpha != 0.0F) result = result.div(finalAlpha);
+				result = result.withLane(HDRImage.ALPHA_OFFSET, finalAlpha);
+				result.intoArray(destination.pixels, base);
 			}
 		}
 	}

@@ -65,11 +65,11 @@ public class ColorSelector {
 		AnchorPane.setRightAnchor(this.colorPickerButton, 4.0D);
 		AnchorPane.setBottomAnchor(this.colorPickerButton, 4.0D);
 		this.mainPane.add(colorPickerButtonPane, 2, 2);
-		this.currentColor.any.addListener((Observable observable) -> this.redrawGradient());
+		this.currentColor.any.addListener((Observable _) -> this.redrawGradient());
 	}
 
 	public void init() {
-		this.currentColor.any.addListener((Observable observable) -> {
+		this.currentColor.any.addListener((Observable _) -> {
 			OpenImage openImage = this.mainWindow.getCurrentImage();
 			if (openImage != null) {
 				Tool<?> tool = openImage.toolWithoutColorPicker.get();
@@ -238,7 +238,7 @@ public class ColorSelector {
 			};
 			this.canvas.setOnScroll(eventHandler);
 			this.numberBox.setOnScroll(eventHandler);
-			ColorSelector.this.currentColor.any.addListener((Observable observable) -> this.redraw());
+			ColorSelector.this.currentColor.any.addListener((Observable _) -> this.redraw());
 			this.redraw();
 		}
 
@@ -310,18 +310,16 @@ public class ColorSelector {
 
 		public void redraw() {
 			PixelWriter writer = this.canvas.canvas.getGraphicsContext2D().getPixelWriter();
-			byte[] pixels = new byte[16 * 16 * 4];
-			for (int y = 0; y < 16; y++) {
-				for (int x = 0; x < 16; x++) {
-					int baseIndex = (y * 16 + x) << 2;
-					float alpha = this.color.alpha.get();
-					pixels[baseIndex    ] = Util.clampB(this.color.blue .get() * alpha);
-					pixels[baseIndex | 1] = Util.clampB(this.color.green.get() * alpha);
-					pixels[baseIndex | 2] = Util.clampB(this.color.red  .get() * alpha);
-					pixels[baseIndex | 3] = Util.clampB(alpha);
-				}
+			byte[] pixels = new byte[16 * 4];
+			for (int x = 0; x < 16; x++) {
+				int baseIndex = x << 2;
+				float alpha = this.color.alpha.get();
+				pixels[baseIndex    ] = Util.clampB(this.color.blue .get() * alpha);
+				pixels[baseIndex | 1] = Util.clampB(this.color.green.get() * alpha);
+				pixels[baseIndex | 2] = Util.clampB(this.color.red  .get() * alpha);
+				pixels[baseIndex | 3] = Util.clampB(alpha);
 			}
-			writer.setPixels(0, 0, 16, 16, PixelFormat.getByteBgraPreInstance(), pixels, 0, 16 << 2);
+			writer.setPixels(0, 0, 16, 16, PixelFormat.getByteBgraPreInstance(), pixels, 0, 0);
 		}
 	}
 }

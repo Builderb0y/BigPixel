@@ -3,12 +3,12 @@ package builderb0y.notgimp;
 import java.util.function.Consumer;
 
 import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableBooleanValue;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
-import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 
 public class CanvasHelper {
 
@@ -23,7 +23,7 @@ public class CanvasHelper {
 		this.outerPane.setCenter(this.innerPane);
 	}
 
-	public Node getRootPane() {
+	public Pane getRootPane() {
 		return this.outerPane;
 	}
 
@@ -42,14 +42,26 @@ public class CanvasHelper {
 		return this;
 	}
 
-	public CanvasHelper pop(ObservableBooleanValue inward) {
-		ObservableValue<String> stringProperty = inward.map((Boolean currentlyInward) -> currentlyInward ? "popin-borders" : "popout-borders");
+	public CanvasHelper pop(ObservableValue<Boolean> inward) {
+		ObservableValue<String> stringProperty = inward.map(CanvasHelper::popCsv);
 		this.outerPane.getStyleClass().add(stringProperty.getValue());
-		stringProperty.addListener((ObservableValue<? extends String> observable, String oldValue, String newValue) -> {
+		stringProperty.addListener(Util.change((String oldValue, String newValue) -> {
 			ObservableList<String> classes = this.outerPane.getStyleClass();
 			classes.set(classes.indexOf(oldValue), newValue);
-		});
+		}));
 		return this;
+	}
+
+	public void setPop(boolean inward) {
+		ObservableList<String> classes = this.outerPane.getStyleClass();
+		if (!classes.contains(popCsv(inward))) {
+			classes.remove(popCsv(!inward));
+			classes.add(popCsv(inward));
+		}
+	}
+
+	public static String popCsv(boolean inward) {
+		return inward ? "popin-borders" : "popout-borders";
 	}
 
 	public CanvasHelper fixedSize(double width, double height) {
@@ -59,6 +71,8 @@ public class CanvasHelper {
 		this.innerPane.setMaxWidth(width);
 		this.innerPane.setMinHeight(height);
 		this.innerPane.setMaxHeight(height);
+		this.outerPane.setMaxWidth(Region.USE_PREF_SIZE);
+		this.outerPane.setMaxHeight(Region.USE_PREF_SIZE);
 		return this;
 	}
 
@@ -67,7 +81,7 @@ public class CanvasHelper {
 		this.innerPane.setMinHeight(0.0D);
 		this.canvas.widthProperty().bind(this.innerPane.widthProperty());
 		this.canvas.heightProperty().bind(this.innerPane.heightProperty());
-		ChangeListener<Number> listener = (ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> redrawer.accept(this.canvas);
+		ChangeListener<Number> listener = Util.change(() -> redrawer.accept(this.canvas));
 		this.canvas.widthProperty().addListener(listener);
 		this.canvas.heightProperty().addListener(listener);
 		return this;

@@ -834,6 +834,19 @@ public class VectorOperations {
 	public static @Vec(4) DoubleVector mix_double4_double4_double(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b, double f) { return b.sub(a).mul(f).add(a); }
 	public static @Vec(4) DoubleVector unmix_double4_double4_double4(@Vec(4) DoubleVector a, @Vec(4) DoubleVector b, @Vec(4) DoubleVector f) { return f.sub(a).div(b.sub(a)); }
 
+	public static @Vec(2) IntVector pow_int2_int(@Vec(2) IntVector a, int b) { return (IntVector)iPowHelper(a, b); }
+	public static @Vec(3) IntVector pow_int3_int(@Vec(3) IntVector a, int b) { return (IntVector)iPowHelper(a, b); }
+	public static @Vec(4) IntVector pow_int4_int(@Vec(4) IntVector a, int b) { return (IntVector)iPowHelper(a, b); }
+	public static @Vec(2) LongVector pow_long2_int(@Vec(2) LongVector a, int b) { return (LongVector)iPowHelper(a, b); }
+	public static @Vec(3) LongVector pow_long3_int(@Vec(3) LongVector a, int b) { return (LongVector)iPowHelper(a, b); }
+	public static @Vec(4) LongVector pow_long4_int(@Vec(4) LongVector a, int b) { return (LongVector)iPowHelper(a, b); }
+	public static @Vec(2) FloatVector pow_float2_int(@Vec(2) FloatVector a, int b) { return (FloatVector)fPowHelper(a, b); }
+	public static @Vec(3) FloatVector pow_float3_int(@Vec(3) FloatVector a, int b) { return (FloatVector)fPowHelper(a, b); }
+	public static @Vec(4) FloatVector pow_float4_int(@Vec(4) FloatVector a, int b) { return (FloatVector)fPowHelper(a, b); }
+	public static @Vec(2) DoubleVector pow_double2_int(@Vec(2) DoubleVector a, int b) { return (DoubleVector)fPowHelper(a, b); }
+	public static @Vec(3) DoubleVector pow_double3_int(@Vec(3) DoubleVector a, int b) { return (DoubleVector)fPowHelper(a, b); }
+	public static @Vec(4) DoubleVector pow_double4_int(@Vec(4) DoubleVector a, int b) { return (DoubleVector)fPowHelper(a, b); }
+
 	public static int pow_int_int(int a, int b) {
 		if (b <= 0) return b == 0 ? 1 : 0;
 		int accum = a;
@@ -855,22 +868,75 @@ public class VectorOperations {
 	}
 
 	public static float pow_float_int(float a, int b) {
-		if (b <= 0) return b == 0 ? 1 : 0;
+		boolean negative;
+		if (b > 0) {
+			negative = false;
+		}
+		else if (b < 0) {
+			negative = true;
+			b = -b;
+		}
+		else {
+			return 1.0F;
+		}
 		float accum = a;
 		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
 			accum *= accum;
 			if ((b & mask) != 0) accum *= a;
 		}
+		if (negative) accum = 1.0F / accum;
 		return accum;
 	}
 
 	public static double pow_double_int(double a, int b) {
-		if (b <= 0) return b == 0 ? 1 : 0;
+		boolean negative;
+		if (b > 0) {
+			negative = false;
+		}
+		else if (b < 0) {
+			negative = true;
+			b = -b;
+		}
+		else {
+			return 1.0D;
+		}
 		double accum = a;
 		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
 			accum *= accum;
 			if ((b & mask) != 0) accum *= a;
 		}
+		if (negative) accum = 1.0F / accum;
+		return accum;
+	}
+
+	public static <E> Vector<E> iPowHelper(Vector<E> a, int b) {
+		if (b <= 0) return a.broadcast(b == 0 ? 1 : 0);
+		Vector<E> accum = a;
+		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+			accum = accum.mul(accum);
+			if ((b & mask) != 0) accum = accum.mul(a);
+		}
+		return accum;
+	}
+
+	public static <E> Vector<E> fPowHelper(Vector<E> a, int b) {
+		boolean negative;
+		if (b > 0) {
+			negative = false;
+		}
+		else if (b < 0) {
+			negative = true;
+			b = -b;
+		}
+		else {
+			return a.broadcast(1);
+		}
+		Vector<E> accum = a;
+		for (int mask = Integer.MIN_VALUE >>> Integer.numberOfLeadingZeros(b); (mask >>>= 1) > 0;) {
+			accum = accum.mul(accum);
+			if ((b & mask) != 0) accum = accum.mul(a);
+		}
+		if (negative) accum = accum.broadcast(1).div(accum);
 		return accum;
 	}
 }

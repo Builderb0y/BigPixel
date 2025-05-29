@@ -19,24 +19,28 @@ public class LayerSources {
 	public BorderPane rootPane = new BorderPane();
 	public ChoiceBox<LayerSource> choiceBox = new ChoiceBox<>();
 
-	public     ManualLayerSource     manualSource = new     ManualLayerSource(this);
+	public        ManualLayerSource        manualSource = new        ManualLayerSource(this);
 
-	public      AlphaLayerSource      alphaSource = new      AlphaLayerSource(this);
-	public        AddLayerSource        addSource = new        AddLayerSource(this);
-	public    AverageLayerSource    averageSource = new    AverageLayerSource(this);
-	public   MultiplyLayerSource   multiplySource = new   MultiplyLayerSource(this);
-	public     ScreenLayerSource     screenSource = new     ScreenLayerSource(this);
-	public        MinLayerSource        minSource = new        MinLayerSource(this);
-	public        MaxLayerSource        maxSource = new        MaxLayerSource(this);
+	public         AlphaLayerSource         alphaSource = new         AlphaLayerSource(this);
+	public           AddLayerSource           addSource = new           AddLayerSource(this);
+	public       AverageLayerSource       averageSource = new       AverageLayerSource(this);
+	public      MultiplyLayerSource      multiplySource = new      MultiplyLayerSource(this);
+	public        ScreenLayerSource        screenSource = new        ScreenLayerSource(this);
+	public           MinLayerSource           minSource = new           MinLayerSource(this);
+	public           MaxLayerSource           maxSource = new           MaxLayerSource(this);
 
-	public     InvertLayerSource     invertSource = new     InvertLayerSource(this);
-	public  NormalizeLayerSource  normalizeSource = new  NormalizeLayerSource(this);
-	public      ClampLayerSource      clampSource = new      ClampLayerSource(this);
-	public CliffCurveLayerSource cliffCurveSource = new CliffCurveLayerSource(this);
-	public   ConvolveLayerSource   convolveSource = new   ConvolveLayerSource(this);
+	public        InvertLayerSource        invertSource = new        InvertLayerSource(this);
+	public     NormalizeLayerSource     normalizeSource = new     NormalizeLayerSource(this);
+	public         ClampLayerSource         clampSource = new         ClampLayerSource(this);
+	public GradientRemapLayerSource gradientRemapSource = new GradientRemapLayerSource(this);
+	public   ColorMatrixLayerSource   colorMatrixSource = new   ColorMatrixLayerSource(this);
+	public    CliffCurveLayerSource    cliffCurveSource = new    CliffCurveLayerSource(this);
+	public      ConvolveLayerSource      convolveSource = new      ConvolveLayerSource(this);
+	public        KMeansLayerSource        kMeansSource = new        KMeansLayerSource(this);
+	public           WFCLayerSource           wfcSource = new           WFCLayerSource(this);
 
-	public    DerivedLayerSource    derivedSource = new    DerivedLayerSource(this);
-	public ProceduralLayerSource proceduralSource = new ProceduralLayerSource(this);
+	public       DerivedLayerSource       derivedSource = new       DerivedLayerSource(this);
+	public    ProceduralLayerSource    proceduralSource = new    ProceduralLayerSource(this);
 
 	public ReadOnlyObjectProperty<LayerSource>
 		currentSourceProperty = this.choiceBox.getSelectionModel().selectedItemProperty();
@@ -57,24 +61,28 @@ public class LayerSources {
 		JsonMap tab = saveData.getMap("tab");
 		String type = tab.getString("type");
 		LayerSource source = switch (type) {
-			case "manual"     -> this.    manualSource;
+			case "manual"         -> this.       manualSource;
 
-			case "alpha"      -> this.     alphaSource;
-			case "add"        -> this.       addSource;
-			case "avg"        -> this.   averageSource;
-			case "mul"        -> this.  multiplySource;
-			case "screen"     -> this.    screenSource;
-			case "min"        -> this.       minSource;
-			case "max"        -> this.       maxSource;
+			case "alpha"          -> this.        alphaSource;
+			case "add"            -> this.          addSource;
+			case "avg"            -> this.      averageSource;
+			case "mul"            -> this.     multiplySource;
+			case "screen"         -> this.       screenSource;
+			case "min"            -> this.          minSource;
+			case "max"            -> this.          maxSource;
 
-			case "invert"     -> this.    invertSource;
-			case "normalize"  -> this. normalizeSource;
-			case "clamp"      -> this.     clampSource;
-			case "cliff"      -> this.cliffCurveSource;
-			case "convolve"   -> this.  convolveSource;
+			case "invert"         -> this.       invertSource;
+			case "normalize"      -> this.    normalizeSource;
+			case "clamp"          -> this.        clampSource;
+			case "gradient_remap" -> this.gradientRemapSource;
+			case "color_matrix"   -> this.  colorMatrixSource;
+			case "cliff"          -> this.   cliffCurveSource;
+			case "convolve"       -> this.     convolveSource;
+			case "kmeans"         -> this.       kMeansSource;
+			case "wfc"            -> this.          wfcSource;
 
-			case "derived"    -> this.   derivedSource;
-			case "procedural" -> this.proceduralSource;
+			case "derived"        -> this.      derivedSource;
+			case "procedural"     -> this.   proceduralSource;
 
 			default -> throw new SaveException("Unknown current layer source: " + type);
 		};
@@ -100,8 +108,12 @@ public class LayerSources {
 			this.invertSource,
 			this.normalizeSource,
 			this.clampSource,
+			this.gradientRemapSource,
+			this.colorMatrixSource,
 			this.cliffCurveSource,
 			this.convolveSource,
+			this.kMeansSource,
+			this.wfcSource,
 
 			this.derivedSource,
 			this.proceduralSource
@@ -111,24 +123,28 @@ public class LayerSources {
 
 	public LayerSources(Layer newLayer, LayerSources from) {
 		this(newLayer);
-		this.    manualSource.copyFrom(from.    manualSource);
+		this.       manualSource.copyFrom(from.       manualSource);
 
-		this.     alphaSource.copyFrom(from.     alphaSource);
-		this.       addSource.copyFrom(from.       addSource);
-		this.   averageSource.copyFrom(from.   averageSource);
-		this.  multiplySource.copyFrom(from.  multiplySource);
-		this.    screenSource.copyFrom(from.    screenSource);
-		this.       minSource.copyFrom(from.       minSource);
-		this.       maxSource.copyFrom(from.       maxSource);
+		this.        alphaSource.copyFrom(from.        alphaSource);
+		this.          addSource.copyFrom(from.          addSource);
+		this.      averageSource.copyFrom(from.      averageSource);
+		this.     multiplySource.copyFrom(from.     multiplySource);
+		this.       screenSource.copyFrom(from.       screenSource);
+		this.          minSource.copyFrom(from.          minSource);
+		this.          maxSource.copyFrom(from.          maxSource);
 
-		this.    invertSource.copyFrom(from.    invertSource);
-		this. normalizeSource.copyFrom(from. normalizeSource);
-		this.     clampSource.copyFrom(from.     clampSource);
-		this.cliffCurveSource.copyFrom(from.cliffCurveSource);
-		this.  convolveSource.copyFrom(from.  convolveSource);
+		this.       invertSource.copyFrom(from.       invertSource);
+		this.    normalizeSource.copyFrom(from.    normalizeSource);
+		this.        clampSource.copyFrom(from.        clampSource);
+		this.gradientRemapSource.copyFrom(from.gradientRemapSource);
+		this.  colorMatrixSource.copyFrom(from.  colorMatrixSource);
+		this.   cliffCurveSource.copyFrom(from.   cliffCurveSource);
+		this.     convolveSource.copyFrom(from.     convolveSource);
+		this.       kMeansSource.copyFrom(from.       kMeansSource);
+		this.          wfcSource.copyFrom(from.          wfcSource);
 
-		this.   derivedSource.copyFrom(from.   derivedSource);
-		this.proceduralSource.copyFrom(from.proceduralSource);
+		this.      derivedSource.copyFrom(from.      derivedSource);
+		this.   proceduralSource.copyFrom(from.   proceduralSource);
 	}
 
 	public void init(boolean fromSave) {
@@ -140,24 +156,28 @@ public class LayerSources {
 				}
 			)
 		);
-		this.    manualSource.init(fromSave);
+		this.       manualSource.init(fromSave);
 
-		this.     alphaSource.init(fromSave);
-		this.       addSource.init(fromSave);
-		this.   averageSource.init(fromSave);
-		this.  multiplySource.init(fromSave);
-		this.    screenSource.init(fromSave);
-		this.       minSource.init(fromSave);
-		this.       maxSource.init(fromSave);
+		this.        alphaSource.init(fromSave);
+		this.          addSource.init(fromSave);
+		this.      averageSource.init(fromSave);
+		this.     multiplySource.init(fromSave);
+		this.       screenSource.init(fromSave);
+		this.          minSource.init(fromSave);
+		this.          maxSource.init(fromSave);
 
-		this.    invertSource.init(fromSave);
-		this. normalizeSource.init(fromSave);
-		this.     clampSource.init(fromSave);
-		this.cliffCurveSource.init(fromSave);
-		this.  convolveSource.init(fromSave);
+		this.       invertSource.init(fromSave);
+		this.    normalizeSource.init(fromSave);
+		this.        clampSource.init(fromSave);
+		this.gradientRemapSource.init(fromSave);
+		this.  colorMatrixSource.init(fromSave);
+		this.   cliffCurveSource.init(fromSave);
+		this.     convolveSource.init(fromSave);
+		this.       kMeansSource.init(fromSave);
+		this.          wfcSource.init(fromSave);
 
-		this.   derivedSource.init(fromSave);
-		this.proceduralSource.init(fromSave);
+		this.      derivedSource.init(fromSave);
+		this.   proceduralSource.init(fromSave);
 	}
 
 	public void invalidateStructure() {

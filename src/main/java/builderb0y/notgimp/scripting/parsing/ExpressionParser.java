@@ -159,8 +159,9 @@ public class ExpressionParser<I> {
 		}
 		for (Method method : UtilityOperations.class.getMethods()) {
 			if (Modifier.isStatic(method.getModifiers())) { //exclude equals(), hashCode(), toString().
+				int index = method.getName().indexOf('_');
 				this.scope.environment.addFunction(
-					method.getName().substring(0, method.getName().indexOf('_')),
+					index >= 0 ? method.getName().substring(0, index) : method.getName(),
 					FunctionHandler.invoker(new MethodInfo(method))
 				);
 			}
@@ -170,6 +171,8 @@ public class ExpressionParser<I> {
 		this.scope.environment.addVariable("tau", VariableHandler.constant(VectorType.DOUBLE, Math.TAU));
 		this.scope.environment.addVariable("true", VariableHandler.constant(VectorType.BOOLEAN, Boolean.TRUE));
 		this.scope.environment.addVariable("false", VariableHandler.constant(VectorType.BOOLEAN, Boolean.FALSE));
+		this.scope.environment.addVariable("goldenRatio", VariableHandler.constant(VectorType.DOUBLE, 1.618033988749895D));
+		this.scope.environment.addVariable("goldenAngle", VariableHandler.constant(VectorType.DOUBLE, 2.399963229728653D));
 		this.scope.environment.addKeyword("if", KeywordHandler.makeIf());
 		this.scope.environment.addKeyword("unless", KeywordHandler.makeIf());
 		this.scope.environment.addKeyword("switch", KeywordHandler.switcher());

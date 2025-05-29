@@ -26,7 +26,7 @@ public class Layer {
 	public SimpleStringProperty name = new SimpleStringProperty();
 	public TreeItem<Layer> item = new TreeItem<>(this);
 	public HDRImage image;
-	public WritableImage thumbnail;
+	public SimpleObjectProperty<WritableImage> thumbnail;
 	public ImageView thumbnailView;
 	public LayerSources sources;
 	public History history;
@@ -74,8 +74,9 @@ public class Layer {
 		this.openImage = openImage;
 		this.setName(name);
 		this.image = image;
-		this.thumbnail = new WritableImage(image.width, image.height);
-		this.thumbnailView = new ImageView(this.thumbnail);
+		this.thumbnail = new SimpleObjectProperty<>(new WritableImage(image.width, image.height));
+		this.thumbnailView = new ImageView();
+		this.thumbnailView.imageProperty().bind(this.thumbnail);
 		this.sources = new LayerSources(this);
 		this.history = new History(this);
 	}
@@ -84,8 +85,9 @@ public class Layer {
 		this.openImage = from.openImage;
 		this.setName(from.name.get());
 		this.image = new HDRImage(from.image);
-		this.thumbnail = new WritableImage(from.thumbnail.getPixelReader(), from.image.width, from.image.height);
-		this.thumbnailView = new ImageView(this.thumbnail);
+		this.thumbnail = new SimpleObjectProperty<>(new WritableImage(from.thumbnail.get().getPixelReader(), from.image.width, from.image.height));
+		this.thumbnailView = new ImageView();
+		this.thumbnailView.imageProperty().bind(this.thumbnail);
 		this.sources = new LayerSources(this, from.sources);
 		this.history = new History(this);
 	}
@@ -134,6 +136,7 @@ public class Layer {
 		}
 		this.name.set(name);
 		this.openImage.layerMap.put(name, this);
+		this.openImage.invalidateAllLayerStructures();
 	}
 
 	public void requestRedraw() {
@@ -157,7 +160,11 @@ public class Layer {
 	}
 
 	public void redrawThumbnail() {
-		PixelWriter writer = this.thumbnail.getPixelWriter();
+		WritableImage fxImage = this.thumbnail.get();
+		if (fxImage.getWidth() != this.image.width || fxImage.getHeight() != this.image.height) {
+			this.thumbnail.set(fxImage = new WritableImage(this.image.width, this.image.height));
+		}
+		PixelWriter writer = fxImage.getPixelWriter();
 		if (writer.getPixelFormat() != PixelFormat.getByteBgraPreInstance()) {
 			throw new IllegalStateException("Pixel format changed");
 		}

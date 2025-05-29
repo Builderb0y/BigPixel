@@ -10,10 +10,16 @@ public enum Symmetry {
 	FLIP_L("Flipping top-left to bottom-right"),
 	FLIP_R("Flipping top-right to bottom-left");
 
+	public static final Symmetry[] VALUES = values();
+
 	public final String description;
 
 	Symmetry(String description) {
 		this.description = description;
+	}
+
+	public int flag() {
+		return 1 << this.ordinal();
 	}
 
 	@Override
@@ -36,6 +42,32 @@ public enum Symmetry {
 	}
 
 	public double getY(double x, double y) {
+		return switch (this) {
+			case IDENTITY -> y;
+			case ROTATE_CW -> x;
+			case ROTATE_CCW -> -x;
+			case ROTATE_180 -> -y;
+			case FLIP_H -> y;
+			case FLIP_V -> -y;
+			case FLIP_L -> -x;
+			case FLIP_R -> x;
+		};
+	}
+
+	public int getX(int x, int y) {
+		return switch (this) {
+			case IDENTITY -> x;
+			case ROTATE_CW -> -y;
+			case ROTATE_CCW -> y;
+			case ROTATE_180 -> -x;
+			case FLIP_H -> -x;
+			case FLIP_V -> x;
+			case FLIP_L -> -y;
+			case FLIP_R -> y;
+		};
+	}
+
+	public int getY(int x, int y) {
 		return switch (this) {
 			case IDENTITY -> y;
 			case ROTATE_CW -> x;

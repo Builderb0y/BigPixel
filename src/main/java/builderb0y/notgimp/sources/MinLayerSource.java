@@ -2,6 +2,7 @@ package builderb0y.notgimp.sources;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 import javafx.scene.Node;
 import javafx.scene.control.TreeItem;
@@ -31,10 +32,8 @@ public class MinLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.isEmpty()) {
-			throw new RedrawException("Expected at least one child layer");
-		}
+		List<TreeItem<Layer>> watching = this.getWatchedItems();
+		this.checkSameSize(watching);
 		HDRImage destination = this.sources.layer.image;
 		Iterator<TreeItem<Layer>> iterator = watching.iterator();
 		HDRImage first = iterator.next().getValue().image;

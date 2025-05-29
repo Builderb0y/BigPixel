@@ -55,6 +55,7 @@ public class ZoomableImage {
 	public OpenImage openImage;
 	public CanvasHelper display;
 	public double offsetX, offsetY;
+	public double lastMouseX, lastMouseY;
 	public IntegerProperty zoomIndex = new SimpleIntegerProperty(11); //1.0
 	public ObservableValue<Double> zoom = this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]);
 	public ChangeListener<Number> centerer;
@@ -63,7 +64,7 @@ public class ZoomableImage {
 	public ZoomableImage(OpenImage openImage) {
 		this.openImage = openImage;
 		this.display = new CanvasHelper().checkerboard().resizeable((Canvas canvas) -> this.redraw());
-		this.centerer = (ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> this.center();
+		this.centerer = Util.change(this::center);
 		this.redrawer = new PeriodicRateLimiter(20L, this::doRedraw);
 	}
 
@@ -157,6 +158,10 @@ public class ZoomableImage {
 		canvas.setOnMousePressed(handler);
 		canvas.setOnMouseDragged(handler);
 		canvas.setOnMouseReleased(handler);
+		canvas.setOnMouseMoved((MouseEvent event) -> {
+			this.lastMouseX = event.getX();
+			this.lastMouseY = event.getY();
+		});
 	}
 
 	public void setPosition(double posX, double posY) {

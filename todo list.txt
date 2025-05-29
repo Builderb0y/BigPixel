@@ -1,5 +1,4 @@
 custom theme.
-histogram.
 tools:
 	ellipse (+ filled variant)
 multi-window support.
@@ -10,12 +9,11 @@ make animation not draw canvas when open image tab is not selected.
 better compression for history/tool actions.
 probably need to separate save file from export file.
 
+recursive and non-recursive layer duplication options.
+
 layer sources:
+	no inputs:
+		blue noise pixels.
+			basically generate a list of xy coordinates that follow a blue noise pattern.
 	one input:
 		negate
-		range remapper.
-		add constant
-		multiply constant
-
-effects:
-	gradient remapper.

@@ -36,7 +36,9 @@ public class IfElseInsnTree extends InsnTree {
 		Label falseBranch = context.codeBuilder.newLabel(), end = context.codeBuilder.newLabel();
 		this.condition.emitBytecode(context, null, falseBranch);
 		this.ifTrue.emitBytecode(context);
-		context.codeBuilder.goto_(end);
+		if (!this.ifTrue.jumpsUnconditionally()) {
+			context.codeBuilder.goto_(end);
+		}
 		context.codeBuilder.labelBinding(falseBranch);
 		this.ifFalse.emitBytecode(context);
 		context.codeBuilder.labelBinding(end);

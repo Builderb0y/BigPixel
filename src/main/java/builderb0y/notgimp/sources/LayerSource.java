@@ -2,15 +2,26 @@ package builderb0y.notgimp.sources;
 
 import java.util.Collection;
 
-import javafx.collections.MapChangeListener;
 import javafx.scene.Node;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.Tooltip;
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorMask;
 
+import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.json.JsonMap;
 
 public abstract class LayerSource {
+
+	public static final VectorMask<Float> RGB_MASK;
+
+	static {
+		boolean[] mask = new boolean[4];
+		mask[HDRImage.  RED_OFFSET] =
+		mask[HDRImage.GREEN_OFFSET] =
+		mask[HDRImage. BLUE_OFFSET] =
+		true;
+		RGB_MASK = VectorMask.fromValues(FloatVector.SPECIES_128, mask);
+	}
 
 	public LayerSources sources;
 	public String displayName;
@@ -48,18 +59,9 @@ public abstract class LayerSource {
 		try {
 			this.doRedraw();
 			this.sources.layer.redrawException.set(null);
-			((RadioButton)(this.sources.layer.item.getGraphic())).setTooltip(null);
 		}
-		catch (RedrawException exception) {
-			this.sources.layer.item.getGraphic().setStyle("-fx-text-fill: #FF3F3F;");
-			RadioButton graphic = (RadioButton)(this.sources.layer.item.getGraphic());
-			Tooltip tooltip = graphic.getTooltip();
-			if (tooltip != null) {
-				tooltip.setText(exception.getLocalizedMessage());
-			}
-			else {
-				graphic.setTooltip(new Tooltip(exception.getLocalizedMessage()));
-			}
+		catch (Exception exception) {
+			this.sources.layer.redrawException.set(exception);
 		}
 	}
 

@@ -4,9 +4,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.*;
 import java.util.Base64;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import javax.imageio.ImageIO;
@@ -18,12 +16,16 @@ import javafx.scene.image.Image;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.DataFormat;
 import javafx.scene.paint.Color;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.json.JsonMap;
 
-public class HDRImage {
+//serializable for the sole purpose of allowing HDRImage's to be copy-pasted with a Clipboard.
+public class HDRImage implements Externalizable {
+
+	public static final DataFormat HDR_DATA_FORMAT = new DataFormat("application/notgimp.hdrimage");
 
 	public static final int
 		RED_OFFSET   = 0,
@@ -59,10 +61,24 @@ public class HDRImage {
 		}
 	}
 
+	//for serialization.
+	public HDRImage() {
+		this.pixels = new float[0];
+	}
+
 	public HDRImage(int width, int height) {
 		this.width = width;
 		this.height = height;
 		this.pixels = new float[width * height * 4];
+	}
+
+	public HDRImage(int width, int height, float[] pixels) {
+		if (pixels.length != width * height * 4) {
+			throw new IllegalArgumentException("Pixels array is wrong length");
+		}
+		this.width  = width;
+		this.height = height;
+		this.pixels = pixels;
 	}
 
 	public HDRImage(Image image) {
@@ -80,6 +96,21 @@ public class HDRImage {
 		this.width = from.width;
 		this.height = from.height;
 		this.pixels = from.pixels.clone();
+	}
+
+	public void resize(int width, int height, boolean copy) {
+		float[] oldPixels = this.pixels;
+		float[] newPixels = new float[width * height * 4];
+		if (copy) {
+			int minWidth = Math.min(this.width, width);
+			int minHeight = Math.min(this.height, height);
+			for (int y = 0; y < minHeight; y++) {
+				System.arraycopy(oldPixels, y * this.width * 4, newPixels, y * width * 4, minWidth * 4);
+			}
+		}
+		this.width = width;
+		this.height = height;
+		this.pixels = newPixels;
 	}
 
 	public byte[] compressPixels() throws IOException{
@@ -167,6 +198,28 @@ public class HDRImage {
 		return (Util.clampI(alpha) << 24) | (Util.clampI(red) << 16) | (Util.clampI(green) << 8) | Util.clampI(blue);
 	}
 
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		this.width = in.readInt();
+		this.height = in.readInt();
+		int channelCount = this.width * this.height * 4;
+		if (this.pixels.length != channelCount) {
+			this.pixels = new float[channelCount];
+		}
+		for (int index = 0; index < channelCount; index++) {
+			this.pixels[index] = in.readFloat();
+		}
+	}
+
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeInt(this.width);
+		out.writeInt(this.height);
+		for (float channel : this.pixels) {
+			out.writeFloat(channel);
+		}
+	}
+
 	public Image toJfxImage() {
 		WritableImage image = new WritableImage(this.width, this.height);
 		byte[] pixels = new byte[this.width * this.height * 4];
@@ -188,6 +241,19 @@ public class HDRImage {
 		return image;
 	}
 
+	public BufferedImage toAwtImage() {
+		BufferedImage image = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_ARGB);
+		WritableRaster raster = image.getRaster();
+		int[] pixel = new int[1];
+		for (int y = 0; y < this.height; y++) {
+			for (int x = 0; x < this.width; x++) {
+				pixel[0] = this.getPackedArgb(x, y);
+				raster.setDataElements(x, y, pixel);
+			}
+		}
+		return image;
+	}
+
 	public BufferedImage toAwtImage(AnimationSource animation) {
 		int frames = animation.frames.get();
 		BufferedImage image = new BufferedImage(this.width, this.height * frames, BufferedImage.TYPE_INT_ARGB);
@@ -198,7 +264,7 @@ public class HDRImage {
 			animation.frame.set(frame);
 			animation.openImage.redrawAll(false);
 			for (int y = 0; y < this.height; y++) {
-				for (int x = 0; x < this.height; x++) {
+				for (int x = 0; x < this.width; x++) {
 					pixel[0] = this.getPackedArgb(x, y);
 					raster.setDataElements(x, y + frame * this.height, pixel);
 				}

@@ -26,13 +26,15 @@ public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 			return;
 		}
 		Layer layer = this.openImage.getVisibleLayer();
-		int baseIndex = layer.image.baseIndex(x, y);
-		this.work.onColorPicked(
-			layer.image.pixels[baseIndex | HDRImage.  RED_OFFSET],
-			layer.image.pixels[baseIndex | HDRImage.GREEN_OFFSET],
-			layer.image.pixels[baseIndex | HDRImage. BLUE_OFFSET],
-			layer.image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]
-		);
+		if (x >= 0 && x < layer.image.width && y >= 0 && y < layer.image.height) {
+			int baseIndex = layer.image.baseIndex(x, y);
+			this.work.onColorPicked(
+				layer.image.pixels[baseIndex | HDRImage.  RED_OFFSET],
+				layer.image.pixels[baseIndex | HDRImage.GREEN_OFFSET],
+				layer.image.pixels[baseIndex | HDRImage. BLUE_OFFSET],
+				layer.image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]
+			);
+		}
 	}
 
 	@Override

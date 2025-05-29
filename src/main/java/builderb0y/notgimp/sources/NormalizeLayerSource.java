@@ -1,23 +1,18 @@
 package builderb0y.notgimp.sources;
 
-import java.util.Collection;
-
 import javafx.beans.value.ChangeListener;
-import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.TreeItem;
 import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 
-public class NormalizeLayerSource extends EffectLayerSource {
+public class NormalizeLayerSource extends SingleInputEffectLayerSource {
 
 	public CheckBox
 		perChannel = new CheckBox("Per channel"),
@@ -25,7 +20,7 @@ public class NormalizeLayerSource extends EffectLayerSource {
 		green      = new CheckBox("Green"),
 		blue       = new CheckBox("Blue"),
 		alpha      = new CheckBox("Alpha");
-	public VBox rootPane = new VBox(
+	public VBox channels = new VBox(
 		this.perChannel,
 		this.red,
 		this.green,
@@ -67,6 +62,7 @@ public class NormalizeLayerSource extends EffectLayerSource {
 		this.green     .selectedProperty().addListener(listener);
 		this.blue      .selectedProperty().addListener(listener);
 		this.alpha     .selectedProperty().addListener(listener);
+		this.rootNode.setCenter(this.channels);
 	}
 
 	public void copyFrom(NormalizeLayerSource that) {
@@ -79,10 +75,7 @@ public class NormalizeLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.size() != 1) {
-			throw new RedrawException("Expected exactly one child layer");
-		}
+		HDRImage source = this.getSingleInput(true).image;
 		boolean[] channels = new boolean[4];
 		channels[HDRImage.  RED_OFFSET] = this.red  .isSelected();
 		channels[HDRImage.GREEN_OFFSET] = this.green.isSelected();
@@ -92,7 +85,6 @@ public class NormalizeLayerSource extends EffectLayerSource {
 		if (!mask.anyTrue()) {
 			throw new RedrawException("No channels selected");
 		}
-		HDRImage source = watching.iterator().next().getValue().image;
 		HDRImage destination = this.sources.layer.image;
 		boolean perChannel = this.perChannel.isSelected();
 		FloatVector min = FloatVector.broadcast(FloatVector.SPECIES_128, Float.POSITIVE_INFINITY);
@@ -117,10 +109,5 @@ public class NormalizeLayerSource extends EffectLayerSource {
 		else {
 			System.arraycopy(source.pixels, 0, destination.pixels, 0, source.pixels.length);
 		}
-	}
-
-	@Override
-	public Node getRootNode() {
-		return this.rootPane;
 	}
 }

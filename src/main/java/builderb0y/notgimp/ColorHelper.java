@@ -1,6 +1,7 @@
 package builderb0y.notgimp;
 
 import javafx.beans.property.SimpleFloatProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValueBase;
 import jdk.incubator.vector.FloatVector;
 
@@ -9,20 +10,33 @@ import builderb0y.notgimp.tools.ColorPickerTool.ColorPickerCallback;
 public class ColorHelper implements ColorPickerCallback {
 
 	public final SimpleFloatProperty
-		red   = new SimpleFloatProperty(1.0F),
-		green = new SimpleFloatProperty(0.0F),
-		blue  = new SimpleFloatProperty(0.0F),
-		hue   = new SimpleFloatProperty(0.0F),
-		dark  = new SimpleFloatProperty(1.0F),
-		light = new SimpleFloatProperty(1.0F),
-		alpha = new SimpleFloatProperty(1.0F);
+		red   = new SimpleFloatProperty(this, "red",   1.0F),
+		green = new SimpleFloatProperty(this, "green", 0.0F),
+		blue  = new SimpleFloatProperty(this, "blue",  0.0F),
+		hue   = new SimpleFloatProperty(this, "hue",   0.0F),
+		dark  = new SimpleFloatProperty(this, "dark",  1.0F),
+		light = new SimpleFloatProperty(this, "light", 1.0F),
+		alpha = new SimpleFloatProperty(this, "alpha", 1.0F);
 	public final ColorHelperValue
 		any   = this.new ColorHelperValue();
+	public SimpleObjectProperty<FloatVector>
+		rgba = new SimpleObjectProperty<>(this, "rgba");
 	public float fullRed = 1.0F, fullGreen, fullBlue;
 
-	public ColorHelper() {}
+	public ColorHelper() {
+		float[] color = new float[4];
+		color[HDRImage.RED_OFFSET] =
+		color[HDRImage.ALPHA_OFFSET] =
+		1.0F;
+		this.rgba.set(FloatVector.fromArray(FloatVector.SPECIES_128, color, 0));
+		this.red  .addListener(Util.change((Number red  ) -> this.rgba.set(this.rgba.get().withLane(HDRImage.  RED_OFFSET, red  .floatValue()))));
+		this.green.addListener(Util.change((Number green) -> this.rgba.set(this.rgba.get().withLane(HDRImage.GREEN_OFFSET, green.floatValue()))));
+		this.blue .addListener(Util.change((Number blue ) -> this.rgba.set(this.rgba.get().withLane(HDRImage. BLUE_OFFSET, blue .floatValue()))));
+		this.alpha.addListener(Util.change((Number alpha) -> this.rgba.set(this.rgba.get().withLane(HDRImage.ALPHA_OFFSET, alpha.floatValue()))));
+	}
 
 	public ColorHelper(ColorHelper from) {
+		this();
 		this.setFrom(from);
 	}
 

@@ -11,11 +11,31 @@ import builderb0y.notgimp.scripting.types.VectorType.Vec;
 @SuppressWarnings({ "unused", "MethodParameterNamingConvention", "StandardVariableNames" })
 public class UtilityOperations {
 
-	//////////////////////////////// IGN ////////////////////////////////
+	public static final FloatVector
+		ignCoefficients = VectorOperations.float2_from_float_float(3.555713358F, 0.3092692451F);
+	public static final DoubleVector
+		//cos(golden angle) -sin(golden angle)
+		//sin(golden angle)  cos(golden angle)
+		ROT_PHI_X = VectorOperations.double2_from_double_double(-0.7373688780783197D,  0.6754902942615238D),
+		ROT_PHI_Y = VectorOperations.double2_from_double_double(-0.6754902942615238D, -0.7373688780783197D);
+
+	//////////////////////////////// noise ////////////////////////////////
 
 	public static float ign_int2(@Vec(2) IntVector uv) {
-		float dot = uv.lane(0) * 3.555713358F + uv.lane(1) * 0.3092692451F;
+		float dot = ((FloatVector)(uv.convert(VectorOperators.I2F, 0))).mul(ignCoefficients).reduceLanes(VectorOperators.ADD);
 		return dot - (float)(Math.floor(dot));
+	}
+
+	public static double sinNoise(long rng, @Vec(2) DoubleVector uv) {
+		double angle = RngOperations.rng_to_bounded_double(rng, Math.TAU);
+		DoubleVector unit = VectorOperations.double2_from_double_double(Math.cos(angle), Math.sin(angle));
+		double result = 0.0D;
+		for (int iteration = 0; true;) {
+			result += Math.sin(unit.mul(uv).reduceLanes(VectorOperators.ADD) + RngOperations.rng_to_bounded_double(RngOperations.stafford(rng += RngOperations.PHI64), Math.TAU));
+			if (++iteration >= 64) break;
+			unit = ROT_PHI_X.mul(unit.lane(0)).add(ROT_PHI_Y.mul(unit.lane(1)));
+		}
+		return result;
 	}
 
 	//////////////////////////////// hue ////////////////////////////////

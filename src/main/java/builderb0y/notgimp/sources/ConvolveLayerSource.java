@@ -1,13 +1,15 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Locale;
 
 import javafx.beans.value.ChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
-import javafx.scene.control.*;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -16,12 +18,11 @@ import javafx.util.StringConverter;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonArray;
 import builderb0y.notgimp.json.JsonMap;
 
-public class ConvolveLayerSource extends EffectLayerSource {
+public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 
 	public BorderPane borderPane = new BorderPane();
 	public ChoiceBox<ConvolveShape> shape = new ChoiceBox<>(); { this.shape.getItems().addAll(ConvolveShape.VALUES); this.shape.setValue(ConvolveShape.SQUARE); }
@@ -72,6 +73,7 @@ public class ConvolveLayerSource extends EffectLayerSource {
 		this.layout();
 		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius));
 		this.borderPane.setCenter(this.customWeights);
+		this.rootNode.setCenter(this.borderPane);
 	}
 
 	@Override
@@ -114,11 +116,6 @@ public class ConvolveLayerSource extends EffectLayerSource {
 				.getValue()
 			);
 		}
-	}
-
-	@Override
-	public Node getRootNode() {
-		return this.borderPane;
 	}
 
 	public void layout() {
@@ -218,11 +215,7 @@ public class ConvolveLayerSource extends EffectLayerSource {
 
 	@Override
 	public void doRedraw() throws RedrawException {
-		Collection<TreeItem<Layer>> watching = this.getWatchedItems();
-		if (watching.size() != 1) {
-			throw new RedrawException("Expected exactly 1 child layer");
-		}
-		HDRImage source = watching.iterator().next().getValue().image;
+		HDRImage source = this.getSingleInput(true).image;
 		HDRImage destination = this.sources.layer.image;
 		int radius = this.radius.getValue();
 		float[] weights = this.weight.getValue().getWeights(this);
@@ -271,39 +264,19 @@ public class ConvolveLayerSource extends EffectLayerSource {
 				}
 			}
 			case CONCENTRIC -> {
-				if (source.width != source.height) {
-					throw new RedrawException("Can't concentric blur non-square image");
-				}
-				int imageR = source.width >> 1;
-				if ((source.width & 1) == 0) { //even size
-					for (int r = 0; r < imageR; r++) {
-						int sideLength = r * 2 + 1;
-						int inRing = sideLength * 4;
-						for (int start = 0; start < inRing; start++) {
-							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
-							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-								int packedPos = concentricPos(imageR, r, start + offset, sideLength, true);
-								sum = sum.add(source.getPixel(unpackX(packedPos), unpackY(packedPos)).mul(weights[index]));
-							}
-							int packed = concentricPos(imageR, r, start, sideLength, true);
-							destination.setPixel(unpackX(packed), unpackY(packed), sum);
+				int minSize = Math.min(source.width, source.height);
+				//int maxSize = Math.max(source.width, source.height);
+				int imageR = (minSize + 1) >> 1;
+				for (int ring = 0; ring < imageR; ring++) {
+					int pixelsInRing = Math.max(pixelsInRing(source.width, source.height, ring), 1);
+					for (int start = 0; start < pixelsInRing; start++) {
+						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
+						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
+							int packedPos = concentricPos(source.width, source.height, ring, Math.floorMod(start + offset, pixelsInRing));
+							sum = sum.add(source.getPixel(unpackX(packedPos), unpackY(packedPos)).mul(weights[index]));
 						}
-					}
-				}
-				else { //odd size
-					destination.setPixel(imageR, imageR, source.getPixel(imageR, imageR));
-					for (int r = 1; r < imageR; r++) {
-						int sideLength = r * 2;
-						int inRing = sideLength * 4;
-						for (int start = 0; start < inRing; start++) {
-							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
-							for (int offset = -radius; offset <= radius; offset++) {
-								int packedPos = concentricPos(imageR, r, start + offset, sideLength, false);
-								sum = sum.add(source.getPixel(unpackX(packedPos), unpackY(packedPos)).mul(weights[offset + radius]));
-							}
-							int packed = concentricPos(imageR, r, start, sideLength, false);
-							destination.setPixel(unpackX(packed), unpackY(packed), sum);
-						}
+						int packedPos = concentricPos(source.width, source.height, ring, start);
+						destination.setPixel(unpackX(packedPos), unpackY(packedPos), sum);
 					}
 				}
 			}
@@ -324,29 +297,17 @@ public class ConvolveLayerSource extends EffectLayerSource {
 		}
 	}
 
-	public static int concentricPos(int imageR, int r, int position, int sideLength, boolean even) {
-		int correction = even ? 1 : 0;
-		int side = Math.floorDiv(position, sideLength) & 3;
-		int sidePosition = Math.floorMod(position, sideLength);
-		return switch (side) {
-			case 0 -> pack(
-				imageR + r,
-				imageR - r - correction + sidePosition
-			);
-			case 1 -> pack(
-				imageR + r - sidePosition,
-				imageR + r
-			);
-			case 2 -> pack(
-				imageR - r - correction,
-				imageR + r - sidePosition
-			);
-			case 3 -> pack(
-				imageR - r - correction + sidePosition,
-				imageR - r - correction
-			);
-			default -> throw new AssertionError(side);
-		};
+	public static int pixelsInRing(int width, int height, int ring) {
+		return ((width + height - 2) << 1) - (ring << 3);
+	}
+
+	public static int concentricPos(int width, int height, int ring, int index) {
+		int pixelsInWidth = width + ~(ring << 1);
+		int pixelsInHeight = height + ~(ring << 1);
+		if (index < pixelsInWidth) return pack(ring + index, ring);
+		if ((index -= pixelsInWidth) < pixelsInHeight) return pack(width + ~ring, ring + index);
+		if ((index -= pixelsInHeight) < pixelsInWidth) return pack(width + ~index - ring, height + ~ring);
+		return pack(ring, height + ~(index - pixelsInWidth) - ring);
 	}
 
 	public static int pack(int x, int y) {

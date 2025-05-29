@@ -20,8 +20,10 @@ import javafx.geometry.Side;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.TextFieldTreeCell;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.util.StringConverter;
 import org.jetbrains.annotations.Nullable;
@@ -57,10 +59,9 @@ public class OpenImage {
 		addChildLayerButton  = new MenuItem("Add child layer"),
 		addLayerBelowButton  = new MenuItem("Add layer below");
 	public Button
-		removeLayerButton    = new Button("-"),
 		duplicateLayerButton = new Button("*"),
-		moveLayerUpButton    = new Button("/\\"),
-		moveLayerDownButton  = new Button("\\/");
+		moveLayerUpButton    = new Button("⏶"),
+		moveLayerDownButton  = new Button("⏷");
 	public SplitPane
 		layersAndTools = new SplitPane(),
 		imageAndRightPane = new SplitPane();
@@ -130,7 +131,6 @@ public class OpenImage {
 		);
 		this.layerButtons.getChildren().addAll(
 			this.addLayerButton,
-			this.removeLayerButton,
 			this.duplicateLayerButton,
 			this.moveLayerUpButton,
 			this.moveLayerDownButton
@@ -183,6 +183,19 @@ public class OpenImage {
 				.then(tooltip)
 				.otherwise((Tooltip)(null))
 			);
+			MenuItem removeLayer = new MenuItem();
+			removeLayer.setOnAction((ActionEvent _) -> this.removeLayer(cell.getTreeItem()));
+			removeLayer.textProperty().bind(cell.itemProperty().map((Layer layer) -> "Delete layer " + layer.name.get()));
+			MenuItem unwrapLayer = new MenuItem();
+			unwrapLayer.setOnAction((ActionEvent _) -> this.unwrapLayer(cell.getTreeItem()));
+			unwrapLayer.textProperty().bind(cell.itemProperty().map((Layer layer) -> "Unwrap layer " + layer.name.get()));
+			MenuItem resizeLayer = new MenuItem();
+			resizeLayer.setOnAction((ActionEvent _) -> this.resizeLayer(cell.getTreeItem()));
+			resizeLayer.textProperty().bind(cell.itemProperty().map((Layer layer) -> "Resize layer " + layer.name.get()));
+			MenuItem redrawLayer = new MenuItem();
+			redrawLayer.setOnAction((ActionEvent _) -> cell.getItem().requestRedraw());
+			redrawLayer.textProperty().bind(cell.itemProperty().map((Layer layer) -> "Redraw layer " + layer.name.get()));
+			cell.setContextMenu(new ContextMenu(removeLayer, unwrapLayer, resizeLayer, redrawLayer));
 			return cell;
 		});
 	}
@@ -192,7 +205,6 @@ public class OpenImage {
 		this.addLayerAboveButton.setOnAction(this::addLayerAbove);
 		this.addChildLayerButton.setOnAction(this::addChildLayer);
 		this.addLayerBelowButton.setOnAction(this::addLayerBelow);
-		this.removeLayerButton.setOnAction(this::removeLayer);
 		this.duplicateLayerButton.setOnAction(this::duplicateLayer);
 		this.moveLayerUpButton.setOnAction(this::moveLayerUp);
 		this.moveLayerDownButton.setOnAction(this::moveLayerDown);
@@ -203,7 +215,6 @@ public class OpenImage {
 			.selectedItemProperty()
 			.isEqualTo(this.layerTree.rootProperty())
 		);
-		this.removeLayerButton.disableProperty().bind(rootSelected);
 		this.addLayerAboveButton.disableProperty().bind(rootSelected);
 		this.addLayerBelowButton.disableProperty().bind(rootSelected);
 		this.duplicateLayerButton.disableProperty().bind(rootSelected);
@@ -247,6 +258,9 @@ public class OpenImage {
 		if (updateView) {
 			this.imageDisplay.redraw();
 		}
+		if (this.mainWindow.getCurrentImage() == this) {
+			this.mainWindow.histogram.redrawLayer(this.getVisibleLayer());
+		}
 	}
 
 	public Set<Layer> redrawLayer(TreeItem<Layer> layer) {
@@ -263,6 +277,18 @@ public class OpenImage {
 			changedLayers.add(actualLayer);
 		}
 		return changedLayers;
+	}
+
+	public void invalidateAllLayerStructures() {
+		TreeItem<Layer> root = this.layerTree.getRoot();
+		if (root != null) { //can be null during initialization.
+			this.invalidateRecursive(root);
+		}
+	}
+
+	public void invalidateRecursive(TreeItem<Layer> layer) {
+		layer.getChildren().forEach(this::invalidateRecursive);
+		layer.getValue().sources.invalidateStructure();
 	}
 
 	public void addToMap(Layer layer) {
@@ -335,25 +361,72 @@ public class OpenImage {
 		this.layerTree.edit(newLayer.item);
 	}
 
-	public void removeLayer(ActionEvent event) {
-		TreeItem<Layer> toRemove = this.layerTree.getSelectionModel().getSelectedItem();
+	public void removeLayer(TreeItem<Layer> toRemove) {
+		if (new Alert(AlertType.WARNING, "Are you sure you want to delete " + toRemove.getValue().name.get() + "?\nThis action will remove the layer and its children abd cannot be undone yet!", ButtonType.YES, ButtonType.NO).showAndWait().orElse(null) != ButtonType.YES) {
+			return;
+		}
 		this.removeLayerRecursive(toRemove);
 		toRemove.getParent().getChildren().remove(toRemove);
 		this.layerTree.getSelectionModel().select(0);
 		if (toRemove.getValue() == this.showingLayerProperty.getValue()) {
 			((RadioButton)(this.layerTree.getRoot().getGraphic())).setSelected(true);
 		}
+		this.invalidateAllLayerStructures();
 	}
 
 	public void removeLayerRecursive(TreeItem<Layer> toRemove) {
 		for (TreeItem<Layer> child : toRemove.getChildren()) {
 			this.removeLayerRecursive(child);
 		}
+		this.postRemoveLayer(toRemove);
+	}
+
+	public void postRemoveLayer(TreeItem<Layer> toRemove) {
 		History.onLayerDeleted(toRemove);
 		Layer removed = this.layerMap.remove(toRemove.getValue().name.get());
-		if (toRemove.getValue() != removed) {
+		if (removed != toRemove.getValue()) {
 			System.err.println("Removed " + toRemove.getValue() + ", but got " + removed + " instead?");
 		}
+	}
+
+	public void unwrapLayer(TreeItem<Layer> toUnwrap) {
+		if (new Alert(AlertType.WARNING, "Are you sure you want to unwrap " + toUnwrap.getValue().name.get() + "?\nThis action will delete the layer, but not its children, and cannot be undone yet!", ButtonType.YES, ButtonType.NO).showAndWait().orElse(null) != ButtonType.YES) {
+			return;
+		}
+		TreeItem<Layer> parent = toUnwrap.getParent();
+		if (parent == null) { //unwrapping root.
+			if (toUnwrap.getChildren().size() == 1) {
+				TreeItem<Layer> stored = toUnwrap.getChildren().get(0);
+				toUnwrap.getChildren().clear();
+				this.postRemoveLayer(toUnwrap);
+				this.layerTree.setRoot(stored);
+				this.layerTree.getSelectionModel().select(0);
+				if (toUnwrap.getValue() == this.showingLayerProperty.getValue()) {
+					((RadioButton)(this.layerTree.getRoot().getGraphic())).setSelected(true);
+				}
+			}
+		}
+		else { //unwrapping non-root.
+			List<TreeItem<Layer>> siblings = parent.getChildren();
+			List<TreeItem<Layer>> children = new ArrayList<>(toUnwrap.getChildren());
+			toUnwrap.getChildren().clear();
+			int index = siblings.indexOf(toUnwrap);
+			this.postRemoveLayer(toUnwrap);
+			switch (children.size()) {
+				case 0 -> {
+					siblings.remove(index);
+				}
+				case 1 -> {
+					siblings.set(index, children.get(0));
+				}
+				default -> {
+					siblings.remove(index);
+					siblings.addAll(index, children);
+				}
+			}
+			this.layerTree.getSelectionModel().select(index);
+		}
+		this.invalidateAllLayerStructures();
 	}
 
 	public void duplicateLayer(ActionEvent event) {
@@ -364,6 +437,26 @@ public class OpenImage {
 		children.add(children.indexOf(toDuplicate), duplicate.item);
 		this.layerTree.getSelectionModel().select(duplicate.item);
 		duplicate.init(false);
+		this.invalidateAllLayerStructures();
+	}
+
+	public void resizeLayer(TreeItem<Layer> toResize) {
+		Dialog<ButtonType> dialog = new Dialog<>();
+		dialog.initOwner(this.mainWindow.stage);
+		dialog.setTitle("Resize " + toResize.getValue().name.get());
+		Spinner<Integer> width = Util.setupSpinner(new Spinner<>(1, 32768, toResize.getValue().image.width), 80);
+		Spinner<Integer> height = Util.setupSpinner(new Spinner<>(1, 32768, toResize.getValue().image.height), 80);
+		GridPane gridPane = new GridPane();
+		gridPane.add(new Label("Width: "), 0, 0);
+		gridPane.add(width, 1, 0);
+		gridPane.add(new Label("Height: "), 0, 1);
+		gridPane.add(height, 1, 1);
+		dialog.getDialogPane().setContent(gridPane);
+		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+		if (dialog.showAndWait().orElse(null) == ButtonType.OK) {
+			toResize.getValue().image.resize(width.getValue(), height.getValue(), true);
+			toResize.getValue().requestRedraw();
+		}
 	}
 
 	public boolean cantMoveUp(TreeItem<Layer> toMove) {
@@ -386,7 +479,6 @@ public class OpenImage {
 			int parentIndex = grandparent.getChildren().indexOf(parent);
 			siblings.remove(oldIndex);
 			grandparent.getChildren().add(parentIndex, toMove);
-			parent.getValue().sources.invalidateStructure();
 		}
 		else {
 			int newIndex = oldIndex - 1;
@@ -394,6 +486,7 @@ public class OpenImage {
 			siblings.get(newIndex).getChildren().add(toMove);
 		}
 		this.layerTree.getSelectionModel().select(toMove);
+		this.invalidateAllLayerStructures();
 	}
 
 	public boolean cantMoveDown(TreeItem<Layer> toMove) {
@@ -416,13 +509,13 @@ public class OpenImage {
 			int parentIndex = grandparent.getChildren().indexOf(parent);
 			siblings.remove(oldIndex);
 			grandparent.getChildren().add(parentIndex + 1, toMove);
-			parent.getValue().sources.invalidateStructure();
 		}
 		else {
 			siblings.remove(oldIndex);
 			siblings.get(oldIndex).getChildren().add(0, toMove);
 		}
 		this.layerTree.getSelectionModel().select(toMove);
+		this.invalidateAllLayerStructures();
 	}
 
 	public void pickColor(ColorPickerCallback callback) {

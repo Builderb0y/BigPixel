@@ -160,8 +160,7 @@ public abstract class CommonReader<X extends Throwable> {
 	}
 
 	public void skipWhile(CharPredicate predicate) {
-		char c;
-		while (this.canRead() && predicate.test(c = this.source.charAt(this.cursor))) {
+		for (char c; this.canRead() && predicate.test(c = this.source.charAt(this.cursor));) {
 			this.onCharRead(c);
 		}
 	}
@@ -242,7 +241,7 @@ public abstract class CommonReader<X extends Throwable> {
 
 	@FunctionalInterface
 	public static interface CharPredicate {
-		public abstract boolean test(char c);
 
+		public abstract boolean test(char c);
 	}
 }

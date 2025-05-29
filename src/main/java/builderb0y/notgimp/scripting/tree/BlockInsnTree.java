@@ -33,4 +33,9 @@ public class BlockInsnTree extends InsnTree {
 	public boolean canBeStatement() {
 		return true;
 	}
+
+	@Override
+	public boolean jumpsUnconditionally() {
+		return this.wrapped.jumpsUnconditionally();
+	}
 }
