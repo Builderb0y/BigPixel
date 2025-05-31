@@ -59,13 +59,12 @@ public class ManualLayerSource extends LayerSource {
 		this.toolSelection.add(this.toolConfig, 0, 2, 3, 1);
 		this.toolConfig.centerProperty().bind(this.toolWithoutColorPicker.map(Tool::getConfiguration));
 		new com.sun.javafx.scene.TreeShowingProperty(this.toolSelection).addListener(Util.change((Boolean visible) -> {
-			if (!visible) {
-				Tool<?> tool = this.toolWithoutColorPicker.get();
-				if (tool != null) {
-					tool.enter();
-					this.toolWithoutColorPicker.set(null);
-				}
+			if (!visible && this.toolWithoutColorPicker.get() != null) {
+				this.toolWithoutColorPicker.set(null);
 			}
+		}));
+		this.toolWithoutColorPicker.addListener(Util.change((Tool<?> oldTool, Tool<?> newTool) -> {
+			if (oldTool != null) oldTool.enter();
 		}));
 	}
 

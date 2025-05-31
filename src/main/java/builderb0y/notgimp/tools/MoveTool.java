@@ -1,15 +1,22 @@
 package builderb0y.notgimp.tools;
 
 import java.util.Arrays;
+import java.util.Locale;
 
+import javafx.event.ActionEvent;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.input.KeyCode;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.NotGimp;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
@@ -17,7 +24,21 @@ public class MoveTool extends Tool<MoveTool.Work> {
 
 	public static final ToolType TYPE = new ToolType("move", 12.0D, 12.0D);
 
-	public CheckBox fill = new CheckBox("Fill");
+	public CheckBox
+		fill = new CheckBox("Fill");
+	public Button
+		again     = this.button("again", this::again),
+		rotate90  = this.symmetrifyButton(Symmetry.ROTATE_CW),
+		rotate180 = this.symmetrifyButton(Symmetry.ROTATE_180),
+		rotate270 = this.symmetrifyButton(Symmetry.ROTATE_CCW),
+		flipH     = this.symmetrifyButton(Symmetry.FLIP_H),
+		flipV     = this.symmetrifyButton(Symmetry.FLIP_V),
+		flipL     = this.symmetrifyButton(Symmetry.FLIP_L),
+		flipR     = this.symmetrifyButton(Symmetry.FLIP_R);
+	public GridPane
+		buttons = new GridPane();
+	public BorderPane
+		rootPane = new BorderPane();
 
 	public MoveTool(ManualLayerSource source) {
 		super(TYPE, source);
@@ -29,6 +50,20 @@ public class MoveTool extends Tool<MoveTool.Work> {
 				}
 			})
 		);
+		this.buttons.addRow(0, this.again, this.rotate90, this.rotate180, this.rotate270);
+		this.buttons.addRow(1, this.flipH, this.flipV, this.flipL, this.flipR);
+		this.rootPane.setTop(this.fill);
+		this.rootPane.setCenter(this.buttons);
+	}
+
+	public Button symmetrifyButton(Symmetry symmetry) {
+		return this.button(symmetry.name().toLowerCase(Locale.ROOT), () -> this.symmetrify(symmetry));
+	}
+
+	public Button button(String iconName, Runnable action) {
+		Button button = new Button(null, new ImageView(new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/tools/move/" + iconName + ".png"))));
+		button.setOnAction((ActionEvent _) -> action.run());
+		return button;
 	}
 
 	@Override
@@ -142,21 +177,6 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		}
 	}
 
-	@Override
-	public void keyPressed(KeyCode key) {
-		switch (key) {
-			case Q -> this.symmetrify(Symmetry.ROTATE_180);
-			case E -> this.symmetrify(Symmetry.ROTATE_CCW);
-			case R -> this.symmetrify(Symmetry.ROTATE_CW);
-			case F, H -> this.symmetrify(Symmetry.FLIP_H);
-			case V -> this.symmetrify(Symmetry.FLIP_V);
-			case T -> this.symmetrify(Symmetry.FLIP_L);
-			case Y -> this.symmetrify(Symmetry.FLIP_R);
-			case A -> this.again();
-			default -> super.keyPressed(key);
-		}
-	}
-
 	public void symmetrify(Symmetry symmetry) {
 		if (this.work != null) {
 			this.work.symmetry = this.work.symmetry.andThen(symmetry);
@@ -228,7 +248,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 
 	@Override
 	public @Nullable Node getConfiguration() {
-		return this.fill;
+		return this.rootPane;
 	}
 
 	@Override

@@ -283,6 +283,14 @@ public class MainWindow {
 				}
 			}
 		});
+		scene.focusOwnerProperty().addListener(Util.change((Node node) -> {
+			if (!(node instanceof TextInputControl)) {
+				OpenImage image = this.getCurrentImage();
+				if (image != null) {
+					image.imageDisplay.display.display.requestFocus();
+				}
+			}
+		}));
 		this.stage.setScene(scene);
 		this.stage.getIcons().add(new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/icon.png")));
 		this.stage.show();
