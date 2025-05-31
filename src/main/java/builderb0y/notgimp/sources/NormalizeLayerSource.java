@@ -1,6 +1,5 @@
 package builderb0y.notgimp.sources;
 
-import javafx.beans.value.ChangeListener;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
@@ -8,18 +7,16 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Util;
-import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 
 public class NormalizeLayerSource extends SingleInputEffectLayerSource {
 
 	public CheckBox
-		perChannel = new CheckBox("Per channel"),
-		red        = new CheckBox("Red"),
-		green      = new CheckBox("Green"),
-		blue       = new CheckBox("Blue"),
-		alpha      = new CheckBox("Alpha");
+		perChannel = this.addCheckbox("per_channel", "Per channel", true),
+		red        = this.addCheckbox("red",   "Red", true),
+		green      = this.addCheckbox("green", "Green", true),
+		blue       = this.addCheckbox("blue",  "Blue", true),
+		alpha      = this.addCheckbox("alpha", "Alpha", true);
 	public VBox channels = new VBox(
 		this.perChannel,
 		this.red,
@@ -28,49 +25,9 @@ public class NormalizeLayerSource extends SingleInputEffectLayerSource {
 		this.alpha
 	);
 
-	@Override
-	public JsonMap save() {
-		return (
-			new JsonMap()
-			.with("type",        "normalize")
-			.with("per_channel", this.perChannel.isSelected())
-			.with("red",         this.red       .isSelected())
-			.with("green",       this.green     .isSelected())
-			.with("blue",        this.blue      .isSelected())
-			.with("alpha",       this.alpha     .isSelected())
-		);
-	}
-
-	@Override
-	public void load(JsonMap map) {
-		this.perChannel.setSelected(map.getBoolean("per_channel"));
-		this.red       .setSelected(map.getBoolean("red"));
-		this.green     .setSelected(map.getBoolean("green"));
-		this.blue      .setSelected(map.getBoolean("blue"));
-		this.alpha     .setSelected(map.getBoolean("alpha"));
-	}
-
 	public NormalizeLayerSource(LayerSources sources) {
-		super(sources, "Normalize");
-		this.red  .setSelected(true);
-		this.green.setSelected(true);
-		this.blue .setSelected(true);
-		this.alpha.setSelected(false);
-		ChangeListener<Boolean> listener = Util.change(this::requestRedraw);
-		this.perChannel.selectedProperty().addListener(listener);
-		this.red       .selectedProperty().addListener(listener);
-		this.green     .selectedProperty().addListener(listener);
-		this.blue      .selectedProperty().addListener(listener);
-		this.alpha     .selectedProperty().addListener(listener);
+		super(sources, "normalize", "Normalize");
 		this.rootNode.setCenter(this.channels);
-	}
-
-	public void copyFrom(NormalizeLayerSource that) {
-		this.perChannel.setSelected(that.perChannel.isSelected());
-		this.red       .setSelected(that.red       .isSelected());
-		this.green     .setSelected(that.green     .isSelected());
-		this.blue      .setSelected(that.blue      .isSelected());
-		this.alpha     .setSelected(that.alpha     .isSelected());
 	}
 
 	@Override

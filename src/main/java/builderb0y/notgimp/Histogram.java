@@ -31,7 +31,7 @@ public class Histogram {
 	}
 
 	public void redrawNone() {
-		this.redrawCanvas(this.canvas.canvas);
+		this.redrawCanvas(this.canvas.display);
 	}
 
 	public void redrawCanvas(Canvas canvas) {
@@ -42,7 +42,7 @@ public class Histogram {
 	}
 
 	public void redrawLayer(Layer layer) {
-		this.redraw(this.canvas.canvas, layer);
+		this.redraw(this.canvas.display, layer);
 	}
 
 	public void redraw(Canvas canvas, Layer layer) {
@@ -73,44 +73,8 @@ public class Histogram {
 				this.drawBar(colors, greens, max, 1);
 				this.drawBar(colors, blues, max, 0);
 			}
-			/*
-			int max = 0;
-			int[] heights = new int[width * 3];
-			float[] pixels = layer.image.pixels;
-			for (int index = 0; index < pixels.length; index += 4) {
-				float pixel = pixels[index | HDRImage.RED_OFFSET];
-				if (pixel >= 0.0F && pixel <= 1.0F) {
-					max = Math.max(max, ++heights[Math.min((int)(Math.floor(pixel * width)), width - 1) * 3]);
-				}
-				pixel = pixels[index | HDRImage.GREEN_OFFSET];
-				if (pixel >= 0.0F && pixel <= 1.0F) {
-					max = Math.max(max, ++heights[Math.min((int)(Math.floor(pixel * width)), width - 1) * 3 + 1]);
-				}
-				pixel = pixels[index | HDRImage.BLUE_OFFSET];
-				if (pixel >= 0.0F && pixel <= 1.0F) {
-					max = Math.max(max, ++heights[Math.min((int)(Math.floor(pixel * width)), width - 1) * 3 + 2]);
-				}
-			}
-			for (int x = 0; x < width; x++) {
-				int red   = heights[x * 3    ] * height / max;
-				int green = heights[x * 3 + 1] * height / max;
-				int blue  = heights[x * 3 + 2] * height / max;
-				for (int y = 0; y < red; y++) {
-					colors[(((height + ~y) * width + x) << 2) | 2] = -1;
-				}
-				for (int y = 0; y < green; y++) {
-					colors[(((height + ~y) * width + x) << 2) | 1] = -1;
-				}
-				for (int y = 0; y < blue; y++) {
-					colors[(((height + ~y) * width + x) << 2) | 0] = -1;
-				}
-				for (int y = 0; y < height; y++) {
-					colors[((y * width + x) << 2) | 3] = -1;
-				}
-			}
-			*/
 		}
-		this.canvas.canvas.getGraphicsContext2D().getPixelWriter().setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), colors, 0, width << 2);
+		this.canvas.display.getGraphicsContext2D().getPixelWriter().setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), colors, 0, width << 2);
 	}
 
 	public static int max3(int a, int b, int c) {
@@ -130,8 +94,8 @@ public class Histogram {
 	}
 
 	public void drawBar(byte[] colors, int[] buckets, double max, int component) {
-		int canvasWidth  = (int)(this.canvas.canvas.getWidth());
-		int canvasHeight = (int)(this.canvas.canvas.getHeight());
+		int canvasWidth  = (int)(this.canvas.display.getWidth());
+		int canvasHeight = (int)(this.canvas.display.getHeight());
 		boolean log = this.log.isSelected();
 		for (int x = 0; x < buckets.length; x++) {
 			double height = buckets[x];

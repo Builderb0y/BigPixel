@@ -1,6 +1,5 @@
 package builderb0y.notgimp.tools;
 
-import javafx.beans.value.ObservableValue;
 import javafx.scene.Node;
 import javafx.scene.control.Spinner;
 import javafx.scene.input.MouseButton;

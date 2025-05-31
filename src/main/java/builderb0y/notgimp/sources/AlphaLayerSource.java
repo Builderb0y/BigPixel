@@ -1,34 +1,20 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Iterator;
-
 import java.util.List;
+
 import javafx.scene.Node;
 import javafx.scene.control.TreeItem;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.json.JsonMap;
-import builderb0y.notgimp.scripting.types.VectorOperations;
 
 public class AlphaLayerSource extends EffectLayerSource {
 
-	@Override
-	public JsonMap save() {
-		return new JsonMap().with("type", "alpha");
-	}
-
-	@Override
-	public void load(JsonMap map) {
-
-	}
-
 	public AlphaLayerSource(LayerSources sources) {
-		super(sources, "Alpha Blend");
+		super(sources, "alpha", "Alpha Blend");
 	}
-
-	public void copyFrom(AlphaLayerSource from) {}
 
 	@Override
 	public void doRedraw() throws RedrawException {

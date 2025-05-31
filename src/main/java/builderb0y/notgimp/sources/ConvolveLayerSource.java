@@ -25,51 +25,48 @@ import builderb0y.notgimp.json.JsonMap;
 public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 
 	public BorderPane borderPane = new BorderPane();
-	public ChoiceBox<ConvolveShape> shape = new ChoiceBox<>(); { this.shape.getItems().addAll(ConvolveShape.VALUES); this.shape.setValue(ConvolveShape.SQUARE); }
-	public ChoiceBox<BlurWeight> weight = new ChoiceBox<>(); { this.weight.getItems().addAll(BlurWeight.VALUES); this.weight.setValue(BlurWeight.CUSTOM); }
-	public Spinner<Integer> radius = Util.setupSpinner(new Spinner<>(1, 3, 1, 1), 64.0D);
+	public ChoiceBox<ConvolveShape> shape = this.addEnumChoiceBox("shape", ConvolveShape.class, ConvolveShape.SQUARE);
+	public ChoiceBox<BlurWeight> weight = this.addEnumChoiceBox("weight_type", BlurWeight.class, BlurWeight.CUSTOM);
+	public Spinner<Integer> radius = this.addIntSpinner("radius", 1, 3, 1, 1, 64.0D);
 	public GridPane customWeights = new GridPane();
 	public HDRImage separableScratch;
 
 	@Override
 	public JsonMap save() {
-		JsonMap map = (
-			new JsonMap()
-			.with("type", "convolve")
-			.with("shape", this.shape.getValue().name())
-			.with("weight_type", this.weight.getValue().name())
-			.with("radius", this.radius.getValue())
-		);
-		float[] weights = BlurWeight.CUSTOM.getWeights(this);
-		JsonArray jsonWeights = new JsonArray(weights.length);
-		for (float weight : weights) jsonWeights.add(weight);
-		return map.with("custom_weights", jsonWeights);
+		JsonMap map = super.save();
+		if (this.weight.getValue() == BlurWeight.CUSTOM) {
+			float[] weights = BlurWeight.CUSTOM.getWeights(this);
+			JsonArray jsonWeights = new JsonArray(weights.length);
+			for (float weight : weights) jsonWeights.add(weight);
+			map.put("custom_weights", jsonWeights);
+		}
+		return map;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public void load(JsonMap map) {
-		this.shape.setValue(ConvolveShape.valueOf(map.getString("shape")));
-		this.weight.setValue(BlurWeight.valueOf(map.getString("weight_type")));
-		this.radius.getValueFactory().setValue(map.getInt("radius"));
+		super.load(map);
 		this.layout();
-		ObservableList<Node> children = this.customWeights.getChildren();
-		JsonArray jsonWeights = map.getArray("custom_weights");
-		for (int index = 0, size = jsonWeights.size(); index < size; index++) {
-			(
-				(TextFormatter<Float>)(
-					(
-						(TextField)(children.get(index))
+		if (this.weight.getValue() == BlurWeight.CUSTOM) {
+			ObservableList<Node> children = this.customWeights.getChildren();
+			JsonArray jsonWeights = map.getArray("custom_weights");
+			for (int index = 0, size = jsonWeights.size(); index < size; index++) {
+				(
+					(TextFormatter<Float>)(
+						(
+							(TextField)(children.get(index))
+						)
+						.getTextFormatter()
 					)
-					.getTextFormatter()
 				)
-			)
-			.setValue(jsonWeights.getFloat(index));
+				.setValue(jsonWeights.getFloat(index));
+			}
 		}
 	}
 
 	public ConvolveLayerSource(LayerSources sources) {
-		super(sources, "Convolve");
+		super(sources, "convolve", "Convolve");
 		this.layout();
 		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius));
 		this.borderPane.setCenter(this.customWeights);
@@ -88,11 +85,11 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 		super.init(fromSave);
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
-	public void copyFrom(ConvolveLayerSource that) {
-		this.shape.setValue(that.shape.getValue());
-		this.weight.setValue(that.weight.getValue());
-		this.radius.getValueFactory().setValue(that.radius.getValueFactory().getValue());
+	public void copyFrom(LayerSource source) {
+		super.copyFrom(source);
+		ConvolveLayerSource that = (ConvolveLayerSource)(source);
 		ObservableList<Node> thisChildren = this.customWeights.getChildren();
 		ObservableList<Node> thatChildren = that.customWeights.getChildren();
 		for (int index = 0, size = thatChildren.size(); index < size; index++) {

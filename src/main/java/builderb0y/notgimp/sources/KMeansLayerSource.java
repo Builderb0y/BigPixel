@@ -1,55 +1,30 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Arrays;
-import java.util.List;
 
-import javafx.beans.value.ChangeListener;
-import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
-import javafx.scene.control.TreeItem;
 import javafx.scene.layout.GridPane;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.FastRandom;
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.Util;
-import builderb0y.notgimp.json.JsonMap;
 
 public class KMeansLayerSource extends SingleInputEffectLayerSource {
 
 	public Spinner<Integer>
-		seed = Util.setupSpinner(new Spinner<>(Integer.MIN_VALUE, Integer.MAX_VALUE, 0), 80.0D),
-		colors = Util.setupSpinner(new Spinner<>(1, 1 << 24, 2), 80.0D),
-		iterations = Util.setupSpinner(new Spinner<>(0, 256, 4), 80.0D);
+		seed = this.addIntSpinner("seed", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80.0D),
+		colors = this.addIntSpinner("colors",  1, 1 << 24, 2, 1, 80.0D),
+		iterations = this.addIntSpinner("iterations",  0, 256, 4, 1, 80.0D);
 	public CheckBox
-		linear = new CheckBox("Linear");
+		linear = this.addCheckbox("linear", "Linear", false);
 	public GridPane
 		gridPane = new GridPane();
 
-	@Override
-	public JsonMap save() {
-		return (
-			new JsonMap()
-			.with("type", "kmeans")
-			.with("seed", this.seed.getValue())
-			.with("colors", this.colors.getValue())
-			.with("iterations", this.iterations.getValue())
-		);
-	}
-
-	@Override
-	public void load(JsonMap map) {
-		this.seed.getValueFactory().setValue(map.getInt("seed"));
-		this.colors.getValueFactory().setValue(map.getInt("colors"));
-		this.iterations.getValueFactory().setValue(map.getInt("iterations"));
-	}
-
 	public KMeansLayerSource(LayerSources sources) {
-		super(sources, "K-Means");
+		super(sources, "kmeans", "K-Means");
 		this.gridPane.add(new Label("Seed: "), 0, 0);
 		this.gridPane.add(this.seed, 1, 0);
 		this.gridPane.add(new Label("Colors: "), 0, 1);
@@ -57,18 +32,7 @@ public class KMeansLayerSource extends SingleInputEffectLayerSource {
 		this.gridPane.add(new Label("Iterations: "), 0, 2);
 		this.gridPane.add(this.iterations, 1, 2);
 		this.gridPane.add(this.linear, 1, 3);
-		ChangeListener<Object> listener = Util.change(this::requestRedraw);
-		this.seed.getValueFactory().valueProperty().addListener(listener);
-		this.colors.getValueFactory().valueProperty().addListener(listener);
-		this.iterations.getValueFactory().valueProperty().addListener(listener);
-		this.linear.selectedProperty().addListener(listener);
 		this.rootNode.setCenter(this.gridPane);
-	}
-
-	public void copyFrom(KMeansLayerSource that) {
-		this.seed.getValueFactory().setValue(that.seed.getValue());
-		this.colors.getValueFactory().setValue(that.colors.getValue());
-		this.iterations.getValueFactory().setValue(that.iterations.getValue());
 	}
 
 	@Override

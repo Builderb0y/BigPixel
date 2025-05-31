@@ -17,12 +17,11 @@ import builderb0y.notgimp.Layer;
 public abstract class SingleInputEffectLayerSource extends EffectLayerSource {
 
 	public ChoiceBox<String> input = new ChoiceBox<>();
-	public Label inputLabel = new Label("Input Layer: ");
-	public HBox inputBox = new HBox(this.inputLabel, this.input);
+	public HBox inputBox = new HBox(new Label("Input Layer: "), this.input);
 	public BorderPane rootNode = new BorderPane();
 
-	public SingleInputEffectLayerSource(LayerSources sources, String displayName) {
-		super(sources, displayName);
+	public SingleInputEffectLayerSource(LayerSources sources, String saveName, String displayName) {
+		super(sources, saveName, displayName);
 		this.input.setOnAction((ActionEvent _) -> this.requestRedraw());
 		this.rootNode.setTop(this.inputBox);
 	}

@@ -1,8 +1,8 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Collection;
-
 import java.util.List;
+
 import javafx.scene.control.TreeItem;
 
 import builderb0y.notgimp.HDRImage;
@@ -10,10 +10,11 @@ import builderb0y.notgimp.Layer;
 
 public abstract class EffectLayerSource extends LayerSource {
 
-	public EffectLayerSource(LayerSources sources, String displayName) {
-		super(sources, displayName);
+	public EffectLayerSource(LayerSources sources, String saveName, String displayName) {
+		super(sources, saveName, displayName);
 	}
 
+	@Override
 	public void init(boolean fromSave) {
 		this.invalidateStructure();
 	}

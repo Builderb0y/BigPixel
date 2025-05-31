@@ -12,13 +12,13 @@ public abstract class GradientSlider extends Gradient {
 	public GradientSlider() {
 		EventHandler<MouseEvent> mouseHandler = new RateLimitedMouseEventHandler(
 			(MouseEvent event) -> {
-				this.clickedPosition.set(Math.clamp((int)(event.getX()), 0, (int)(this.canvas.getWidth()) - 1));
+				this.clickedPosition.set(Math.clamp((int)(event.getX()), 0, (int)(this.display.getWidth()) - 1));
 				this.redraw();
 			}
 		);
-		this.canvas.setOnMousePressed(mouseHandler);
-		this.canvas.setOnMouseDragged(mouseHandler);
-		this.canvas.setOnMouseReleased(mouseHandler);
+		this.display.setOnMousePressed(mouseHandler);
+		this.display.setOnMouseDragged(mouseHandler);
+		this.display.setOnMouseReleased(mouseHandler);
 	}
 
 	@Override

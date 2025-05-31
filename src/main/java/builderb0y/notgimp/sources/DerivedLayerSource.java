@@ -15,9 +15,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.*;
 import builderb0y.notgimp.RateLimiter.NonPeriodicRateLimiter;
-import builderb0y.notgimp.json.JsonArray;
 import builderb0y.notgimp.json.JsonMap;
-import builderb0y.notgimp.json.JsonValue;
 import builderb0y.notgimp.scripting.parsing.ExpressionParser;
 import builderb0y.notgimp.scripting.parsing.ScriptEnvironment;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.KeywordHandler;
@@ -29,7 +27,7 @@ import builderb0y.notgimp.scripting.types.VectorType.Vec;
 
 public class DerivedLayerSource extends LayerSource {
 
-	public TextArea textArea = new TextArea();
+	public TextArea textArea = this.addCode("code");
 	public RateLimiter recompiler = new NonPeriodicRateLimiter(500L, () -> this.doRecompile(true));
 	public @Nullable DerivedImageScript script;
 	public Map<String, Layer> watching = Collections.emptyMap();
@@ -37,20 +35,10 @@ public class DerivedLayerSource extends LayerSource {
 	public boolean loading;
 
 	@Override
-	public JsonMap save() {
-		JsonMap map = new JsonMap();
-		map.add("type", "derived");
-		JsonArray source = new JsonArray();
-		this.textArea.getText().lines().forEachOrdered(source::add);
-		map.add("code", source);
-		return map;
-	}
-
-	@Override
 	public void load(JsonMap map) {
 		this.loading = true;
 		try {
-			this.textArea.setText(map.getArray("code").stream().map(JsonValue::asString).collect(Collectors.joining(System.lineSeparator())));
+			super.load(map);
 		}
 		finally {
 			this.loading = false;
@@ -58,16 +46,13 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	public DerivedLayerSource(LayerSources sources) {
-		super(sources, "Derived");
+		super(sources, "derived", "Derived");
 		this.textArea.setFont(Font.font("monospace"));
 		this.textArea.textProperty().addListener(Util.change(this::recompile));
 	}
 
+	@Override
 	public void init(boolean fromSave) {}
-
-	public void copyFrom(DerivedLayerSource that) {
-		this.textArea.setText(that.textArea.getText());
-	}
 
 	@Override
 	public Collection<Layer> getDependencies() {

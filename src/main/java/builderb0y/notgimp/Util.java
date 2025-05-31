@@ -14,6 +14,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Spinner;
 import javafx.scene.input.ScrollEvent;
+import jdk.incubator.vector.FloatVector;
 
 public class Util {
 
@@ -115,6 +116,15 @@ public class Util {
 
 	public static double square(double x) {
 		return x * x;
+	}
+
+	public static FloatVector rgba(float red, float green, float blue, float alpha) {
+		float[] array = new float[4];
+		array[HDRImage.  RED_OFFSET] = red;
+		array[HDRImage.GREEN_OFFSET] = green;
+		array[HDRImage. BLUE_OFFSET] = blue;
+		array[HDRImage.ALPHA_OFFSET] = alpha;
+		return FloatVector.fromArray(FloatVector.SPECIES_128, array, 0);
 	}
 
 	public static void invokeAndWait(Runnable task) throws InterruptedException {

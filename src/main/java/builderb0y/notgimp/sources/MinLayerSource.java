@@ -1,6 +1,5 @@
 package builderb0y.notgimp.sources;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -10,25 +9,12 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.json.JsonMap;
 
 public class MinLayerSource extends EffectLayerSource {
 
-	@Override
-	public JsonMap save() {
-		return new JsonMap().with("type", "min");
-	}
-
-	@Override
-	public void load(JsonMap map) {
-
-	}
-
 	public MinLayerSource(LayerSources sources) {
-		super(sources, "Min");
+		super(sources, "min", "Min");
 	}
-
-	public void copyFrom(MinLayerSource that) {}
 
 	@Override
 	public void doRedraw() throws RedrawException {

@@ -13,14 +13,14 @@ public abstract class Gradient extends CanvasHelper {
 	public abstract FloatVector computeColor(int pixelPos, float fraction);
 
 	public void redraw() {
-		PixelWriter writer = this.canvas.getGraphicsContext2D().getPixelWriter();
-		int width = ((int)(this.canvas.getWidth()));
+		PixelWriter writer = this.display.getGraphicsContext2D().getPixelWriter();
+		int width = ((int)(this.display.getWidth()));
 		byte[] colors = new byte[width * 4];
 		width--;
 		for (int x = 0; x <= width; x++) {
 			putColor(this.computeColor(x, ((float)(x)) / ((float)(width))), colors, x << 2);
 		}
-		writer.setPixels(0, 0, width + 1, ((int)(this.canvas.getHeight())), PixelFormat.getByteBgraPreInstance(), colors, 0, 0);
+		writer.setPixels(0, 0, width + 1, ((int)(this.display.getHeight())), PixelFormat.getByteBgraPreInstance(), colors, 0, 0);
 	}
 
 	public static void putColor(FloatVector color, byte[] colors, int index) {

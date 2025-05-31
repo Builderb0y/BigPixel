@@ -1,6 +1,5 @@
 package builderb0y.notgimp.sources;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -10,25 +9,12 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.json.JsonMap;
 
 public class MaxLayerSource extends EffectLayerSource {
 
-	@Override
-	public JsonMap save() {
-		return new JsonMap().with("type", "max");
-	}
-
-	@Override
-	public void load(JsonMap map) {
-
-	}
-
 	public MaxLayerSource(LayerSources sources) {
-		super(sources, "Max");
+		super(sources, "max", "Max");
 	}
-
-	public void copyFrom(MaxLayerSource that) {}
 
 	@Override
 	public void doRedraw() throws RedrawException {

@@ -1,6 +1,5 @@
 package builderb0y.notgimp.sources;
 
-import javafx.beans.value.ChangeListener;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
@@ -9,58 +8,20 @@ import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.Util;
-import builderb0y.notgimp.json.JsonMap;
 
 public class ClampLayerSource extends SingleInputEffectLayerSource {
 
 	public VBox channels = new VBox();
 	public CheckBox
-		red   = new CheckBox("Red"),
-		green = new CheckBox("Green"),
-		blue  = new CheckBox("Blue"),
-		alpha = new CheckBox("Alpha");
-
-	@Override
-	public JsonMap save() {
-		return (
-			new JsonMap()
-			.with("type", "clamp")
-			.with("red",   this.red  .isSelected())
-			.with("green", this.green.isSelected())
-			.with("blue",  this.blue .isSelected())
-			.with("alpha", this.alpha.isSelected())
-		);
-	}
-
-	@Override
-	public void load(JsonMap map) {
-		this.red  .setSelected(map.getBoolean("red"  ));
-		this.green.setSelected(map.getBoolean("green"));
-		this.blue .setSelected(map.getBoolean("blue" ));
-		this.alpha.setSelected(map.getBoolean("alpha"));
-	}
+		red   = this.addCheckbox("red",   "Red", true),
+		green = this.addCheckbox("green", "Green", true),
+		blue  = this.addCheckbox("blue",  "Blue", true),
+		alpha = this.addCheckbox("alpha", "Alpha", true);
 
 	public ClampLayerSource(LayerSources sources) {
-		super(sources, "Clamp");
-		this.red.setSelected(true);
-		this.green.setSelected(true);
-		this.blue.setSelected(true);
-		this.alpha.setSelected(false);
+		super(sources, "clamp", "Clamp");
 		this.channels.getChildren().addAll(this.red, this.green, this.blue, this.alpha);
 		this.rootNode.setCenter(this.channels);
-		ChangeListener<Boolean> redrawer = Util.change(this::requestRedraw);
-		this.red  .selectedProperty().addListener(redrawer);
-		this.green.selectedProperty().addListener(redrawer);
-		this.blue .selectedProperty().addListener(redrawer);
-		this.alpha.selectedProperty().addListener(redrawer);
-	}
-
-	public void copyFrom(ClampLayerSource from) {
-		this.red  .setSelected(from.red  .isSelected());
-		this.green.setSelected(from.green.isSelected());
-		this.blue .setSelected(from.blue .isSelected());
-		this.alpha.setSelected(from.alpha.isSelected());
 	}
 
 	@Override

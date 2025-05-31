@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.tools.*;
 
@@ -40,10 +41,7 @@ public class ManualLayerSource extends LayerSource {
 
 	@Override
 	public JsonMap save() {
-		JsonMap map = new JsonMap();
-		map.add("type", "manual");
-		map.add("image", this.toollessImage.save());
-		return map;
+		return super.save().with("image", this.toollessImage.save());
 	}
 
 	@Override
@@ -52,7 +50,7 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	public ManualLayerSource(LayerSources sources) {
-		super(sources, "Manual");
+		super(sources, "manual", "Manual");
 		this.toolSelection.add(this.rectButton, 0, 0);
 		this.toolSelection.add(this.lineButton, 1, 0);
 		this.toolSelection.add(this.freehandButton, 2, 0);
@@ -60,8 +58,18 @@ public class ManualLayerSource extends LayerSource {
 		this.toolSelection.add(this.bucketButton, 1, 1);
 		this.toolSelection.add(this.toolConfig, 0, 2, 3, 1);
 		this.toolConfig.centerProperty().bind(this.toolWithoutColorPicker.map(Tool::getConfiguration));
+		new com.sun.javafx.scene.TreeShowingProperty(this.toolSelection).addListener(Util.change((Boolean visible) -> {
+			if (!visible) {
+				Tool<?> tool = this.toolWithoutColorPicker.get();
+				if (tool != null) {
+					tool.enter();
+					this.toolWithoutColorPicker.set(null);
+				}
+			}
+		}));
 	}
 
+	@Override
 	public void init(boolean fromSave) {
 		if (this.toollessImage == null) {
 			this.toollessImage = new HDRImage(this.sources.layer.image);
@@ -71,7 +79,7 @@ public class ManualLayerSource extends LayerSource {
 	public Button button(Tool<?> tool) {
 		Button button = new Button();
 		button.setGraphic(new ImageView(tool.type.icon()));
-		button.setOnAction((ActionEvent event) -> this.toolWithoutColorPicker.set(tool));
+		button.setOnAction((ActionEvent _) -> this.toolWithoutColorPicker.set(tool));
 		return button;
 	}
 
@@ -87,7 +95,10 @@ public class ManualLayerSource extends LayerSource {
 		this.requestRedraw();
 	}
 
-	public void copyFrom(ManualLayerSource that) {
+	@Override
+	public void copyFrom(LayerSource source) {
+		super.copyFrom(source);
+		ManualLayerSource that = (ManualLayerSource)(source);
 		if (this.toollessImage == null) {
 			this.toollessImage = new HDRImage(this.sources.layer.image);
 		}

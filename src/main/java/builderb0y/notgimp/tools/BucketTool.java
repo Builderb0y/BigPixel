@@ -11,7 +11,6 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import org.jetbrains.annotations.Nullable;
 

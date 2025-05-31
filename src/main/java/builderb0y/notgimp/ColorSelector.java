@@ -83,9 +83,9 @@ public class ColorSelector {
 				this.currentColor.markDirty();
 			}
 		);
-		this.gradient.canvas.setOnMousePressed(handler);
-		this.gradient.canvas.setOnMouseDragged(handler);
-		this.gradient.canvas.setOnMouseReleased(handler);
+		this.gradient.display.setOnMousePressed(handler);
+		this.gradient.display.setOnMouseDragged(handler);
+		this.gradient.display.setOnMouseReleased(handler);
 		this.colorPickerButton.setOnAction((ActionEvent event) -> {
 			OpenImage image = this.mainWindow.getCurrentImage();
 			if (image != null) {
@@ -104,7 +104,7 @@ public class ColorSelector {
 
 	public void redrawGradient() {
 		//gradient
-		PixelWriter writer = this.gradient.canvas.getGraphicsContext2D().getPixelWriter();
+		PixelWriter writer = this.gradient.display.getGraphicsContext2D().getPixelWriter();
 		ColorHelper helper = new ColorHelper(this.currentColor);
 		ColorComponent primaryComponent = ColorComponent.HUE;
 		byte[] pixels = new byte[257 * 257 * 4];
@@ -139,7 +139,7 @@ public class ColorSelector {
 		writer.setPixels(0, 0, 257, 257, PixelFormat.getByteBgraPreInstance(), pixels, 0, 257 << 2);
 
 		//rectangle
-		writer = this.rectangle.canvas.getGraphicsContext2D().getPixelWriter();
+		writer = this.rectangle.display.getGraphicsContext2D().getPixelWriter();
 		for (int y = 0; y <= 96; y++) {
 			for (int x = 0; x <= 96; x++) {
 				int baseIndex = (y * 96 + x) << 2;
@@ -236,7 +236,7 @@ public class ColorSelector {
 				ColorSelector.this.currentColor.setComponent(this.component, value);
 				ColorSelector.this.currentColor.markDirty();
 			};
-			this.canvas.setOnScroll(eventHandler);
+			this.display.setOnScroll(eventHandler);
 			this.numberBox.setOnScroll(eventHandler);
 			ColorSelector.this.currentColor.any.addListener((Observable _) -> this.redraw());
 			this.redraw();
@@ -286,8 +286,8 @@ public class ColorSelector {
 				default -> this.color.setRGBA(0.0F, 0.0F, 0.0F, 0.0F);
 			}
 
-			this.canvas.pop(this.canvas.canvas.pressedProperty());
-			this.canvas.canvas.setOnMouseClicked((MouseEvent event) -> {
+			this.canvas.pop(this.canvas.display.pressedProperty());
+			this.canvas.display.setOnMouseClicked((MouseEvent event) -> {
 				if (event.getButton() == MouseButton.PRIMARY) {
 					this.apply();
 				}
@@ -309,7 +309,7 @@ public class ColorSelector {
 		}
 
 		public void redraw() {
-			PixelWriter writer = this.canvas.canvas.getGraphicsContext2D().getPixelWriter();
+			PixelWriter writer = this.canvas.display.getGraphicsContext2D().getPixelWriter();
 			byte[] pixels = new byte[16 * 4];
 			for (int x = 0; x < 16; x++) {
 				int baseIndex = x << 2;

@@ -69,9 +69,9 @@ public class ZoomableImage {
 	}
 
 	public void init() {
-		this.display.canvas. widthProperty().addListener(this.centerer);
-		this.display.canvas.heightProperty().addListener(this.centerer);
-		Canvas canvas = this.display.canvas;
+		this.display.display. widthProperty().addListener(this.centerer);
+		this.display.display.heightProperty().addListener(this.centerer);
+		Canvas canvas = this.display.display;
 		ChangeListener<Object> redrawer = Util.change(this::redraw);
 		this.openImage.wrap.addListener(redrawer);
 		this.openImage.showingLayerProperty.addListener(redrawer);
@@ -106,7 +106,7 @@ public class ZoomableImage {
 
 			@Override
 			public void handle(MouseEvent event) {
-				Canvas canvas = ZoomableImage.this.display.canvas;
+				Canvas canvas = ZoomableImage.this.display.display;
 				canvas.requestFocus();
 				if (event.getButton() == MouseButton.MIDDLE) {
 					if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
@@ -169,8 +169,8 @@ public class ZoomableImage {
 		double zoom = this.zoom.getValue();
 		if (posX + image.width  / zoom < 0) posX = image.width  / -zoom;
 		if (posY + image.height / zoom < 0) posY = image.height / -zoom;
-		if (posX > this.display.canvas.getWidth ()) posX = this.display.canvas.getWidth ();
-		if (posY > this.display.canvas.getHeight()) posY = this.display.canvas.getHeight();
+		if (posX > this.display.display.getWidth ()) posX = this.display.display.getWidth ();
+		if (posY > this.display.display.getHeight()) posY = this.display.display.getHeight();
 		this.offsetX = posX;
 		this.offsetY = posY;
 	}
@@ -178,7 +178,7 @@ public class ZoomableImage {
 	public void center() {
 		//hacky code to only center once.
 		if (this.centerer == null) return;
-		Canvas canvas = this.display.canvas;
+		Canvas canvas = this.display.display;
 		if (canvas.getWidth() == 0.0D || canvas.getHeight() == 0.0D) return;
 		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
 		int zoomIndex = Arrays.binarySearch(
@@ -204,7 +204,7 @@ public class ZoomableImage {
 
 	public void doRedraw() {
 		HDRImage image = this.openImage.showingLayerProperty.getValue().image;
-		Canvas canvas = this.display.canvas;
+		Canvas canvas = this.display.display;
 		PixelWriter writer = canvas.getGraphicsContext2D().getPixelWriter();
 		if (writer.getPixelFormat() != PixelFormat.getByteBgraPreInstance()) {
 			throw new IllegalStateException("Pixel format changed");

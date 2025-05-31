@@ -22,7 +22,12 @@ targetCompatibility = '22'
 
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
-	options.compilerArgs.addAll([ '--enable-preview', '-parameters', '--add-modules jdk.incubator.vector' ])
+	options.compilerArgs.addAll([
+		'--enable-preview',
+		'-parameters',
+		'--add-modules', 'jdk.incubator.vector',
+		'--add-exports', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED'
+	])
 }
 
 configurations {

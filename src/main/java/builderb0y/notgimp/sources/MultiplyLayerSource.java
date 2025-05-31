@@ -1,7 +1,6 @@
 package builderb0y.notgimp.sources;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
 import javafx.scene.Node;
@@ -11,35 +10,14 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.Util;
-import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 
 public class MultiplyLayerSource extends EffectLayerSource {
 
-	public CheckBox alphaWeighting = new CheckBox("Alpha Weighting");
-
-	@Override
-	public JsonMap save() {
-		return (
-			new JsonMap()
-			.with("type", "mul")
-			.with("alpha_weighting", this.alphaWeighting.isSelected())
-		);
-	}
-
-	@Override
-	public void load(JsonMap map) {
-		this.alphaWeighting.setSelected(map.getBoolean("alpha_weighting"));
-	}
+	public CheckBox alphaWeighting = this.addCheckbox("alpha_weighting", "Alpha Weighting", false);
 
 	public MultiplyLayerSource(LayerSources sources) {
-		super(sources, "Multiply");
-		this.alphaWeighting.selectedProperty().addListener(Util.change(this::requestRedraw));
-	}
-
-	public void copyFrom(MultiplyLayerSource that) {
-		this.alphaWeighting.setSelected(that.alphaWeighting.isSelected());
+		super(sources, "mul", "Multiply");
 	}
 
 	@Override

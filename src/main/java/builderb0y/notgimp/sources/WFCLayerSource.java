@@ -1,24 +1,25 @@
 package builderb0y.notgimp.sources;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.util.*;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.random.RandomGenerator;
-import java.util.stream.IntStream;
-
 import javax.imageio.ImageIO;
 
 import javafx.animation.Animation;
 import javafx.animation.Interpolator;
 import javafx.animation.Transition;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
 import javafx.event.ActionEvent;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
@@ -27,26 +28,24 @@ import jdk.incubator.vector.FloatVector;
 import builderb0y.notgimp.FastRandom;
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.Util;
-import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.tools.Symmetry;
 
 public class WFCLayerSource extends SingleInputEffectLayerSource {
 
 	public Spinner<Integer>
-		seed = Util.setupSpinner(new Spinner<>(Integer.MIN_VALUE, Integer.MAX_VALUE, 0), 80.0D),
-		kernel = Util.setupSpinner(new Spinner<>(2, 8, 1), 80.0D);
+		seed = this.addIntSpinner("seed", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80.0D),
+		kernel = this.addIntSpinner("kernel", 2, 8, 1, 1, 80.0D);
 	public GridPane
 		mainSettings = new GridPane();
 	public CheckBox
-		identity  = new CheckBox("None: "),
-		rotate90  = new CheckBox("Rot 90: "),
-		rotate180 = new CheckBox("Rot 180: "),
-		rotate270 = new CheckBox("Rot 270: "),
-		flipH     = new CheckBox("Flip H: "),
-		flipV     = new CheckBox("Flip V: "),
-		flipL     = new CheckBox("Flip L: "),
-		flipR     = new CheckBox("Flip R: ");
+		identity  = this.addCheckbox("identity", "None: ", true),
+		rotate90  = this.addCheckbox("rotate90", "Rot 90: ", false),
+		rotate180 = this.addCheckbox("rotate180", "Rot 180: ", false),
+		rotate270 = this.addCheckbox("rotate270", "Rot 270: ", false),
+		flipH     = this.addCheckbox("flipH", "Flip H: ", false),
+		flipV     = this.addCheckbox("flipV", "Flip V: ", false),
+		flipL     = this.addCheckbox("flipL", "Flip L: ", false),
+		flipR     = this.addCheckbox("flipR", "Flip R: ", false);
 	public GridPane
 		symmetrySettings = new GridPane();
 	public VBox
@@ -56,42 +55,8 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 	public boolean
 		redrawing;
 
-	@Override
-	public JsonMap save() {
-		return (
-			new JsonMap()
-			.with("type", "wfc")
-			.with("seed", this.seed.getValue())
-			.with("kernel", this.kernel.getValue())
-
-			.with("identity", this.identity.isSelected())
-			.with("rotate90", this.rotate90.isSelected())
-			.with("rotate180", this.rotate180.isSelected())
-			.with("rotate270", this.rotate270.isSelected())
-			.with("flipH", this.flipH.isSelected())
-			.with("flipV", this.flipV.isSelected())
-			.with("flipL", this.flipL.isSelected())
-			.with("flipR", this.flipR.isSelected())
-		);
-	}
-
-	@Override
-	public void load(JsonMap map) {
-		this.seed.getValueFactory().setValue(map.getInt("seed"));
-		this.kernel.getValueFactory().setValue(map.getInt("kernel"));
-
-		this.identity.setSelected(map.getBoolean("identity"));
-		this.rotate90.setSelected(map.getBoolean("rotate90"));
-		this.rotate180.setSelected(map.getBoolean("rotate180"));
-		this.rotate270.setSelected(map.getBoolean("rotate270"));
-		this.flipH.setSelected(map.getBoolean("flipH"));
-		this.flipV.setSelected(map.getBoolean("flipV"));
-		this.flipL.setSelected(map.getBoolean("flipL"));
-		this.flipR.setSelected(map.getBoolean("flipR"));
-	}
-
 	public WFCLayerSource(LayerSources sources) {
-		super(sources, "Wave Function Collapse");
+		super(sources, "wfc", "Wave Function Collapse");
 		this.mainSettings.add(new Label("Seed: "), 0, 0);
 		this.mainSettings.add(this.seed, 1, 0);
 		this.mainSettings.add(new Label("Kernel: "), 0, 1);
@@ -114,19 +79,6 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 
 		this.mainPane.getChildren().addAll(this.mainSettings, this.symmetrySettings);
 
-		ChangeListener<Object> listener = Util.change(this::requestRedraw);
-		this.seed.getValueFactory().valueProperty().addListener(listener);
-		this.kernel.getValueFactory().valueProperty().addListener(listener);
-
-		this.identity.selectedProperty().addListener(listener);
-		this.rotate90.selectedProperty().addListener(listener);
-		this.rotate180.selectedProperty().addListener(listener);
-		this.rotate270.selectedProperty().addListener(listener);
-		this.flipH.selectedProperty().addListener(listener);
-		this.flipV.selectedProperty().addListener(listener);
-		this.flipL.selectedProperty().addListener(listener);
-		this.flipR.selectedProperty().addListener(listener);
-
 		this.rootNode.setCenter(this.mainPane);
 	}
 
@@ -139,20 +91,6 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 		this.flipV.setSelected(selected);
 		this.flipL.setSelected(selected);
 		this.flipR.setSelected(selected);
-	}
-
-	public void copyFrom(WFCLayerSource that) {
-		this.seed.getValueFactory().setValue(that.seed.getValue());
-		this.kernel.getValueFactory().setValue(that.kernel.getValue());
-
-		this.identity.setSelected(that.identity.isSelected());
-		this.rotate90.setSelected(that.rotate90.isSelected());
-		this.rotate180.setSelected(that.rotate180.isSelected());
-		this.rotate270.setSelected(that.rotate270.isSelected());
-		this.flipH.setSelected(that.flipH.isSelected());
-		this.flipV.setSelected(that.flipV.isSelected());
-		this.flipL.setSelected(that.flipL.isSelected());
-		this.flipR.setSelected(that.flipR.isSelected());
 	}
 
 	@Override
