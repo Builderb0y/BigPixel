@@ -4,6 +4,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Spinner;
 import javafx.scene.input.MouseButton;
 
+import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
@@ -11,7 +12,7 @@ import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class RectangleTool extends Tool<RectangleTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("rectangle", 9.0D, 9.0D);
+	public static final ToolType TYPE = new ToolType("rectangle", Assets.Tools.RECTANGLE, 9.0D, 9.0D);
 
 	public Spinner<Integer> thickness;
 

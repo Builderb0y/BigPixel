@@ -1,5 +1,7 @@
 package builderb0y.notgimp;
 
+import java.util.Arrays;
+
 import javafx.beans.Observable;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -30,12 +32,30 @@ public class ColorSelector {
 			new Insets(2.0D, 4.0D, 2.0D, 4.0D)
 		)
 	);
+	public static final int[] SNAP_POSITIONS = new int[257];
+	static {
+		for (int index = 0; index <= 256; index++) {
+			int range = snapRange(index);
+			int lo = Math.max(index - range, 0);
+			int hi = Math.min(index + range, 256);
+			for (int index2 = lo; index2 <= hi; index2++) {
+				SNAP_POSITIONS[index2] = index;
+			}
+			index = hi;
+		}
+	}
+
+	public static int snapRange(int value) {
+		//& 7 makes it so that 0 and 256 both map to no snapping,
+		//since it's easy to just drag your mouse outside the slider or gradient.
+		return Math.max((Integer.numberOfTrailingZeros(value) & 7) - 3, 0);
+	}
 
 	public MainWindow mainWindow;
 	public GridPane mainPane = new GridPane();
 	public CanvasHelper gradient = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 257.0D);
 	public ColorHelper currentColor = new ColorHelper();
-	public CanvasHelper rectangle = new CanvasHelper().checkerboard().popIn().fixedSize(96, 96);
+	public RectangleHelper rectangle = new RectangleHelper().checkerboard().popIn().fixedSize(96, 96);
 	public CheckBox fractionalDisplay = new CheckBox("/256");
 	public Button colorPickerButton = new Button();
 	public ColorSlider
@@ -68,6 +88,10 @@ public class ColorSelector {
 		this.currentColor.any.addListener((Observable _) -> this.redrawGradient());
 	}
 
+	public static int snap(double pos) {
+		return SNAP_POSITIONS[Math.clamp((int)(pos), 0, 256)];
+	}
+
 	public void init() {
 		this.currentColor.any.addListener((Observable _) -> {
 			OpenImage openImage = this.mainWindow.getCurrentImage();
@@ -78,15 +102,15 @@ public class ColorSelector {
 		});
 		EventHandler<MouseEvent> handler = new RateLimitedMouseEventHandler(
 			(MouseEvent event) -> {
-				this.currentColor.setComponent(this.hue.component.horizontal(), Math.clamp(((float)(int)(event.getX())) / 256.0F, 0.0F, 1.0F));
-				this.currentColor.setComponent(this.hue.component.vertical(), Math.clamp(1.0F - ((float)(int)(event.getY())) / 256.0F, 0.0F, 1.0F));
+				this.currentColor.setComponent(this.hue.component.horizontal(), snap(event.getX()) / 256.0F);
+				this.currentColor.setComponent(this.hue.component.vertical(), 1.0F - snap(event.getY()) / 256.0F);
 				this.currentColor.markDirty();
 			}
 		);
 		this.gradient.display.setOnMousePressed(handler);
 		this.gradient.display.setOnMouseDragged(handler);
 		this.gradient.display.setOnMouseReleased(handler);
-		this.colorPickerButton.setOnAction((ActionEvent event) -> {
+		this.colorPickerButton.setOnAction((ActionEvent _) -> {
 			OpenImage image = this.mainWindow.getCurrentImage();
 			if (image != null) {
 				image.pickColor(this.currentColor);
@@ -123,34 +147,42 @@ public class ColorSelector {
 		int invertX = ((int)(this.currentColor.getComponent(primaryComponent.horizontal()).get() * 256.0F));
 		int invertY = ((int)(256.0F - this.currentColor.getComponent(primaryComponent.vertical()).get() * 256.0F));
 		for (int x = 0; x <= 256; x++) {
-			int baseIndex = (invertY * 257 + x) << 2;
-			pixels[baseIndex    ] = (byte)(~pixels[baseIndex    ]);
-			pixels[baseIndex | 1] = (byte)(~pixels[baseIndex | 1]);
-			pixels[baseIndex | 2] = (byte)(~pixels[baseIndex | 2]);
-			pixels[baseIndex | 3] = -1;
+			invert(pixels, x, invertY);
+			if (x != invertX) {
+				int tickSize = snapRange(x) << 1;
+				for (int y = 0; y < tickSize; y++) {
+					invert(pixels, x, y);
+					invert(pixels, x, 256 - y);
+				}
+			}
 		}
 		for (int y = 0; y <= 256; y++) {
-			int baseIndex = (y * 257 + invertX) << 2;
-			pixels[baseIndex    ] = (byte)(~pixels[baseIndex    ]);
-			pixels[baseIndex | 1] = (byte)(~pixels[baseIndex | 1]);
-			pixels[baseIndex | 2] = (byte)(~pixels[baseIndex | 2]);
-			pixels[baseIndex | 3] = -1;
+			invert(pixels, invertX, y);
+			if (y != invertY) {
+				int tickSize = snapRange(y) << 1;
+				for (int x = 0; x < tickSize; x++) {
+					invert(pixels, x, y);
+					invert(pixels, 256 - x, y);
+				}
+			}
 		}
 		writer.setPixels(0, 0, 257, 257, PixelFormat.getByteBgraPreInstance(), pixels, 0, 257 << 2);
 
 		//rectangle
-		writer = this.rectangle.display.getGraphicsContext2D().getPixelWriter();
-		for (int y = 0; y <= 96; y++) {
-			for (int x = 0; x <= 96; x++) {
-				int baseIndex = (y * 96 + x) << 2;
-				float alpha = this.currentColor.alpha.get();
-				pixels[baseIndex    ] = Util.clampB(this.currentColor.blue .get() * alpha);
-				pixels[baseIndex | 1] = Util.clampB(this.currentColor.green.get() * alpha);
-				pixels[baseIndex | 2] = Util.clampB(this.currentColor.red  .get() * alpha);
-				pixels[baseIndex | 3] = Util.clampB(alpha);
-			}
-		}
-		writer.setPixels(0, 0, 96, 96, PixelFormat.getByteBgraPreInstance(), pixels, 0, 96 << 2);
+		this.rectangle.color(
+			this.currentColor.red.get(),
+			this.currentColor.green.get(),
+			this.currentColor.blue.get(),
+			this.currentColor.alpha.get()
+		);
+	}
+
+	public static void invert(byte[] pixels, int x, int y) {
+		int baseIndex = (y * 257 + x) << 2;
+		pixels[baseIndex    ] = (byte)(~pixels[baseIndex    ]);
+		pixels[baseIndex | 1] = (byte)(~pixels[baseIndex | 1]);
+		pixels[baseIndex | 2] = (byte)(~pixels[baseIndex | 2]);
+		pixels[baseIndex | 3] = -1;
 	}
 
 	public class ColorSlider extends GradientSlider {
@@ -253,6 +285,11 @@ public class ColorSelector {
 			BorderPane numberBoxPane = new BorderPane(this.numberBox);
 			numberBoxPane.setBorder(INSET_BORDER);
 			pane.add(numberBoxPane, 2, row);
+		}
+
+		@Override
+		public int castPosition(double pos) {
+			return snap(pos);
 		}
 
 		@Override

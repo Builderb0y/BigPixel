@@ -9,6 +9,7 @@ import javafx.beans.binding.ObjectBinding;
 import javafx.beans.binding.When;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableObjectValue;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
@@ -77,7 +78,10 @@ public class OpenImage {
 	public ColorPickerTool
 		colorPickerTool = new ColorPickerTool(this);
 	public SimpleBooleanProperty
-		usingColorPicker = new SimpleBooleanProperty();
+		usingColorPickerByControl = new SimpleBooleanProperty(),
+		usingColorPickerByButton = new SimpleBooleanProperty();
+	public BooleanBinding
+		usingColorPicker = this.usingColorPickerByButton.or(this.usingColorPickerByControl);
 	public ObjectBinding<@Nullable Tool<?>>
 		toolWithoutColorPicker = (ObjectBinding<Tool<?>>)(
 			this.selectedLayerProperty.flatMap(
@@ -93,6 +97,11 @@ public class OpenImage {
 	);
 	public ObservableValue<Cursor>
 		cursorProperty = this.toolWithColorPicker.map((SourcelessTool<?> tool) -> tool.type.cursor());
+	public ObjectBinding<String> title = (
+		new When(this.file.isNotNull())
+		.then((ObservableObjectValue<String>)(this.file.map(File::getName)))
+		.otherwise((ObservableObjectValue<String>)(this.layerTree.rootProperty().flatMap((TreeItem<Layer> layer) -> layer.getValue().name)))
+	);
 	public boolean
 		redrawQueued;
 	public Runnable
@@ -232,7 +241,8 @@ public class OpenImage {
 	}
 
 	public Layer getSelectedLayer() {
-		return this.layerTree.getSelectionModel().getSelectedItem().getValue();
+		TreeItem<Layer> item = this.layerTree.getSelectionModel().getSelectedItem();
+		return item != null ? item.getValue() : this.layerTree.getRoot().getValue();
 	}
 
 	public Layer getVisibleLayer() {
@@ -305,8 +315,12 @@ public class OpenImage {
 
 	public void addParentLayer(ActionEvent event) {
 		TreeItem<Layer> old = this.layerTree.getSelectionModel().getSelectedItem();
+		this.createParentLayer(old, null);
+	}
+
+	public Layer createParentLayer(TreeItem<Layer> old, @Nullable String name) {
 		HDRImage image = old.getValue().image;
-		Layer newLayer = new Layer(this, "", image.width, image.height);
+		Layer newLayer = new Layer(this, name != null ? name : "", image.width, image.height);
 		this.addToMap(newLayer);
 		if (old == this.layerTree.getRoot()) {
 			this.layerTree.setRoot(newLayer.item);
@@ -318,21 +332,27 @@ public class OpenImage {
 		}
 		newLayer.item.getChildren().add(old);
 		newLayer.item.setExpanded(true);
-		this.layerTree.getSelectionModel().select(newLayer.item);
+		if (name == null) this.layerTree.getSelectionModel().select(newLayer.item);
 		newLayer.init(false);
-		this.layerTree.edit(newLayer.item);
+		if (name == null) this.layerTree.edit(newLayer.item);
+		return newLayer;
 	}
 
 	public void addLayerAbove(ActionEvent event) {
 		TreeItem<Layer> old = this.layerTree.getSelectionModel().getSelectedItem();
+		this.createLayerAbove(old, null);
+	}
+
+	public Layer createLayerAbove(TreeItem<Layer> old, @Nullable String name) {
 		HDRImage image = old.getValue().image;
-		Layer newLayer = new Layer(this, "", image.width, image.height);
+		Layer newLayer = new Layer(this, name != null ? name : "", image.width, image.height);
 		this.addToMap(newLayer);
 		ObservableList<TreeItem<Layer>> children = old.getParent().getChildren();
 		children.add(children.indexOf(old), newLayer.item);
-		this.layerTree.getSelectionModel().select(newLayer.item);
+		if (name == null) this.layerTree.getSelectionModel().select(newLayer.item);
 		newLayer.init(false);
-		this.layerTree.edit(newLayer.item);
+		if (name == null) this.layerTree.edit(newLayer.item);
+		return newLayer;
 	}
 
 	public void addChildLayer(ActionEvent event) {
@@ -518,11 +538,21 @@ public class OpenImage {
 
 	public void pickColor(ColorPickerCallback callback) {
 		this.colorPickerTool.work = callback;
-		this.usingColorPicker.set(true);
+		this.usingColorPickerByButton.set(true);
 	}
 
 	public void stopPickingColor() {
 		this.colorPickerTool.work = null;
-		this.usingColorPicker.set(false);
+		this.usingColorPickerByButton.set(false);
+	}
+
+	public void controlPressed(ColorPickerCallback callback) {
+		this.colorPickerTool.work = callback;
+		this.usingColorPickerByControl.set(true);
+	}
+
+	public void controlReleased() {
+		this.colorPickerTool.work = null;
+		this.usingColorPickerByControl.set(false);
 	}
 }

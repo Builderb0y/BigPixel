@@ -48,8 +48,10 @@ public class NormalizeLayerSource extends SingleInputEffectLayerSource {
 		FloatVector max = FloatVector.broadcast(FloatVector.SPECIES_128, Float.NEGATIVE_INFINITY);
 		for (int index = 0, length = source.pixels.length; index < length; index += 4) {
 			FloatVector pixel = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-			min = min.min(pixel);
-			max = max.max(pixel);
+			if (pixel.lane(HDRImage.ALPHA_OFFSET) != 0.0F) {
+				min = min.min(pixel);
+				max = max.max(pixel);
+			}
 		}
 		if (!perChannel) {
 			min = FloatVector.broadcast(FloatVector.SPECIES_128, min.reduceLanes(VectorOperators.MIN, mask));
@@ -59,8 +61,11 @@ public class NormalizeLayerSource extends SingleInputEffectLayerSource {
 		if (mask.anyTrue()) {
 			for (int index = 0, length = source.pixels.length; index < length; index += 4) {
 				FloatVector pixel = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-				FloatVector newPixel = VectorOperations.unmix_float4_float4_float4(min, max, pixel);
-				pixel.blend(newPixel, mask).intoArray(destination.pixels, index);
+				if (pixel.lane(HDRImage.ALPHA_OFFSET) != 0.0F) {
+					FloatVector newPixel = VectorOperations.unmix_float4_float4_float4(min, max, pixel);
+					pixel = pixel.blend(newPixel, mask);
+				}
+				pixel.intoArray(destination.pixels, index);
 			}
 		}
 		else {

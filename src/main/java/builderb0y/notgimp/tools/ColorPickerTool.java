@@ -2,6 +2,7 @@ package builderb0y.notgimp.tools;
 
 import javafx.scene.input.MouseButton;
 
+import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.OpenImage;
@@ -10,7 +11,7 @@ import builderb0y.notgimp.tools.Tool.ToolType;
 
 public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 
-	public static final ToolType TYPE = new ToolType("color_picker", 1.0D, 23.0D);
+	public static final ToolType TYPE = new ToolType("color_picker", Assets.Tools.COLOR_PICKER, 1.0D, 23.0D);
 
 	public final OpenImage openImage;
 

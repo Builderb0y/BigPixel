@@ -15,5 +15,3 @@ layer sources:
 	no inputs:
 		blue noise pixels.
 			basically generate a list of xy coordinates that follow a blue noise pattern.
-	one input:
-		negate

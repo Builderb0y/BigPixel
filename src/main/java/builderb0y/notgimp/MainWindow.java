@@ -18,10 +18,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabDragPolicy;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.DataFormat;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.ScrollEvent;
+import javafx.scene.input.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
@@ -73,6 +70,8 @@ public class MainWindow {
 		colorPicker = new ColorSelector(this);
 	public Histogram
 		histogram = new Histogram(this);
+	public File
+		lastOpenedDirectory = new File(System.getProperty("user.dir"));
 	public SimpleObjectProperty<String>
 		styleSheetName = new SimpleObjectProperty<>("assets/themes/light.css");
 
@@ -222,28 +221,7 @@ public class MainWindow {
 						if (openImage != null) {
 							Layer layer = openImage.getSelectedLayer();
 							if (layer != null) {
-								HDRImage image = layer.image;
-								if (layer.sources.getCurrentSource() instanceof ManualLayerSource source) {
-									Selection selection = new Selection();
-									Tool<?> tool = source.toolWithoutColorPicker.get();
-									if (tool != null && tool.getSelection(selection)) {
-										HDRImage image2 = new HDRImage(selection.maxX - selection.minX + 1, selection.maxY - selection.minY + 1);
-										for (int y = selection.minY; y <= selection.maxY; y++) {
-											for (int x = selection.minX; x <= selection.maxX; x++) {
-												if (x >= 0 && x < image.width && y >= 0 && y < image.height) {
-													image2.setColor(x - selection.minX, y - selection.minY, image.getPixel(x, y));
-												}
-											}
-										}
-										image = image2;
-									}
-								}
-								Clipboard.getSystemClipboard().setContent(
-									Map.of(
-										HDRImage.HDR_DATA_FORMAT, image,
-										DataFormat.IMAGE, image.toJfxImage()
-									)
-								);
+								this.copyToClipboard(layer);
 							}
 						}
 					}
@@ -260,6 +238,14 @@ public class MainWindow {
 					}
 					case N -> {
 						this.fileNew(null);
+					}
+					case O -> {
+						this.fileOpen(null);
+					}
+					case CONTROL -> {
+						if (openImage != null) {
+							openImage.controlPressed(this.colorPicker.currentColor);
+						}
 					}
 					case null, default -> {}
 				}
@@ -283,8 +269,16 @@ public class MainWindow {
 				}
 			}
 		});
+		scene.setOnKeyReleased((KeyEvent event) -> {
+			if (event.getCode() == KeyCode.CONTROL) {
+				OpenImage openImage = this.getCurrentImage();
+				if (openImage != null) {
+					openImage.controlReleased();
+				}
+			}
+		});
 		scene.focusOwnerProperty().addListener(Util.change((Node node) -> {
-			if (!(node instanceof TextInputControl)) {
+			if (!(node instanceof TextInputControl) && !(node instanceof MenuButton) && !(node instanceof Spinner<?>)) {
 				OpenImage image = this.getCurrentImage();
 				if (image != null) {
 					image.imageDisplay.display.display.requestFocus();
@@ -292,8 +286,33 @@ public class MainWindow {
 			}
 		}));
 		this.stage.setScene(scene);
-		this.stage.getIcons().add(new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/icon.png")));
+		this.stage.getIcons().add(Assets.ICON);
 		this.stage.show();
+	}
+
+	public void copyToClipboard(Layer layer) {
+		HDRImage image = layer.image;
+		if (layer.sources.getCurrentSource() instanceof ManualLayerSource source) {
+			Selection selection = new Selection();
+			Tool<?> tool = source.toolWithoutColorPicker.get();
+			if (tool != null && tool.getSelection(selection)) {
+				HDRImage image2 = new HDRImage(selection.maxX - selection.minX + 1, selection.maxY - selection.minY + 1);
+				for (int y = selection.minY; y <= selection.maxY; y++) {
+					for (int x = selection.minX; x <= selection.maxX; x++) {
+						if (x >= 0 && x < image.width && y >= 0 && y < image.height) {
+							image2.setColor(x - selection.minX, y - selection.minY, image.getPixel(x, y));
+						}
+					}
+				}
+				image = image2;
+			}
+		}
+		Clipboard.getSystemClipboard().setContent(
+			Map.of(
+				HDRImage.HDR_DATA_FORMAT, image,
+				DataFormat.IMAGE, image.toJfxImage()
+			)
+		);
 	}
 
 	public void swapColor(int index, boolean shift) {
@@ -451,10 +470,13 @@ public class MainWindow {
 			new ExtensionFilter("NotGimp files", "*.png", "*.jpg", "*.jpeg", "*.json"),
 			new ExtensionFilter("All files", "*.*")
 		);
-		fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
-		File file = fileChooser.showOpenDialog(this.stage);
-		if (file != null) {
-			this.doOpen(file);
+		fileChooser.setInitialDirectory(this.lastOpenedDirectory);
+		List<File> files = fileChooser.showOpenMultipleDialog(this.stage);
+		if (files != null && !files.isEmpty()) {
+			this.lastOpenedDirectory = files.getFirst().getParentFile();
+			for (File file : files) {
+				this.doOpen(file);
+			}
 		}
 	}
 
@@ -598,8 +620,7 @@ public class MainWindow {
 			.openImages
 			.getSelectionModel()
 			.selectedItemProperty()
-			.flatMap((Tab selected) -> selected == tab ? openImage.layerTree.rootProperty() : null)
-			.flatMap((TreeItem<Layer> layer) -> layer.getValue().name)
+			.flatMap((Tab selected) -> selected == tab ? openImage.title : null)
 		);
 		int index = this.openImages.getSelectionModel().getSelectedIndex() + 1;
 		this.openImages.getTabs().add(index, tab);

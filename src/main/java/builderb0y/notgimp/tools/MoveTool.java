@@ -1,12 +1,12 @@
 package builderb0y.notgimp.tools;
 
 import java.util.Arrays;
-import java.util.Locale;
 
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.TreeItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
@@ -14,27 +14,26 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.notgimp.ColorHelper;
-import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.NotGimp;
-import builderb0y.notgimp.Util;
+import builderb0y.notgimp.*;
+import builderb0y.notgimp.sources.AlphaLayerSource;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class MoveTool extends Tool<MoveTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("move", 12.0D, 12.0D);
+	public static final ToolType TYPE = new ToolType("move", Assets.Tools.MOVE, 12.0D, 12.0D);
 
 	public CheckBox
 		fill = new CheckBox("Fill");
 	public Button
-		again     = this.button("again", this::again),
-		rotate90  = this.symmetrifyButton(Symmetry.ROTATE_CW),
-		rotate180 = this.symmetrifyButton(Symmetry.ROTATE_180),
-		rotate270 = this.symmetrifyButton(Symmetry.ROTATE_CCW),
-		flipH     = this.symmetrifyButton(Symmetry.FLIP_H),
-		flipV     = this.symmetrifyButton(Symmetry.FLIP_V),
-		flipL     = this.symmetrifyButton(Symmetry.FLIP_L),
-		flipR     = this.symmetrifyButton(Symmetry.FLIP_R);
+		again     = this.button(Assets.Tools.Move.AGAIN, this::again),
+		rotate90  = this.symmetrifyButton(Assets.Tools.Move.ROTATE_CW,  Symmetry.ROTATE_CW),
+		rotate180 = this.symmetrifyButton(Assets.Tools.Move.ROTATE_180, Symmetry.ROTATE_180),
+		rotate270 = this.symmetrifyButton(Assets.Tools.Move.ROTATE_CCW, Symmetry.ROTATE_CCW),
+		flipH     = this.symmetrifyButton(Assets.Tools.Move.FLIP_H,     Symmetry.FLIP_H),
+		flipV     = this.symmetrifyButton(Assets.Tools.Move.FLIP_V,     Symmetry.FLIP_V),
+		flipL     = this.symmetrifyButton(Assets.Tools.Move.FLIP_L,     Symmetry.FLIP_L),
+		flipR     = this.symmetrifyButton(Assets.Tools.Move.FLIP_R,     Symmetry.FLIP_R),
+		extract   = this.button(Assets.Tools.Move.EXTRACT, this::extract);
 	public GridPane
 		buttons = new GridPane();
 	public BorderPane
@@ -52,16 +51,17 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		);
 		this.buttons.addRow(0, this.again, this.rotate90, this.rotate180, this.rotate270);
 		this.buttons.addRow(1, this.flipH, this.flipV, this.flipL, this.flipR);
+		this.buttons.addRow(2, this.extract);
 		this.rootPane.setTop(this.fill);
 		this.rootPane.setCenter(this.buttons);
 	}
 
-	public Button symmetrifyButton(Symmetry symmetry) {
-		return this.button(symmetry.name().toLowerCase(Locale.ROOT), () -> this.symmetrify(symmetry));
+	public Button symmetrifyButton(Image icon, Symmetry symmetry) {
+		return this.button(icon, () -> this.symmetrify(symmetry));
 	}
 
-	public Button button(String iconName, Runnable action) {
-		Button button = new Button(null, new ImageView(new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/tools/move/" + iconName + ".png"))));
+	public Button button(Image icon, Runnable action) {
+		Button button = new Button(null, new ImageView(icon));
 		button.setOnAction((ActionEvent _) -> action.run());
 		return button;
 	}
@@ -121,7 +121,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 
 	@Override
 	public void colorChanged() {
-		if (this.work != null) {
+		if (this.work != null && this.fill.isSelected()) {
 			this.requestRedraw();
 		}
 	}
@@ -130,24 +130,35 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	public void redraw() {
 		Work work = this.work;
 		if (work == null) return;
-		HDRImage toImage = this.layer().image;
-		HDRImage fromImage = this.work.source;
+		HDRImage to = this.layer().image;
+		this.maybeFill(work, to);
+		this.transfer(work, work.source, to);
+	}
+
+	public void maybeFill(Work work, HDRImage fillImage) {
+		int minX = Math.min(work.x1, work.x2);
+		int minY = Math.min(work.y1, work.y2);
+		int maxX = Math.max(work.x1, work.x2);
+		int maxY = Math.max(work.y1, work.y2);
+		if (this.fill.isSelected()) {
+			ColorHelper color = this.layer().openImage.mainWindow.colorPicker.currentColor;
+			for (int fromY = minY; fromY <= maxY; fromY++) {
+				for (int fromX = minX; fromX <= maxX; fromX++) {
+					if (fromX >= 0 && fromX < fillImage.width && fromY >= 0 && fromY < fillImage.height) {
+						fillImage.setColor(fromX, fromY, color);
+					}
+				}
+			}
+		}
+	}
+
+	public void transfer(Work work, HDRImage fromImage, HDRImage copyImage) {
 		int minX = Math.min(work.x1, work.x2);
 		int minY = Math.min(work.y1, work.y2);
 		int maxX = Math.max(work.x1, work.x2);
 		int maxY = Math.max(work.y1, work.y2);
 		int offsetX = work.offsetX;
 		int offsetY = work.offsetY;
-		if (this.fill.isSelected()) {
-			ColorHelper color = this.layer().openImage.mainWindow.colorPicker.currentColor;
-			for (int fromY = minY; fromY <= maxY; fromY++) {
-				for (int fromX = minX; fromX <= maxX; fromX++) {
-					if (fromX >= 0 && fromX < toImage.width && fromY >= 0 && fromY < toImage.height) {
-						toImage.setColor(fromX, fromY, color);
-					}
-				}
-			}
-		}
 		for (int fromY = minY; fromY <= maxY; fromY++) {
 			for (int fromX = minX; fromX <= maxX; fromX++) {
 				double
@@ -162,15 +173,15 @@ public class MoveTool extends Tool<MoveTool.Work> {
 				int
 					toX = (int)(Math.floor(transformedX)),
 					toY = (int)(Math.floor(transformedY));
-				if (toX >= 0 && toX < toImage.width && toY >= 0 && toY < toImage.height) {
+				if (toX >= 0 && toX < copyImage.width && toY >= 0 && toY < copyImage.height) {
 					if (fromX >= 0 && fromX < fromImage.width && fromY >= 0 && fromY < fromImage.height) {
 						int fromIndex = fromImage.baseIndex(fromX, fromY);
-						int toIndex = toImage.baseIndex(toX, toY);
-						System.arraycopy(fromImage.pixels, fromIndex, toImage.pixels, toIndex, 4);
+						int toIndex = copyImage.baseIndex(toX, toY);
+						System.arraycopy(fromImage.pixels, fromIndex, copyImage.pixels, toIndex, 4);
 					}
 					else {
-						int toIndex = toImage.baseIndex(toX, toY);
-						Arrays.fill(toImage.pixels, toIndex, toIndex + 4, 0.0F);
+						int toIndex = copyImage.baseIndex(toX, toY);
+						Arrays.fill(copyImage.pixels, toIndex, toIndex + 4, 0.0F);
 					}
 				}
 			}
@@ -203,6 +214,30 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			this.work.y2 = work.y2 + work.offsetY;
 			this.requestRedraw();
 		}
+	}
+
+	public void extract() {
+		Work work = this.work;
+		if (work == null) return;
+		this.work = null;
+		Layer layer = this.layer();
+		System.arraycopy(this.source.toollessImage.pixels, 0, layer.image.pixels, 0, layer.image.pixels.length);
+		TreeItem<Layer> item = layer.item;
+		OpenImage image = layer.openImage;
+		Layer newLayer;
+		if (item.getParent() != null && item.getParent().getValue().sources.getCurrentSource() instanceof AlphaLayerSource) {
+			newLayer = image.createLayerAbove(layer.item, "extract");
+		}
+		else {
+			newLayer = image.createParentLayer(layer.item, "merge");
+			newLayer.sources.choiceBox.getSelectionModel().select(newLayer.sources.alphaSource);
+			newLayer = image.createLayerAbove(layer.item, "extract");
+		}
+		this.transfer(work, layer.image, newLayer.sources.manualSource.toollessImage);
+		this.maybeFill(work, layer.image);
+		image.layerTree.getSelectionModel().select(newLayer.item);
+		newLayer.requestRedraw();
+		layer.requestRedraw();
 	}
 
 	public boolean transformWorkPos(Selection selection) {

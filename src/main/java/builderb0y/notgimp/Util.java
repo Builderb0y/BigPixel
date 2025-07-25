@@ -75,6 +75,11 @@ public class Util {
 		return array;
 	}
 
+	public static <T> T make(T object, Consumer<T> action) {
+		action.accept(object);
+		return object;
+	}
+
 	public static ClassDesc desc(Class<?> clazz) {
 		return ClassDesc.ofDescriptor(clazz.descriptorString());
 	}

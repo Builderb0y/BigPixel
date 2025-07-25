@@ -22,4 +22,9 @@ public class IfInsnTree extends InsnTree {
 		this.body.emitBytecode(context);
 		context.codeBuilder.labelBinding(end);
 	}
+
+	@Override
+	public boolean canBeStatement() {
+		return true;
+	}
 }

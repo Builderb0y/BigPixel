@@ -142,7 +142,7 @@ public class History implements Comparable<History> {
 
 		public void restore(Layer layer) {
 			try {
-				layer.image.decompressPixels(this.pixels);
+				layer.sources.manualSource.toollessImage.decompressPixels(this.pixels);
 			}
 			catch (IOException exception) {
 				throw new UncheckedIOException(exception);

@@ -7,8 +7,6 @@ import javafx.application.Platform;
 
 public abstract class RateLimiter implements Runnable {
 
-	public static final Timer TIMER = new Timer(true);
-
 	public final long millisecondDelay;
 	public final Runnable action;
 
@@ -33,7 +31,7 @@ public abstract class RateLimiter implements Runnable {
 			}
 			this.action.run();
 			this.canRun = false;
-			TIMER.schedule(
+			NotGimp.TIMER.schedule(
 				new TimerTask() {
 
 					@Override
@@ -75,7 +73,7 @@ public abstract class RateLimiter implements Runnable {
 					});
 				}
 			};
-			TIMER.schedule(this.waitingFor, this.millisecondDelay);
+			NotGimp.TIMER.schedule(this.waitingFor, this.millisecondDelay);
 		}
 	}
 }

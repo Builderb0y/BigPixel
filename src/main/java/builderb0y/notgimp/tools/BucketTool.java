@@ -14,6 +14,7 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.Util;
@@ -23,7 +24,7 @@ import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class BucketTool extends Tool<BucketTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("bucket", 6.0D, 24.0D);
+	public static final ToolType TYPE = new ToolType("bucket", Assets.Tools.BUCKET, 6.0D, 24.0D);
 	public static final short OFFSETS = 0b0001_0011_0100_1100;
 
 	public CheckBox fillAll = new CheckBox("Fill all");

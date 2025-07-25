@@ -6,13 +6,14 @@ import java.util.Set;
 import javafx.scene.Node;
 import javafx.scene.input.MouseButton;
 
+import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class FreehandTool extends Tool<FreehandTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("freehand", 9.0D, 9.0D);
+	public static final ToolType TYPE = new ToolType("freehand", Assets.Tools.FREEHAND, 9.0D, 9.0D);
 
 	public FreehandTool(ManualLayerSource source) {
 		super(TYPE, source);

@@ -1,5 +1,7 @@
 package builderb0y.notgimp.scripting.tree;
 
+import org.jetbrains.annotations.Nullable;
+
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 import builderb0y.notgimp.scripting.types.VectorType;
@@ -31,13 +33,11 @@ public class SwizzleInsnTree extends InsnTree {
 		this.lane = new MethodInfo(vector.type().holderClass(), "lane", int.class);
 	}
 
-	public static InsnTree swizzle(InsnTree vector, String swizzle) {
-		if (vector.type().shape == GroupShape.UNIT) {
-			return null;
-		}
+	public static int @Nullable [] getIndices(String swizzle, int sourceDims, boolean unique) {
 		int swizzleLength = swizzle.length();
 		if (swizzleLength == 0 || swizzleLength > 4) return null;
 		int[] indices = new int[swizzleLength];
+		int taken = 0;
 		for (int swizzleIndex = 0; swizzleIndex < swizzleLength; swizzleIndex++) {
 			switch (swizzle.charAt(swizzleIndex)) {
 				case 'x', 'r' -> indices[swizzleIndex] = 0;
@@ -46,7 +46,23 @@ public class SwizzleInsnTree extends InsnTree {
 				case 'w', 'a' -> indices[swizzleIndex] = 3;
 				default -> { return null; }
 			}
+			if (indices[swizzleIndex] >= sourceDims) {
+				return null;
+			}
+			if (unique && taken == (taken |= (1 << indices[swizzleIndex]))) {
+				return null;
+			}
 		}
+		return indices;
+	}
+
+	public static @Nullable InsnTree swizzle(InsnTree vector, String swizzle) {
+		if (vector.type().shape == GroupShape.UNIT) {
+			return null;
+		}
+		int[] indices = getIndices(swizzle, vector.type().shape.rows, false);
+		if (indices == null) return null;
+		int swizzleLength = indices.length;
 		SwizzleInsnTree unwrapped = new SwizzleInsnTree(vector, indices);
 		if (swizzleLength == 1) return unwrapped;
 		StringBuilder fullName = new StringBuilder();

@@ -132,6 +132,72 @@ public class UtilityOperations {
 		return cx.div(cx.sub(value).add(1.0D));
 	}
 
+	//////////////////////////////// smooth ////////////////////////////////
+
+	public static float smooth_float(float x) {
+		return x * x * (x * -2.0F + 3.0F);
+	}
+
+	public static @Vec(2) FloatVector smooth_float2(@Vec(2) FloatVector x) {
+		return x.mul(x).mul(x.mul(-2.0F).add(3.0F));
+	}
+
+	public static @Vec(3) FloatVector smooth_float3(@Vec(3) FloatVector x) {
+		return x.mul(x).mul(x.mul(-2.0F).add(3.0F));
+	}
+
+	public static @Vec(4) FloatVector smooth_float4(@Vec(4) FloatVector x) {
+		return x.mul(x).mul(x.mul(-2.0F).add(3.0F));
+	}
+
+	public static double smooth_double(double x) {
+		return x * x * (x * -2.0F + 3.0F);
+	}
+
+	public static @Vec(2) DoubleVector smooth_double2(@Vec(2) DoubleVector x) {
+		return x.mul(x).mul(x.mul(-2.0F).add(3.0F));
+	}
+
+	public static @Vec(3) DoubleVector smooth_double3(@Vec(3) DoubleVector x) {
+		return x.mul(x).mul(x.mul(-2.0F).add(3.0F));
+	}
+
+	public static @Vec(4) DoubleVector smooth_double4(@Vec(4) DoubleVector x) {
+		return x.mul(x).mul(x.mul(-2.0F).add(3.0F));
+	}
+
+	public static float smoother_float(float x) {
+		return ((x * 6.0F - 15.0F) * x + 10.0F) * x * x * x;
+	}
+
+	public static @Vec(2) FloatVector smoother_float2(@Vec(2) FloatVector x) {
+		return x.mul(6.0F).sub(15.0F).mul(x).add(10.0F).mul(x).mul(x).mul(x);
+	}
+
+	public static @Vec(3) FloatVector smoother_float3(@Vec(3) FloatVector x) {
+		return x.mul(6.0F).sub(15.0F).mul(x).add(10.0F).mul(x).mul(x).mul(x);
+	}
+
+	public static @Vec(4) FloatVector smoother_float4(@Vec(4) FloatVector x) {
+		return x.mul(6.0F).sub(15.0F).mul(x).add(10.0F).mul(x).mul(x).mul(x);
+	}
+
+	public static double smoother_double(double x) {
+		return ((x * 6.0F - 15.0F) * x + 10.0F) * x * x * x;
+	}
+
+	public static @Vec(2) DoubleVector smoother_double2(@Vec(2) DoubleVector x) {
+		return x.mul(6.0F).sub(15.0F).mul(x).add(10.0F).mul(x).mul(x).mul(x);
+	}
+
+	public static @Vec(3) DoubleVector smoother_double3(@Vec(3) DoubleVector x) {
+		return x.mul(6.0F).sub(15.0F).mul(x).add(10.0F).mul(x).mul(x).mul(x);
+	}
+
+	public static @Vec(4) DoubleVector smoother_double4(@Vec(4) DoubleVector x) {
+		return x.mul(6.0F).sub(15.0F).mul(x).add(10.0F).mul(x).mul(x).mul(x);
+	}
+
 	//////////////////////////////// projections ////////////////////////////////
 
 	public static float projectLineFrac_float_float_float(float a, float b, float f) {

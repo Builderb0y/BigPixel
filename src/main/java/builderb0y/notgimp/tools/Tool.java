@@ -72,10 +72,6 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 			this(name, icon, new ImageCursor(icon, x, y));
 		}
 
-		public ToolType(String name, double x, double y) {
-			this(name, new Image(NotGimp.class.getClassLoader().getResourceAsStream("assets/tools/" + name + ".png")), x, y);
-		}
-
 		@Override
 		public String toString() {
 			return this.name;

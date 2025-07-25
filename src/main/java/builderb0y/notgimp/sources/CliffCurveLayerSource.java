@@ -11,6 +11,8 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
+import builderb0y.notgimp.CanvasHelper;
+import builderb0y.notgimp.Gradient;
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Util;
 
@@ -31,6 +33,8 @@ public class CliffCurveLayerSource extends SingleInputEffectLayerSource {
 		greenMid         = this.addFloatSpinner("green_mid",         new MidModel(), 96.0D),
 		blueMid          = this.addFloatSpinner("blue_mid",          new MidModel(), 96.0D),
 		alphaMid         = this.addFloatSpinner("alpha_mid",         new MidModel(), 96.0D);
+	public CliffGradient
+		gradient = (CliffGradient)(new CliffGradient().fixedSize(128.0D, 16.0D).popIn());
 	public GridPane
 		gridPane = new GridPane();
 
@@ -70,7 +74,8 @@ public class CliffCurveLayerSource extends SingleInputEffectLayerSource {
 			this.gridPane.addRow(row++, new Label("RGB mid: "), this.rgbMid);
 		}
 		this.gridPane.addRow(row++, new Label("Alpha mid: "), this.alphaMid);
-		this.gridPane.addRow(row, new Label("Linear: "), this.linear);
+		this.gridPane.addRow(row++, new Label("Linear: "), this.linear);
+		this.gridPane.add(this.gradient.getRootPane(), 0, row++, 2, 1);
 	}
 
 	public FloatVector getCoefficients() {
@@ -107,53 +112,112 @@ public class CliffCurveLayerSource extends SingleInputEffectLayerSource {
 		return FloatVector.fromArray(FloatVector.SPECIES_128, floats, 0);
 	}
 
-	@Override
-	public void doRedraw() throws RedrawException {
-		HDRImage source = this.getSingleInput(true).image;
-		HDRImage destination = this.sources.layer.image;
+	public CliffCurver getCurver() {
 		FloatVector coefficients = this.getCoefficients();
 		boolean linear = this.linear.isSelected();
 		if (this.dual.isSelected()) {
 			FloatVector mids = this.getMids();
-			FloatVector rcpCoefficients = coefficients.broadcast(1.0F).div(coefficients);
-			for (int index = 0, length = source.pixels.length; index < length; index += 4) {
-				FloatVector value = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-				value = value.min(1.0F).max(0.0F);
-				if (linear) value = value.mul(value);
-				VectorMask<Float> low = value.lt(mids);
-				VectorMask<Float> high = value.compare(VectorOperators.GT, mids);
-				if (low.allTrue()) {
-					//fast path: only need to compute curve for low end.
-					value = value.mul(coefficients).div(coefficients.sub(1.0F).mul(value).add(1.0F)).mul(mids);
-				}
-				else if (high.allTrue()) {
-					//medium path: need to compute curve for high end only.
-					FloatVector invMids = mids.broadcast(1.0F).sub(mids);
-					value = value.sub(mids).div(invMids);
-					value = value.mul(rcpCoefficients).div(rcpCoefficients.sub(1.0F).mul(value).add(1.0F)).mul(invMids).add(mids);
-				}
-				else {
-					//slow path: need to compute curve for high and low ends.
-					FloatVector lowValue = value.div(mids);
-					lowValue = lowValue.mul(coefficients).div(coefficients.sub(1.0F).mul(lowValue).add(1.0F)).mul(mids);
-					FloatVector invMids = mids.broadcast(1.0F).sub(mids);
-					FloatVector highValue = value.sub(mids).div(invMids);
-					highValue = highValue.mul(rcpCoefficients).div(rcpCoefficients.sub(1.0F).mul(highValue).add(1.0F)).mul(invMids).add(mids);
-					value = value.blend(lowValue, low).blend(highValue, high);
-				}
-				if (linear) value = value.sqrt();
-				value.intoArray(destination.pixels, index);
-			}
+			return new DualCliffCurver(coefficients, mids, linear);
 		}
 		else {
-			for (int index = 0, length = source.pixels.length; index < length; index += 4) {
-				FloatVector value = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-				value = value.min(1.0F).max(0.0F);
-				if (linear) value = value.mul(value);
-				value = value.mul(coefficients).div(coefficients.sub(1.0F).mul(value).add(1.0F));
-				if (linear) value = value.sqrt();
-				value.intoArray(destination.pixels, index);
+			return new SingleCliffCurver(coefficients, linear);
+		}
+	}
+
+	@Override
+	public void doRedraw() throws RedrawException {
+		this.gradient.redraw();
+		HDRImage source = this.getSingleInput(true).image;
+		HDRImage destination = this.sources.layer.image;
+		CliffCurver curver = this.getCurver();
+		for (int index = 0, length = source.pixels.length; index < length; index += 4) {
+			FloatVector value = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
+			curver.curve(value).intoArray(destination.pixels, index);
+		}
+	}
+
+	public static abstract class CliffCurver {
+
+		public final boolean linear;
+		public final FloatVector coefficients;
+
+		public CliffCurver(FloatVector coefficients, boolean linear) {
+			this.coefficients = coefficients;
+			this.linear = linear;
+		}
+
+		public abstract FloatVector curve(FloatVector input);
+	}
+
+	public static class SingleCliffCurver extends CliffCurver {
+
+		public SingleCliffCurver(FloatVector coefficients, boolean linear) {
+			super(coefficients, linear);
+		}
+
+		@Override
+		public FloatVector curve(FloatVector input) {
+			input = input.min(1.0F).max(0.0F);
+			if (this.linear) input = input.mul(input);
+			input = input.mul(this.coefficients).div(this.coefficients.sub(1.0F).mul(input).add(1.0F));
+			if (this.linear) input = input.sqrt();
+			return input;
+		}
+	}
+
+	public static class DualCliffCurver extends CliffCurver {
+
+		public final FloatVector rcpCoefficients, mids;
+
+		public DualCliffCurver(FloatVector coefficients, FloatVector mids, boolean linear) {
+			super(coefficients, linear);
+			this.rcpCoefficients = coefficients.broadcast(1.0F).div(coefficients);
+			this.mids = mids;
+		}
+
+		@Override
+		public FloatVector curve(FloatVector input) {
+			input = input.min(1.0F).max(0.0F);
+			if (this.linear) input = input.mul(input);
+			VectorMask<Float> low = input.compare(VectorOperators.LE, this.mids);
+			VectorMask<Float> high = input.compare(VectorOperators.GE, this.mids);
+			if (low.allTrue()) {
+				//fast path: only need to compute curve for low end.
+				input = input.mul(this.coefficients).div(this.coefficients.sub(1.0F).mul(input).add(1.0F)).mul(this.mids);
 			}
+			else if (high.allTrue()) {
+				//medium path: need to compute curve for high end only.
+				FloatVector invMids = this.mids.broadcast(1.0F).sub(this.mids);
+				input = input.sub(this.mids).div(invMids);
+				input = input.mul(this.rcpCoefficients).div(this.rcpCoefficients.sub(1.0F).mul(input).add(1.0F)).mul(invMids).add(this.mids);
+			}
+			else {
+				//slow path: need to compute curve for high and low ends.
+				FloatVector lowValue = input.div(this.mids);
+				lowValue = lowValue.mul(this.coefficients).div(this.coefficients.sub(1.0F).mul(lowValue).add(1.0F)).mul(this.mids);
+				FloatVector invMids = this.mids.broadcast(1.0F).sub(this.mids);
+				FloatVector highValue = input.sub(this.mids).div(invMids);
+				highValue = highValue.mul(this.rcpCoefficients).div(this.rcpCoefficients.sub(1.0F).mul(highValue).add(1.0F)).mul(invMids).add(this.mids);
+				input = input.blend(lowValue, low).blend(highValue, high);
+			}
+			if (this.linear) input = input.sqrt();
+			return input;
+		}
+	}
+
+	public class CliffGradient extends Gradient {
+
+		public CliffCurver curver;
+
+		@Override
+		public void redraw() {
+			this.curver = CliffCurveLayerSource.this.getCurver();
+			super.redraw();
+		}
+
+		@Override
+		public FloatVector computeColor(int pixelPos, float fraction) {
+			return curver.curve(FloatVector.broadcast(FloatVector.SPECIES_128, fraction).withLane(HDRImage.ALPHA_OFFSET, 1.0F));
 		}
 	}
 

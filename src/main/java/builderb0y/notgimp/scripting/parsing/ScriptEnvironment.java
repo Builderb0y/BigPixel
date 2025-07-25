@@ -5,6 +5,8 @@ import java.util.*;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.*;
 import builderb0y.notgimp.scripting.tree.InsnTree;
 import builderb0y.notgimp.scripting.tree.SwizzleInsnTree;
+import builderb0y.notgimp.scripting.tree.SwizzleSetInsnTree;
+import builderb0y.notgimp.scripting.tree.UnpackedInsnTree;
 import builderb0y.notgimp.scripting.types.VectorType;
 
 public class ScriptEnvironment implements
@@ -87,7 +89,11 @@ public class ScriptEnvironment implements
 	@Override
 	public InsnTree getMethod(ExpressionParser<?> parser, InsnTree receiver, String name, InsnTree[] params) throws ScriptParsingException {
 		List<MethodHandler> handlers = this.methods.get(new NamedVectorType(name, receiver.type()));
-		if (handlers == null) throw new ScriptParsingException("Unknown method: " + name, parser.reader);
+		if (handlers == null) {
+			InsnTree swizzleSet = SwizzleSetInsnTree.create(receiver, name, params.length == 1 ? params[0] : new UnpackedInsnTree(params));
+			if (swizzleSet != null) return swizzleSet;
+			throw new ScriptParsingException("Unknown method: " + name, parser.reader);
+		}
 		for (MethodHandler handler : handlers) {
 			InsnTree result = handler.getMethod(parser, receiver, name, params);
 			if (result != null) return result;

@@ -2,6 +2,7 @@ package builderb0y.notgimp.sources;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import jdk.incubator.vector.FloatVector;
 
@@ -12,6 +13,7 @@ import builderb0y.notgimp.Util;
 public class ColorBoxGroup {
 
 	public SimpleObjectProperty<ColorBox> selected = new SimpleObjectProperty<>();
+	public boolean updateColor;
 
 	public ColorBoxGroup(ColorHelper color, Node rootPane) {
 		this.selected.addListener(Util.change((ColorBox oldValue, ColorBox newValue) -> {
@@ -19,14 +21,16 @@ public class ColorBoxGroup {
 				oldValue.color.unbind();
 			}
 			if (newValue != null) {
-				FloatVector current = newValue.color.get();
-				color.setRGBA(
-					current.lane(HDRImage.  RED_OFFSET),
-					current.lane(HDRImage.GREEN_OFFSET),
-					current.lane(HDRImage. BLUE_OFFSET),
-					current.lane(HDRImage.ALPHA_OFFSET)
-				);
-				color.markDirty();
+				if (this.updateColor) {
+					FloatVector current = newValue.color.get();
+					color.setRGBA(
+						current.lane(HDRImage.RED_OFFSET),
+						current.lane(HDRImage.GREEN_OFFSET),
+						current.lane(HDRImage.BLUE_OFFSET),
+						current.lane(HDRImage.ALPHA_OFFSET)
+					);
+					color.markDirty();
+				}
 				newValue.color.bind(color.rgba);
 			}
 		}));
@@ -44,7 +48,18 @@ public class ColorBoxGroup {
 
 	public void add(ColorBox box) {
 		box.selectWhen(this.selected);
-		box.box.display.setOnMouseClicked((MouseEvent _) -> {
+		box.box.display.setOnMouseClicked((MouseEvent event) -> {
+			switch (event.getButton()) {
+				case PRIMARY -> {
+					this.updateColor = true;
+				}
+				case SECONDARY -> {
+					this.updateColor = false;
+				}
+				default -> {
+					return;
+				}
+			}
 			this.selected.set(this.selected.getValue() == box ? null : box);
 		});
 	}

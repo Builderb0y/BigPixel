@@ -86,7 +86,7 @@ public class Histogram {
 		float[] pixels = layer.image.pixels;
 		for (int index = component; index < pixels.length; index += 4) {
 			float pixel = pixels[index];
-			if (pixel >= 0.0F && pixel < 1.0F) {
+			if (pixel >= 0.0F && pixel <= 1.0F) {
 				max = Math.max(max, ++buckets[Math.min((int)(pixel * buckets.length), buckets.length - 1)]);
 			}
 		}

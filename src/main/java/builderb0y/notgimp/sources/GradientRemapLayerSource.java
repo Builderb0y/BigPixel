@@ -1,5 +1,6 @@
 package builderb0y.notgimp.sources;
 
+import javafx.beans.value.ChangeListener;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
@@ -11,6 +12,7 @@ import jdk.incubator.vector.VectorOperators;
 import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.Gradient;
 import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.types.UtilityOperations;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 
@@ -101,6 +103,9 @@ public class GradientRemapLayerSource extends SingleInputEffectLayerSource {
 		}
 
 		public void init() {
+			ChangeListener<Object> redrawer = Util.change(this::redraw);
+			this.start.color.addListener(redrawer);
+			this.end.color.addListener(redrawer);
 			this.redraw();
 		}
 

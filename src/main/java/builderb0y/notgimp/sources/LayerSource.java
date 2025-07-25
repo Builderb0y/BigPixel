@@ -174,7 +174,10 @@ public abstract class LayerSource {
 			this.doRedraw();
 			this.sources.layer.redrawException.set(null);
 		}
-		catch (Exception exception) {
+		catch (Throwable exception) {
+			while (exception.getCause() != null) {
+				exception = exception.getCause();
+			}
 			this.sources.layer.redrawException.set(exception);
 		}
 	}

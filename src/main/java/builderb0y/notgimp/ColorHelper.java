@@ -178,15 +178,10 @@ public class ColorHelper implements ColorPickerCallback {
 			hue = this.fullGreen < this.fullBlue ? 5.0F - hue : hue + 1.0F;
 			this.hue.set(Math.clamp(hue / 6.0F, 0.0F, 1.0F));
 		}
-		//I don't know how I derived this, but it works for my mandelbrot program.
-		if (min + max >= 1.0F) {
-			this.dark.set(max - min);
-			this.light.set(max * 2.0F - 1.0F);
-		}
-		else {
-			this.dark.set(min * -2.0F + 1.0F);
-			this.light.set(max - min);
-		}
+		double sum = ((double)(min)) + ((double)(max));
+		double common = Math.sqrt(sum * sum - 6.0F * min + 2.0F * max + 1.0F);
+		this.dark.set((float)((common - sum + 1.0D) * 0.5D));
+		this.light.set((float)((common + sum - 1.0D) * 0.5D));
 	}
 
 	public static enum ColorComponent {
