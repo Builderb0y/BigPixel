@@ -116,7 +116,7 @@ public class ExpressionParser<I> {
 				};
 			});
 		}
-		for (String name : new String[] { "dot", "lengthSquared", "length", "normalize", "mix", "unmix" }) {
+		for (String name : new String[] { "dot", "lengthSquared", "length", "normalize", "mix", "unmix", "reverseBits" }) {
 			this.scope.environment.addFunction(name, (ExpressionParser<?> parser, String name_, InsnTree[] params) -> {
 				String fullName = name_ + '_' + Arrays.stream(params).map(InsnTree::types).flatMap(Arrays::stream).map((VectorType t) -> t.name).collect(Collectors.joining("_"));
 				try {

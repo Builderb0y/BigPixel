@@ -91,6 +91,13 @@ public class OpsGenerator {
 			"return a - (float)Math.floor(a);",
 			"return a - Math.floor(a);"
 		),
+		new ExtraOperator(
+			"reverseBits",
+			"return Integer.reverse(a);",
+			"return Long.reverse(a);",
+			null,
+			null
+		),
 	};
 	public static final ExtraOperator[] EXTRA_BINARIES = {
 		new ExtraOperator(

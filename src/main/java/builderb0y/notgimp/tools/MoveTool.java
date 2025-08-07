@@ -20,7 +20,7 @@ import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class MoveTool extends Tool<MoveTool.Work> {
 
-	public static final ToolType TYPE = new ToolType("move", Assets.Tools.MOVE, 12.0D, 12.0D);
+	public static final ToolType TYPE = new ToolType("move", Assets.Tools.MOVE, 4.0D, 4.0D);
 
 	public CheckBox
 		fill = new CheckBox("Fill");

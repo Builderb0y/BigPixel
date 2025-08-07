@@ -9,7 +9,6 @@ import javafx.beans.binding.ObjectBinding;
 import javafx.beans.binding.When;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableObjectValue;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
@@ -18,6 +17,7 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Side;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.TextFieldTreeCell;
@@ -51,14 +51,16 @@ public class OpenImage {
 	public HBox
 		layerButtons = new HBox();
 	public MenuButton
-		addLayerButton = new MenuButton("+");
+		addLayerButton = new MenuButton("+"),
+		duplicateLayerButton = new MenuButton("x2");
 	public MenuItem
-		addLayerParentButton = new MenuItem("Wrap with new parent"),
-		addLayerAboveButton  = new MenuItem("Add layer above"),
-		addChildLayerButton  = new MenuItem("Add child layer"),
-		addLayerBelowButton  = new MenuItem("Add layer below");
+		addLayerParentMenuItem          = new MenuItem("Wrap with new parent"),
+		addLayerAboveMenuItem           = new MenuItem("Add layer above"),
+		addChildLayerMenuItem           = new MenuItem("Add child layer"),
+		addLayerBelowMenuItem           = new MenuItem("Add layer below"),
+		duplicateLayerMenuItem          = new MenuItem("Duplicate layer"),
+		duplicateLayerRecursiveMenuItem = new MenuItem("Duplicate layer recursively");
 	public Button
-		duplicateLayerButton = new Button("*"),
 		moveLayerUpButton    = new Button("⏶"),
 		moveLayerDownButton  = new Button("⏷");
 	public SplitPane
@@ -131,10 +133,14 @@ public class OpenImage {
 		this.layersAndTools.setOrientation(Orientation.VERTICAL);
 		this.addLayerButton.setPopupSide(Side.TOP);
 		this.addLayerButton.getItems().addAll(
-			this.addLayerParentButton,
-			this.addLayerAboveButton,
-			this.addChildLayerButton,
-			this.addLayerBelowButton
+			this.addLayerParentMenuItem,
+			this.addLayerAboveMenuItem,
+			this.addChildLayerMenuItem,
+			this.addLayerBelowMenuItem
+		);
+		this.duplicateLayerButton.getItems().addAll(
+			this.duplicateLayerMenuItem,
+			this.duplicateLayerRecursiveMenuItem
 		);
 		this.layerButtons.getChildren().addAll(
 			this.addLayerButton,
@@ -149,7 +155,7 @@ public class OpenImage {
 		this.rightPane.setCenter(this.layersAndTools);
 		this.rightPane.setBottom(this.animationSource.hbox);
 		this.imageAndRightPane.setOrientation(Orientation.HORIZONTAL);
-		this.imageAndRightPane.getItems().addAll(this.imageDisplay.display.getRootPane(), this.rightPane);
+		this.imageAndRightPane.getItems().addAll(this.imageDisplay.displayWithF3, this.rightPane);
 		this.imageAndRightPane.setDividerPositions(0.75D);
 		this.layerTree.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 		this.layerTree.setEditable(true);
@@ -208,11 +214,12 @@ public class OpenImage {
 	}
 
 	public void init() {
-		this.addLayerParentButton.setOnAction(this::addParentLayer);
-		this.addLayerAboveButton.setOnAction(this::addLayerAbove);
-		this.addChildLayerButton.setOnAction(this::addChildLayer);
-		this.addLayerBelowButton.setOnAction(this::addLayerBelow);
-		this.duplicateLayerButton.setOnAction(this::duplicateLayer);
+		this.addLayerParentMenuItem.setOnAction(this::addParentLayer);
+		this.addLayerAboveMenuItem.setOnAction(this::addLayerAbove);
+		this.addChildLayerMenuItem.setOnAction(this::addChildLayer);
+		this.addLayerBelowMenuItem.setOnAction(this::addLayerBelow);
+		this.duplicateLayerMenuItem.setOnAction(this::duplicateLayer);
+		this.duplicateLayerRecursiveMenuItem.setOnAction(this::duplicateLayerRecursive);
 		this.moveLayerUpButton.setOnAction(this::moveLayerUp);
 		this.moveLayerDownButton.setOnAction(this::moveLayerDown);
 		BooleanBinding rootSelected = (
@@ -222,8 +229,8 @@ public class OpenImage {
 			.selectedItemProperty()
 			.isEqualTo(this.layerTree.rootProperty())
 		);
-		this.addLayerAboveButton.disableProperty().bind(rootSelected);
-		this.addLayerBelowButton.disableProperty().bind(rootSelected);
+		this.addLayerAboveMenuItem.disableProperty().bind(rootSelected);
+		this.addLayerBelowMenuItem.disableProperty().bind(rootSelected);
 		this.duplicateLayerButton.disableProperty().bind(rootSelected);
 		this.moveLayerUpButton.disableProperty().bind(this.layerTree.getSelectionModel().selectedItemProperty().map(this::cantMoveUp));
 		this.moveLayerDownButton.disableProperty().bind(this.layerTree.getSelectionModel().selectedItemProperty().map(this::cantMoveDown));
@@ -236,8 +243,21 @@ public class OpenImage {
 		this.requestRedraw();
 	}
 
-	public Node getMainNode() {
+	public Parent getMainNode() {
 		return this.imageAndRightPane;
+	}
+
+	public void swapView(ActionEvent event) {
+		double divider1 = this.imageAndRightPane.getDividerPositions()[0];
+		double divider2 = this.layersAndTools.getDividerPositions()[0];
+		Node node1 = this.imageAndRightPane.getItems().removeFirst();
+		Node node2 = this.layersAndTools.getItems().removeLast();
+		this.imageAndRightPane.getItems().addFirst(node2);
+		this.layersAndTools.getItems().addLast(node1);
+		this.imageAndRightPane.setDividerPosition(0, divider1);
+		this.layersAndTools.setDividerPosition(0, divider2);
+		this.getMainNode().layout();
+		this.imageDisplay.center();
 	}
 
 	public Layer getSelectedLayer() {
@@ -451,11 +471,32 @@ public class OpenImage {
 		TreeItem<Layer> toDuplicate = this.layerTree.getSelectionModel().getSelectedItem();
 		Layer duplicate = new Layer(toDuplicate.getValue());
 		this.addToMap(duplicate);
-		ObservableList<TreeItem<Layer>> children = toDuplicate.getParent().getChildren();
-		children.add(children.indexOf(toDuplicate), duplicate.item);
+		ObservableList<TreeItem<Layer>> siblings = toDuplicate.getParent().getChildren();
+		siblings.add(siblings.indexOf(toDuplicate), duplicate.item);
 		this.layerTree.getSelectionModel().select(duplicate.item);
 		duplicate.init(false);
 		this.invalidateAllLayerStructures();
+	}
+
+	public void duplicateLayerRecursive(ActionEvent event) {
+		TreeItem<Layer> toDuplicate = this.layerTree.getSelectionModel().getSelectedItem();
+		Layer duplicate = this.duplicateLayerRecursive(toDuplicate);
+		ObservableList<TreeItem<Layer>> siblings = toDuplicate.getParent().getChildren();
+		siblings.add(siblings.indexOf(toDuplicate), duplicate.item);
+		this.layerTree.getSelectionModel().select(duplicate.item);
+		this.invalidateAllLayerStructures();
+	}
+
+	public Layer duplicateLayerRecursive(TreeItem<Layer> toDuplicate) {
+		Layer duplicate = new Layer(toDuplicate.getValue());
+		this.addToMap(duplicate);
+		for (TreeItem<Layer> child : toDuplicate.getChildren()) {
+			Layer childCopy = this.duplicateLayerRecursive(child);
+			duplicate.item.getChildren().addFirst(childCopy.item);
+			childCopy.init(false);
+		}
+		duplicate.item.setExpanded(true);
+		return duplicate;
 	}
 
 	public void resizeLayer(TreeItem<Layer> toResize) {

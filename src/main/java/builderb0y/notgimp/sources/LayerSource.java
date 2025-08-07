@@ -98,6 +98,10 @@ public abstract class LayerSource {
 		return box;
 	}
 
+	public ChoiceBox<String> addStringChoiceBox(String saveName) {
+		return this.addParameter(SourceParameter.stringChoiceBox(new ChoiceBox<>(), saveName));
+	}
+
 	public ColorBox addColorBox(String saveName, FloatVector initialColor) {
 		ColorBox box = new ColorBox(initialColor);
 		this.addParameter(SourceParameter.colorBox(box, saveName));

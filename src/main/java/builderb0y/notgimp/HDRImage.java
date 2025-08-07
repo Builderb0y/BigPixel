@@ -40,12 +40,7 @@ public class HDRImage implements Externalizable {
 		JsonMap map = new JsonMap();
 		map.add("width", this.width);
 		map.add("height", this.height);
-		try {
-			map.add("pixels", Base64.getEncoder().encodeToString(this.compressPixels()));
-		}
-		catch (IOException exception) {
-			throw new SaveException(exception);
-		}
+		map.add("pixels", Base64.getEncoder().encodeToString(History.compress(this.pixels)));
 		return map;
 	}
 
@@ -111,17 +106,6 @@ public class HDRImage implements Externalizable {
 		this.width = width;
 		this.height = height;
 		this.pixels = newPixels;
-	}
-
-	public byte[] compressPixels() throws IOException{
-		ByteArrayOutputStream baos = new ByteArrayOutputStream(this.pixels.length * Float.BYTES);
-		GZIPOutputStream compressor = new GZIPOutputStream(baos);
-		DataOutputStream dos = new DataOutputStream(compressor);
-		for (float pixel : this.pixels) {
-			dos.writeFloat(pixel);
-		}
-		dos.close();
-		return baos.toByteArray();
 	}
 
 	public void decompressPixels(byte[] pixels) throws IOException {

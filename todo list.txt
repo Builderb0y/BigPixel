@@ -9,8 +9,6 @@ make animation not draw canvas when open image tab is not selected.
 better compression for history/tool actions.
 probably need to separate save file from export file.
 
-recursive and non-recursive layer duplication options.
-
 layer sources:
 	no inputs:
 		blue noise pixels.

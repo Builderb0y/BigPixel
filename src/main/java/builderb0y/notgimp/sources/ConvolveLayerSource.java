@@ -3,11 +3,13 @@ package builderb0y.notgimp.sources;
 import java.util.Arrays;
 import java.util.Locale;
 
+import javafx.beans.binding.When;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.input.ScrollEvent;
@@ -71,6 +73,11 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius));
 		this.borderPane.setCenter(this.customWeights);
 		this.rootNode.setCenter(this.borderPane);
+		((IntegerSpinnerValueFactory)(this.radius.getValueFactory())).maxProperty().bind(
+			new When(this.weight.valueProperty().isEqualTo(BlurWeight.CUSTOM))
+			.then(3)
+			.otherwise(64)
+		);
 	}
 
 	@Override
@@ -116,6 +123,8 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 	}
 
 	public void layout() {
+		this.customWeights.getChildren().clear();
+		if (this.weight.getValue() != BlurWeight.CUSTOM) return;
 		int radius = this.radius.getValue();
 		int diameter = radius * 2 + 1;
 		int sizeX = 1, sizeY = 1;
@@ -155,7 +164,6 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 			}
 			default -> throw new AssertionError();
 		}
-		this.customWeights.getChildren().clear();
 		int index = 0;
 		for (int y = 0; y < sizeY; y++) {
 			for (int x = 0; x < sizeX; x++) {
@@ -203,9 +211,12 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 	}
 
 	public HDRImage getSeparableScratch() {
+		HDRImage from = this.sources.layer.image;
 		if (this.separableScratch == null) {
-			HDRImage from = this.sources.layer.image;
 			this.separableScratch = new HDRImage(from.width, from.height);
+		}
+		if (this.separableScratch.width != from.width || this.separableScratch.height != from.height) {
+			this.separableScratch.resize(from.width, from.height, false);
 		}
 		return this.separableScratch;
 	}

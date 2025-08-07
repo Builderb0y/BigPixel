@@ -16,7 +16,7 @@ import builderb0y.notgimp.Layer;
 
 public abstract class SingleInputEffectLayerSource extends EffectLayerSource {
 
-	public ChoiceBox<String> input = new ChoiceBox<>();
+	public ChoiceBox<String> input = this.addStringChoiceBox("input_layer");
 	public HBox inputBox = new HBox(new Label("Input Layer: "), this.input);
 	public BorderPane rootNode = new BorderPane();
 

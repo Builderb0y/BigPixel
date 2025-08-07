@@ -12,9 +12,9 @@ import javafx.scene.Cursor;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.ScrollEvent;
+import javafx.scene.input.*;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 
 import builderb0y.notgimp.RateLimiter.PeriodicRateLimiter;
 import builderb0y.notgimp.sources.ManualLayerSource;
@@ -38,7 +38,9 @@ public class ZoomableImage {
 		0.25D,
 		0.375D,
 		0.5D,
+		0.75D,
 		1.0D,
+		1.5D,
 		2.0D,
 		3.0D,
 		4.0D,
@@ -54,9 +56,11 @@ public class ZoomableImage {
 
 	public OpenImage openImage;
 	public CanvasHelper display;
+	public F3Menu f3;
+	public StackPane displayWithF3;
 	public double offsetX, offsetY;
 	public double lastMouseX, lastMouseY;
-	public IntegerProperty zoomIndex = new SimpleIntegerProperty(11); //1.0
+	public SimpleIntegerProperty zoomIndex = new SimpleIntegerProperty(12); //1.0
 	public ObservableValue<Double> zoom = this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]);
 	public ChangeListener<Number> centerer;
 	public RateLimiter redrawer;
@@ -64,13 +68,18 @@ public class ZoomableImage {
 	public ZoomableImage(OpenImage openImage) {
 		this.openImage = openImage;
 		this.display = new CanvasHelper().checkerboard().resizeable((Canvas canvas) -> this.redraw());
-		this.centerer = Util.change(this::center);
+		this.f3 = new F3Menu();
+		this.displayWithF3 = new StackPane(this.display.getRootPane(), this.f3.rootNode());
+		this.centerer = Util.change(this::centerOnce);
 		this.redrawer = new PeriodicRateLimiter(20L, this::doRedraw);
 	}
 
 	public void init() {
 		this.display.display. widthProperty().addListener(this.centerer);
 		this.display.display.heightProperty().addListener(this.centerer);
+		this.zoom.addListener(Util.change((Double zoom) -> {
+			this.f3.updateZoom(zoom);
+		}));
 		Canvas canvas = this.display.display;
 		ChangeListener<Object> redrawer = Util.change(this::redraw);
 		this.openImage.wrap.addListener(redrawer);
@@ -78,10 +87,10 @@ public class ZoomableImage {
 		canvas.setOnScroll((ScrollEvent event) -> {
 			int oldZoomIndex = this.zoomIndex.get();
 			int newZoomIndex;
-			if (event.getDeltaY() > 0.0D) {
+			if (event.getDeltaY() < 0.0D) {
 				newZoomIndex = Math.max(oldZoomIndex - 1, 0);
 			}
-			else if (event.getDeltaY() < 0.0D) {
+			else if (event.getDeltaY() > 0.0D) {
 				newZoomIndex = Math.min(oldZoomIndex + 1, ZOOMS.length - 1);
 			}
 			else {
@@ -92,8 +101,8 @@ public class ZoomableImage {
 				double oldZoom = ZOOMS[oldZoomIndex];
 				double newZoom = ZOOMS[newZoomIndex];
 				this.setPosition(
-					(this.offsetX - event.getX()) * (oldZoom / newZoom) + event.getX(),
-					(this.offsetY - event.getY()) * (oldZoom / newZoom) + event.getY()
+					(this.offsetX - event.getX()) * (newZoom / oldZoom) + event.getX(),
+					(this.offsetY - event.getY()) * (newZoom / oldZoom) + event.getY()
 				);
 				this.redraw();
 			}
@@ -133,8 +142,8 @@ public class ZoomableImage {
 					SourcelessTool<?> tool = ZoomableImage.this.openImage.toolWithColorPicker.get();
 					if (tool != null) {
 						double zoom = ZoomableImage.this.zoom.getValue();
-						int x = (int)(Math.floor((event.getX() - ZoomableImage.this.offsetX) * zoom));
-						int y = (int)(Math.floor((event.getY() - ZoomableImage.this.offsetY) * zoom));
+						int x = (int)(Math.floor((event.getX() - ZoomableImage.this.offsetX) / zoom));
+						int y = (int)(Math.floor((event.getY() - ZoomableImage.this.offsetY) / zoom));
 						if (ZoomableImage.this.openImage.wrap.get()) {
 							x = Math.floorMod(x, layer.image.width);
 							y = Math.floorMod(y, layer.image.height);
@@ -161,41 +170,61 @@ public class ZoomableImage {
 		canvas.setOnMouseMoved((MouseEvent event) -> {
 			this.lastMouseX = event.getX();
 			this.lastMouseY = event.getY();
+			double zoom = this.zoom.getValue();
+			int x = (int)(Math.floor((event.getX() - this.offsetX) / zoom));
+			int y = (int)(Math.floor((event.getY() - this.offsetY) / zoom));
+			if (this.openImage.wrap.get()) {
+				Layer layer = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue();
+				x = Math.floorMod(x, layer.image.width);
+				y = Math.floorMod(y, layer.image.height);
+			}
+			this.f3.updatePos(x, y);
+		});
+		canvas.setOnKeyPressed((KeyEvent event) -> {
+			if (event.getCode() == KeyCode.F3) {
+				Pane pane = this.f3.rootNode();
+				pane.setVisible(!pane.isVisible());
+			}
 		});
 	}
 
 	public void setPosition(double posX, double posY) {
 		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
 		double zoom = this.zoom.getValue();
-		if (posX + image.width  / zoom < 0) posX = image.width  / -zoom;
-		if (posY + image.height / zoom < 0) posY = image.height / -zoom;
+		if (posX + image.width  * zoom < 0) posX = image.width  * -zoom;
+		if (posY + image.height * zoom < 0) posY = image.height * -zoom;
 		if (posX > this.display.display.getWidth ()) posX = this.display.display.getWidth ();
 		if (posY > this.display.display.getHeight()) posY = this.display.display.getHeight();
 		this.offsetX = posX;
 		this.offsetY = posY;
 	}
 
-	public void center() {
-		//hacky code to only center once.
-		if (this.centerer == null) return;
+	public void centerOnce() {
+		if (this.centerer != null && this.center()) {
+			Canvas canvas = this.display.display;
+			canvas. widthProperty().removeListener(this.centerer);
+			canvas.heightProperty().removeListener(this.centerer);
+			this.centerer = null;
+		}
+	}
+
+	public boolean center() {
 		Canvas canvas = this.display.display;
-		if (canvas.getWidth() == 0.0D || canvas.getHeight() == 0.0D) return;
+		if (canvas.getWidth() == 0.0D || canvas.getHeight() == 0.0D) return false;
 		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
 		int zoomIndex = Arrays.binarySearch(
 			ZOOMS,
-			Math.max(
-				image.width  / canvas.getWidth(),
-				image.height / canvas.getHeight()
+			Math.min(
+				canvas.getWidth () / image.width,
+				canvas.getHeight() / image.height
 			)
 		);
-		if (zoomIndex < 0) zoomIndex = Math.min(~zoomIndex, ZOOMS.length - 1);
+		if (zoomIndex < 0) zoomIndex = Math.min(-1 + ~zoomIndex, ZOOMS.length - 1);
 
 		this.zoomIndex.set(zoomIndex);
-		this.offsetX = (canvas.getWidth () - image.width  / ZOOMS[zoomIndex]) * 0.5D;
-		this.offsetY = (canvas.getHeight() - image.height / ZOOMS[zoomIndex]) * 0.5D;
-		canvas. widthProperty().removeListener(this.centerer);
-		canvas.heightProperty().removeListener(this.centerer);
-		this.centerer = null;
+		this.offsetX = (canvas.getWidth () - image.width  * ZOOMS[zoomIndex]) * 0.5D;
+		this.offsetY = (canvas.getHeight() - image.height * ZOOMS[zoomIndex]) * 0.5D;
+		return true;
 	}
 
 	public void redraw() {
@@ -215,12 +244,12 @@ public class ZoomableImage {
 		byte[] pixels = new byte[width * height * 4];
 		boolean wrap = this.openImage.wrap.get();
 		IntStream.range(0, height).parallel().forEach((int y) -> {
-			int mappedY = (int)(Math.floor((y - this.offsetY) * zoom));
+			int mappedY = (int)(Math.floor((y - this.offsetY) / zoom));
 			if (wrap) {
 				mappedY = Math.floorMod(mappedY, image.height);
 			}
 			for (int x = 0; x < width; x++) {
-				int mappedX = (int)(Math.floor((x - this.offsetX) * zoom));
+				int mappedX = (int)(Math.floor((x - this.offsetX) / zoom));
 				if (wrap) {
 					mappedX = Math.floorMod(mappedX, image.width);
 				}
@@ -240,44 +269,64 @@ public class ZoomableImage {
 				pixels[baseIndex | 3] = Util.clampB(               alpha);
 			}
 		});
-		int
-			x1 = 0,
-			y1 = 0,
-			x2 = image.width,
-			y2 = image.height;
+		this.drawOutline(
+			pixels,
+			0,
+			0,
+			image.width,
+			image.height,
+			width,
+			height,
+			0xFF7F7F3F,
+			0xFFFFFFBF
+		);
 		if (this.openImage.getSelectedLayer().sources.getCurrentSource() instanceof ManualLayerSource manual) {
 			Selection selection = new Selection();
 			Tool<?> tool = manual.toolWithoutColorPicker.get();
 			if (tool != null && tool.getSelection(selection)) {
-				x1 = selection.minX;
-				y1 = selection.minY;
-				x2 = selection.maxX + 1;
-				y2 = selection.maxY + 1;
+				this.f3.updateSelection(selection);
+				this.drawOutline(
+					pixels,
+					selection.minX,
+					selection.minY,
+					selection.maxX + 1,
+					selection.maxY + 1,
+					width,
+					height,
+					0xFF000000,
+					0xFFFFFFFF
+				);
 			}
-		}
-		x1 = (int)(Math.ceil(this.offsetX + x1 / zoom)) - 1;
-		y1 = (int)(Math.ceil(this.offsetY + y1 / zoom)) - 1;
-		x2 = (int)(Math.ceil(this.offsetX + x2 / zoom));
-		y2 = (int)(Math.ceil(this.offsetY + y2 / zoom));
-		for (int x = x1; x <= x2; x++) {
-			setGrayscaleSafe(pixels, x, y1, width, height, ((x ^ y1) & 8) == 0 ? 0.0F : 1.0F);
-			setGrayscaleSafe(pixels, x, y2, width, height, ((x ^ y2) & 8) == 0 ? 0.0F : 1.0F);
-		}
-		for (int y = y1; ++y < y2;) {
-			setGrayscaleSafe(pixels, x1, y, width, height, ((x1 ^ y) & 8) == 0 ? 0.0F : 1.0F);
-			setGrayscaleSafe(pixels, x2, y, width, height, ((x2 ^ y) & 8) == 0 ? 0.0F : 1.0F);
+			else {
+				this.f3.updateSelection(null);
+			}
 		}
 		writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);
 	}
 
-	public static void setGrayscaleSafe(byte[] pixels, int x, int y, int width, int height, float grayscale) {
+	public void drawOutline(byte[] pixels, int x1, int y1, int x2, int y2, int canvasWidth, int canvasHeight, int dark, int light) {
+		double zoom = this.zoom.getValue();
+		x1 = (int)(Math.ceil(this.offsetX + x1 * zoom)) - 1;
+		y1 = (int)(Math.ceil(this.offsetY + y1 * zoom)) - 1;
+		x2 = (int)(Math.ceil(this.offsetX + x2 * zoom));
+		y2 = (int)(Math.ceil(this.offsetY + y2 * zoom));
+		for (int x = x1; x <= x2; x++) {
+			setColorSafe(pixels, x, y1, canvasWidth, canvasHeight, ((x ^ y1) & 8) == 0 ? dark : light);
+			setColorSafe(pixels, x, y2, canvasWidth, canvasHeight, ((x ^ y2) & 8) == 0 ? dark : light);
+		}
+		for (int y = y1; ++y < y2;) {
+			setColorSafe(pixels, x1, y, canvasWidth, canvasHeight, ((x1 ^ y) & 8) == 0 ? dark : light);
+			setColorSafe(pixels, x2, y, canvasWidth, canvasHeight, ((x2 ^ y) & 8) == 0 ? dark : light);
+		}
+	}
+
+	public static void setColorSafe(byte[] pixels, int x, int y, int width, int height, int argb) {
 		if (x >= 0 && x < width && y >= 0 && y < height) {
 			int baseIndex = (y * width + x) << 2;
-			byte value = Util.clampB(grayscale);
-			pixels[baseIndex    ] = value;
-			pixels[baseIndex | 1] = value;
-			pixels[baseIndex | 2] = value;
-			pixels[baseIndex | 3] = -1;
+			pixels[baseIndex    ] = (byte)(argb);
+			pixels[baseIndex | 1] = (byte)(argb >>> 8);
+			pixels[baseIndex | 2] = (byte)(argb >>> 16);
+			pixels[baseIndex | 3] = (byte)(argb >>> 24);
 		}
 	}
 }

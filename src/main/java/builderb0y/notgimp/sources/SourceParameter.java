@@ -11,6 +11,7 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.json.JsonArray;
 import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.json.JsonString;
 import builderb0y.notgimp.json.JsonValue;
 
 public abstract class SourceParameter<T_Value, T_Holder> {
@@ -135,6 +136,29 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 			@Override
 			public void load(JsonMap map) {
 				this.set(Enum.valueOf(this.valueClass, map.getString(this.name)));
+			}
+		};
+	}
+
+	public static SourceParameter<String, ChoiceBox<String>> stringChoiceBox(ChoiceBox<String> box, String name) {
+		return new SourceParameter<>(box, name, String.class) {
+
+			@Override
+			public Property<String> value() {
+				return box.valueProperty();
+			}
+
+			@Override
+			public void save(JsonMap map) {
+				String value = this.get();
+				if (value != null) map.put(this.name, value);
+			}
+
+			@Override
+			public void load(JsonMap map) {
+				if (map.get(this.name) instanceof JsonString string) {
+					this.set(string.value);
+				}
 			}
 		};
 	}

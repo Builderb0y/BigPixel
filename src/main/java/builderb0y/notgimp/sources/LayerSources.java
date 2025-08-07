@@ -8,10 +8,15 @@ import java.util.Map;
 import javafx.beans.binding.When;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.value.ObservableObjectValue;
+import javafx.event.ActionEvent;
+import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.Layer;
 import builderb0y.notgimp.SaveException;
 import builderb0y.notgimp.Util;
@@ -26,6 +31,8 @@ public class LayerSources {
 	public Layer layer;
 	public BorderPane rootPane = new BorderPane();
 	public ChoiceBox<LayerSource> choiceBox = new ChoiceBox<>();
+	public Button swapViewButton = new Button(null, new ImageView(Assets.SWAP_VIEW));
+	public HBox choiceBoxAndSwapView = new HBox(this.choiceBox, this.swapViewButton);
 
 	public        ManualLayerSource        manualSource = this.add(new        ManualLayerSource(this));
 
@@ -85,7 +92,7 @@ public class LayerSources {
 
 	public LayerSources(Layer layer) {
 		this.layer = layer;
-		this.rootPane.setTop(this.choiceBox);
+		this.rootPane.setTop(this.choiceBoxAndSwapView);
 		this.rootPane.centerProperty().bind(this.currentSourceProperty.map(LayerSource::getRootNode));
 		this.choiceBox.getItems().addAll(this.orderedSources);
 		this.choiceBox.getSelectionModel().select(this.manualSource);
@@ -111,6 +118,7 @@ public class LayerSources {
 			)
 		);
 		this.orderedSources.forEach((LayerSource source) -> source.init(fromSave));
+		this.swapViewButton.setOnAction(this.layer.openImage::swapView);
 	}
 
 	public void invalidateStructure() {

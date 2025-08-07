@@ -1,9 +1,13 @@
 package builderb0y.notgimp;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.TreeSet;
+import java.util.zip.GZIPOutputStream;
 
+import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.control.TreeItem;
 import org.jetbrains.annotations.NotNull;
@@ -69,18 +73,22 @@ public class History implements Comparable<History> {
 			return;
 		}
 		if (this.currentEntry.get() != null) {
-			for (Entry next; (next = this.currentEntry.get().next) != null; ) {
+			for (Entry next; (next = this.currentEntry.get().next) != null;) {
 				this.removeEntry(next);
 			}
 		}
 		currentMemory += toAdd;
+		outer:
 		while (currentMemory > MAX_MEMORY) {
-			History history = ALL_HISTORIES.removeFirst();
-			System.out.println("Removing oldest history entry from layer " + history.layer.name.get() + " to free up memory.");
-			//todo; this will NPE if history is empty.
-			history.removeEntry(history.oldestEntry);
-			//todo: shouldn't history be re-added to ALL_HISTORIES?
-			//	but if an empty history was removed, we will infinite loop.
+			for (History history : ALL_HISTORIES) {
+				if (history.oldestEntry == null) continue;
+				System.out.println("Removing oldest history entry from layer " + history.layer.name.get() + " to free up memory.");
+				history.removeEntry(history.oldestEntry);
+				continue outer;
+			}
+			System.err.println("Insufficient memory to store undo history for current layer.");
+			currentMemory -= toAdd;
+			return;
 		}
 		Entry next = new Entry(name, this.layer.image);
 		Entry current = this.currentEntry.get();
@@ -94,12 +102,13 @@ public class History implements Comparable<History> {
 			this.clear();
 			return;
 		}
+		entry.compressionThread.interrupt();
 		if (entry.next != null) entry.next.prev = entry.prev;
 		if (entry.prev != null) entry.prev.next = entry.next;
 		else this.oldestEntry = entry.next;
 		entry.prev = null;
 		entry.next = null;
-		currentMemory -= entry.pixels.length;
+		currentMemory += -entry.getUsedMemory();
 	}
 
 	public void clear() {
@@ -107,10 +116,11 @@ public class History implements Comparable<History> {
 		while (entry != null) {
 			Entry next = entry.next;
 			if (next != null) {
+				next.compressionThread.interrupt();
 				entry.next = null;
 				next.prev = null;
 			}
-			currentMemory -= entry.pixels.length;
+			currentMemory += -entry.getUsedMemory();
 			entry = next;
 		}
 		this.oldestEntry = null;
@@ -127,25 +137,56 @@ public class History implements Comparable<History> {
 	public static class Entry {
 
 		public String name;
-		public byte[] pixels;
+		public int width, height;
+		public float[] uncompressedPixels;
+		public byte[] compressedPixels;
 		public @Nullable Entry prev, next;
+		public Thread compressionThread;
 
 		public Entry(String name, HDRImage image) {
 			this.name = name;
-			try {
-				this.pixels = image.compressPixels();
-			}
-			catch (IOException exception) {
-				throw new UncheckedIOException(exception);
-			}
+			this.width = image.width;
+			this.height = image.height;
+			float[] uncompressedPixels = this.uncompressedPixels = image.pixels.clone();
+			this.compressionThread = new Thread("History compressor") {
+
+				@Override
+				public void run() {
+					byte[] compressedPixels = compress(uncompressedPixels);
+					if (compressedPixels != null) {
+						Platform.runLater(() -> {
+							Entry.this.compressedPixels = compressedPixels;
+							Entry.this.uncompressedPixels = null;
+							long oldPixels = ((long)(uncompressedPixels.length)) * ((long)(Float.BYTES));
+							long newPixels = (long)(compressedPixels.length);
+							long oldUsed = History.currentMemory;
+							currentMemory += newPixels - oldPixels;
+							System.out.println("Compressed pixels: " + oldPixels + " -> " + newPixels + ", memory: " + oldUsed + " -> " + History.currentMemory);
+						});
+					}
+				}
+			};
+			this.compressionThread.start();
+		}
+
+		public long getUsedMemory() {
+			if (this.compressedPixels != null) return (long)(this.compressedPixels.length);
+			else return ((long)(this.uncompressedPixels.length)) * ((long)(Float.BYTES));
 		}
 
 		public void restore(Layer layer) {
-			try {
-				layer.sources.manualSource.toollessImage.decompressPixels(this.pixels);
+			HDRImage destination = layer.sources.manualSource.toollessImage;
+			if (destination.width != this.width || destination.height != this.height) {
+				destination.resize(this.width, this.height, false);
+			}
+			if (this.compressedPixels != null) try {
+				destination.decompressPixels(this.compressedPixels);
 			}
 			catch (IOException exception) {
 				throw new UncheckedIOException(exception);
+			}
+			else {
+				System.arraycopy(this.uncompressedPixels, 0, destination.pixels, 0, this.uncompressedPixels.length);
 			}
 			layer.requestRedraw();
 		}
@@ -153,6 +194,27 @@ public class History implements Comparable<History> {
 		@Override
 		public String toString() {
 			return this.name;
+		}
+	}
+
+	public static byte[] compress(float[] pixels) {
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream(pixels.length * Float.BYTES);
+			GZIPOutputStream compressor = new GZIPOutputStream(baos);
+			DataOutputStream dos = new DataOutputStream(compressor);
+			for (float pixel : pixels) {
+				if (Thread.interrupted()) {
+					System.out.println(Thread.currentThread() + " interrupted while compressing.");
+					return null;
+				}
+				dos.writeFloat(pixel);
+			}
+			dos.close();
+			return baos.toByteArray();
+		}
+		catch (IOException unexpected) {
+			unexpected.printStackTrace();
+			return null;
 		}
 	}
 }

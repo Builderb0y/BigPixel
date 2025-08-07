@@ -64,6 +64,11 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 	public static class Selection {
 
 		public int minX, minY, maxX, maxY;
+
+		@Override
+		public String toString() {
+			return "(" + this.minX + ", " + this.minY + ") -> (" + (this.maxX + 1) + ", " + (this.maxY + 1) + "): " + (this.maxX - this.minX + 1) + "x" + (this.maxY - this.minY + 1);
+		}
 	}
 
 	public static record ToolType(String name, Image icon, Cursor cursor) {

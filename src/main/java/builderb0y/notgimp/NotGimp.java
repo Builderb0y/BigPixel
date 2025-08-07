@@ -1,14 +1,18 @@
 package builderb0y.notgimp;
 
 import java.io.*;
+import java.lang.ProcessHandle.Info;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Timer;
 
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
+import org.jetbrains.annotations.NotNull;
 
 public class NotGimp extends Application {
 
@@ -24,6 +28,7 @@ public class NotGimp extends Application {
 			for (String fileName : toOpen) {
 				File file = new File(fileName);
 				if (file.isFile()) mainWindow.doOpen(file);
+				else System.err.println("File not found or not normal: " + file.getAbsolutePath());
 			}
 		}
 		new Thread() {
@@ -66,42 +71,68 @@ public class NotGimp extends Application {
 	}
 
 	public static void main(String[] args) {
-		if (!new File("open_queue").exists()) try {
+		final String property = "builderb0y.notgimp.openQueue";
+		String ourQueue = System.getProperty(property);
+		if (ourQueue == null) {
+			System.err.println("Must run with -Dbuilderb0y.notgimp.openQueue=/path/to/pipe");
+			System.exit(0);
+		}
+		File ourQueueFile = new File("open_queue");
+		if (!ourQueueFile.exists()) try {
 			new ProcessBuilder("mkfifo", "open_queue").start().waitFor();
 		}
 		catch (Exception exception) {
 			exception.printStackTrace();
 		}
-		try (DataInputStream stream = new DataInputStream(new FileInputStream("running_pid"))) {
-			long pid = stream.readLong();
-			long timestamp = stream.readLong();
-			System.out.println("Found existing process: " + pid + " started at " + timestamp);
-			ProcessHandle handle = ProcessHandle.of(pid).orElse(null);
-			if (handle != null) {
-				Instant startTime = handle.info().startInstant().orElse(null);
-				if ((startTime != null ? startTime.toEpochMilli() : 0L) == timestamp) {
-					System.out.println("Existing process is valid.");
-					try (Writer writer = new OutputStreamWriter(new FileOutputStream("open_queue"), StandardCharsets.UTF_8)) {
-						for (String arg : args) {
-							writer.append(arg).write(0);
-						}
-					}
-					System.exit(0); //why is return not sufficient?
-				}
+		record ProcessQueueLocation(ProcessHandle handle, Info info, File openQueue) implements Comparable<ProcessQueueLocation> {
+
+			@Override
+			public int compareTo(@NotNull ProcessQueueLocation that) {
+				int compare = this.info.startInstant().orElseThrow().compareTo(that.info.startInstant().orElseThrow());
+				if (compare != 0) return compare;
+				return Long.compare(this.handle.pid(), that.handle.pid());
 			}
 		}
-		catch (FileNotFoundException ignored) {}
-		catch (IOException exception) {
-			exception.printStackTrace();
-		}
-		try (DataOutputStream stream = new DataOutputStream(new FileOutputStream("running_pid"))) {
-			ProcessHandle handle = ProcessHandle.current();
-			stream.writeLong(handle.pid());
-			Instant startTime = handle.info().startInstant().orElse(null);
-			stream.writeLong(startTime != null ? startTime.toEpochMilli() : 0L);
-		}
-		catch (IOException exception) {
-			exception.printStackTrace();
+		ProcessHandle current = ProcessHandle.current();
+		ProcessQueueLocation self = new ProcessQueueLocation(current, current.info(), ourQueueFile);
+		ProcessQueueLocation first = (
+			ProcessHandle.allProcesses().map((ProcessHandle handle) -> {
+				Info info = handle.info();
+				if (info.startInstant().isPresent()) {
+					String command = info.command().orElse(null);
+					if (command != null && (command.equals("java") || command.endsWith("/java"))) {
+						String[] arguments = info.arguments().orElse(null);
+						if (arguments != null) {
+							for (String argument : arguments) {
+								final String start = "-D" + property + "=";
+								if (argument.startsWith(start)) {
+									argument = argument.substring(start.length());
+									File openQueue = new File(argument);
+									if (openQueue.exists()) {
+										return new ProcessQueueLocation(handle, info, openQueue);
+									}
+								}
+							}
+						}
+					}
+				}
+				return null;
+			})
+			.filter(Objects::nonNull)
+			.min(Comparator.naturalOrder())
+			.orElse(null)
+		);
+		if (first != null && first.compareTo(self) < 0) {
+			System.out.println("Found existing process: " + first.handle.pid());
+			try (Writer writer = new OutputStreamWriter(new FileOutputStream(first.openQueue), StandardCharsets.UTF_8)) {
+				for (String arg : args) {
+					writer.append(arg).write(0);
+				}
+			}
+			catch (IOException exception) {
+				exception.printStackTrace();
+			}
+			System.exit(0);
 		}
 		launch(args);
 	}

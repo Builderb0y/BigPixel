@@ -52,16 +52,16 @@ public class MainWindow {
 		editMenu = new Menu("Edit"),
 		viewMenu = new Menu("View");
 	public MenuItem
-		fileNewMenuItem = new MenuItem("New..."),
-		fileOpenMenuItem = new MenuItem("Open..."),
-		fileSaveMenuItem = new MenuItem("Save"),
-		fileSaveAsMenuItem = new MenuItem("Save as..."),
-		fileExportMenuItem = new MenuItem("Export"),
-		fileExportAsMenuItem = new MenuItem("Export as..."),
-		editUndoMenuItem = new MenuItem(),
-		editRedoMenuItem = new MenuItem(),
+		fileNewMenuItem        = new MenuItem("New..."),
+		fileOpenMenuItem       = new MenuItem("Open..."),
+		fileSaveMenuItem       = new MenuItem("Save"),
+		fileSaveAsMenuItem     = new MenuItem("Save as..."),
+		fileExportMenuItem     = new MenuItem("Export"),
+		fileExportAsMenuItem   = new MenuItem("Export as..."),
+		editUndoMenuItem       = new MenuItem(),
+		editRedoMenuItem       = new MenuItem(),
 		viewLightThemeMenuItem = new MenuItem("Light theme"),
-		viewDarkThemeMenuItem = new MenuItem("Dark theme");
+		viewDarkThemeMenuItem  = new MenuItem("Dark theme");
 	public CheckMenuItem
 		viewTilingMenuItem = new CheckMenuItem("Tile view");
 	public TabPane
@@ -158,7 +158,7 @@ public class MainWindow {
 			this.styleSheetName.set("assets/themes/dark.css");
 		});
 		this.rootPane.getStylesheets().add("assets/themes/dark.css");
-		this.styleSheetName.addListener((ObservableValue<? extends String> observable, String oldValue, String newValue) -> {
+		this.styleSheetName.addListener((ObservableValue<? extends String> _, String oldValue, String newValue) -> {
 			this.rootPane.getStylesheets().remove(oldValue);
 			this.rootPane.getStylesheets().add(newValue);
 		});
@@ -385,9 +385,9 @@ public class MainWindow {
 					manual.moveTool.work.y2 = height - 1;
 
 					double zoom = openImage.imageDisplay.zoom.getValue();
-					int hoveredX = (int)(Math.floor((openImage.imageDisplay.lastMouseX - openImage.imageDisplay.offsetX) * zoom));
-					int hoveredY = (int)(Math.floor((openImage.imageDisplay.lastMouseY - openImage.imageDisplay.offsetY) * zoom));
-					manual.moveTool.work.offsetX = hoveredX - (width >> 1);
+					int hoveredX = (int)(Math.floor((openImage.imageDisplay.lastMouseX - openImage.imageDisplay.offsetX) / zoom));
+					int hoveredY = (int)(Math.floor((openImage.imageDisplay.lastMouseY - openImage.imageDisplay.offsetY) / zoom));
+					manual.moveTool.work.offsetX = hoveredX - (width  >> 1);
 					manual.moveTool.work.offsetY = hoveredY - (height >> 1);
 
 					layer.requestRedraw();
@@ -449,10 +449,10 @@ public class MainWindow {
 		Label heightLabel = new Label("Height: ");
 		TextField nameField = new TextField("New image");
 		GridPane gridPane = new GridPane();
-		gridPane.add(widthLabel, 0, 0);
-		gridPane.add(width, 1, 0);
+		gridPane.add(widthLabel,  0, 0);
+		gridPane.add(width,       1, 0);
 		gridPane.add(heightLabel, 0, 1);
-		gridPane.add(height, 1, 1);
+		gridPane.add(height,      1, 1);
 		gridPane.add(nameField, 0, 2, 2, 1);
 		dialog.getDialogPane().setContent(gridPane);
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -626,5 +626,6 @@ public class MainWindow {
 		this.openImages.getTabs().add(index, tab);
 		this.openImages.getSelectionModel().select(index);
 		openImage.init();
+		this.stage.requestFocus();
 	}
 }
