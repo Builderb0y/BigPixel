@@ -3,6 +3,8 @@ package builderb0y.bigpixel;
 import java.util.*;
 import java.util.function.Predicate;
 
+import javafx.animation.Interpolator;
+import javafx.animation.Transition;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableBooleanValue;
@@ -17,6 +19,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
+import javafx.util.Duration;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.json.JsonArray;
@@ -105,7 +108,7 @@ public class LayerGraph {
 		for (JsonValue value : layersData) {
 			LayerNode layer = new LayerNode(this, value.asMap());
 			try {
-				this.addLayer(layer);
+				this.addLayer(layer, false);
 			}
 			catch (RuntimeException exception) {
 				throw new SaveException(exception.getLocalizedMessage(), exception);
@@ -195,7 +198,7 @@ public class LayerGraph {
 			LayerNode layer = this.layerList.get(index);
 			int gridx = layer.getGridX();
 			if (gridx < x) break;
-			layer.setGridX(gridx + 1);
+			layer.setGridX(gridx + 1, true);
 		}
 	}
 
@@ -206,7 +209,7 @@ public class LayerGraph {
 			LayerNode layer = this.layerList.get(index);
 			if (layer.getGridX() > x) break;
 			if (layer.getGridY() > y) break;
-			layer.setGridY(++y);
+			layer.setGridY(++y, true);
 		}
 	}
 
@@ -222,8 +225,7 @@ public class LayerGraph {
 		if (this.hasLayerAt(x, y)) {
 			this.shiftDown(x, y);
 		}
-		layer.setGridX(x);
-		layer.setGridY(y);
+		layer.setGridPos(x, y, true);
 		index = this.indexOfPosition(x, y);
 		assert index < 0;
 		index = ~index;
@@ -290,7 +292,7 @@ public class LayerGraph {
 		this.redrawRequested = false;
 	}
 
-	public void addLayer(LayerNode layer) {
+	public void addLayer(LayerNode layer, boolean fadeIn) {
 		String oldName = layer.getDisplayName();
 		String newName = this.adjustName(oldName);
 		if (!oldName.equals(newName)) {
@@ -302,10 +304,27 @@ public class LayerGraph {
 		}
 		this.layerList.add(~index, layer);
 		this.layersByName.put(newName, layer);
-		this.mainGrid.getChildren().add(layer.getPreviewNode());
+		this.mainGrid.getChildren().addFirst(layer.getPreviewNode());
 		this.updateFlow();
 		this.selectedLayer.set(layer);
 		this.buttons.getChildren().set(0, this.addLayerButton);
+		if (fadeIn) {
+			layer.getPreviewNode().setOpacity(0.0D);
+			new Transition() {
+
+				{
+					this.setInterpolator(Interpolator.LINEAR);
+					this.setCycleDuration(Duration.seconds(0.25D));
+					this.setOnFinished((ActionEvent _) -> layer.getPreviewNode().setOpacity(1.0D));
+				}
+
+				@Override
+				public void interpolate(double v) {
+					layer.getPreviewNode().setOpacity(v);
+				}
+			}
+			.play();
+		}
 	}
 
 	public void removeLayer(LayerNode layer) {
@@ -340,7 +359,7 @@ public class LayerGraph {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftDown(x, y);
 			}
-			this.addLayer(layer);
+			this.addLayer(layer, true);
 		}
 	}
 
@@ -353,7 +372,7 @@ public class LayerGraph {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftDown(x, y);
 			}
-			this.addLayer(layer);
+			this.addLayer(layer, true);
 		}
 	}
 
@@ -366,7 +385,7 @@ public class LayerGraph {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftRight(x);
 			}
-			this.addLayer(layer);
+			this.addLayer(layer, true);
 		}
 	}
 
@@ -379,7 +398,7 @@ public class LayerGraph {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftRight(x);
 			}
-			this.addLayer(layer);
+			this.addLayer(layer, true);
 		}
 	}
 
@@ -412,7 +431,7 @@ public class LayerGraph {
 
 	public void addFirstLayer(ActionEvent ignored) {
 		LayerNode layer = this.promptForLayer(0, 0, 16, 16);
-		if (layer != null) this.addLayer(layer);
+		if (layer != null) this.addLayer(layer, true);
 	}
 
 	public void duplicateLayer(ActionEvent ignored) {
@@ -424,7 +443,7 @@ public class LayerGraph {
 		if (this.hasLayerAt(x, y)) {
 			this.shiftDown(x, y);
 		}
-		this.addLayer(newLayer);
+		this.addLayer(newLayer, true);
 		newLayer.requestRedraw();
 	}
 

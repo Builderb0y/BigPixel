@@ -1,19 +1,17 @@
 import java.nio.file.Files
-import java.util.regex.Matcher
-import java.util.regex.Pattern
 
-plugins {
-	id 'java'
+plugins() {
+	id('java')
 }
 
-group 'builderb0y'
-version '1.0-SNAPSHOT'
+group('builderb0y')
+version('1.0-SNAPSHOT')
 
-repositories {
+repositories() {
 	mavenCentral()
 }
 
-ext {
+ext() {
 	junitVersion = '5.10.2'
 }
 
@@ -23,21 +21,21 @@ targetCompatibility = '24'
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
 	options.compilerArgs.addAll([
-		'--enable-preview',
 		'-parameters',
+		'--enable-preview',
 		'--add-modules', 'jdk.incubator.vector',
 		'--add-exports', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED',
 		'--add-exports', 'java.base/jdk.internal.classfile.components=ALL-UNNAMED'
 	])
 }
 
-configurations {
+configurations() {
 	implementation {
 		canBeResolved = true
 	}
 }
 
-dependencies {
+dependencies() {
 	implementation('org.controlsfx:controlsfx:11.2.1')
 	implementation('net.synedra:validatorfx:0.5.0') {
 		exclude(group: 'org.openjfx')
@@ -63,6 +61,6 @@ for (File from in getConfigurations().getByName('implementation').getResolvedCon
 	if (!to.exists()) Files.copy(from.toPath(), to.toPath())
 }
 
-test {
+test() {
 	useJUnitPlatform()
 }

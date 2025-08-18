@@ -354,7 +354,7 @@ public class MainWindow {
 				OpenImage openImage = new OpenImage(this);
 				LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, image.image.width, image.image.height, image.name);
 				layer.sources.manualSource().toollessImage.doCopyFrom(image.image);
-				openImage.layerGraph.addLayer(layer);
+				openImage.layerGraph.addLayer(layer, false);
 				this.addOpenImage(image.name, openImage);
 				layer.requestRedraw();
 			}
@@ -379,7 +379,7 @@ public class MainWindow {
 				if (openImage.layerGraph.hasLayerAt(x, y)) {
 					openImage.layerGraph.shiftDown(x, y);
 				}
-				openImage.layerGraph.addLayer(layer);
+				openImage.layerGraph.addLayer(layer, true);
 				layer.requestRedraw();
 			}
 		}
@@ -483,7 +483,7 @@ public class MainWindow {
 		if (dialog.showAndWait().orElse(null) == ButtonType.OK) {
 			OpenImage image = new OpenImage(this);
 			LayerNode layer = new LayerNode(image.layerGraph, 0, 0, width.getValue(), height.getValue(), nameField.getText());
-			image.layerGraph.addLayer(layer);
+			image.layerGraph.addLayer(layer, false);
 			image.layerGraph.visibleLayer.selectToggle(layer.showing);
 			this.addOpenImage(nameField.getText(), image);
 		}
@@ -525,16 +525,22 @@ public class MainWindow {
 						Throwable throwable = new Throwable("profiling stack trace");
 						throwable.setStackTrace(caller.getStackTrace());
 						throwable.printStackTrace();
-						Thread.sleep(10L);
+						Thread.sleep(5L);
 					}
 					catch (InterruptedException ignored) {
 						break;
 					}
 				});
-				*/
-				//thread.start();
+				thread.start();
+				try {
+					openImage.load(map);
+				}
+				finally {
+					thread.interrupt();
+				}
+				/*/
 				openImage.load(map);
-				//thread.interrupt();
+				//*/
 				long afterFinishedTime = System.currentTimeMillis();
 				System.out.println(
 					"Loaded " + file.getAbsolutePath() + ": " +
@@ -554,7 +560,7 @@ public class MainWindow {
 				LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, (int)(image.getWidth()), (int)(image.getHeight()), file.getName());
 				layer.sources.manualSource().toollessImage.copyFrom(image);
 				layer.requestRedraw();
-				openImage.layerGraph.addLayer(layer);
+				openImage.layerGraph.addLayer(layer, false);
 				openImage.layerGraph.visibleLayer.selectToggle(layer.showing);
 			}
 			openImage.file.set(file);

@@ -121,8 +121,7 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		this.outerPreview.getStyleClass().add("popout-borders");
 		this.showing.setToggleGroup(graph.visibleLayer);
 		this.showing.setUserData(this);
-		this.dragHandler.gridX.set(x);
-		this.dragHandler.gridY.set(y);
+		this.setGridPos(x, y, false);
 		this.thumbnailView.setPreserveRatio(true);
 		this.thumbnailView.setImage(new WritableImage(width, height));
 		this.onThumbnailSizeChanged();
@@ -286,11 +285,15 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		return this.dragHandler.gridY.get();
 	}
 
-	public void setGridX(int gridX) {
-		this.dragHandler.gridX.set(gridX);
+	public void setGridPos(int gridX, int gridY, boolean animate) {
+		this.dragHandler.setGridPos(gridX, gridY, animate);
 	}
 
-	public void setGridY(int gridY) {
-		this.dragHandler.gridY.set(gridY);
+	public void setGridX(int gridX, boolean animate) {
+		this.dragHandler.setGridX(gridX, animate);
+	}
+
+	public void setGridY(int gridY, boolean animate) {
+		this.dragHandler.setGridY(gridY, animate);
 	}
 }

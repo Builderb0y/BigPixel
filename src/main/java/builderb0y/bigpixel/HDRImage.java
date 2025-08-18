@@ -139,14 +139,25 @@ public class HDRImage implements Externalizable {
 		this.pixels = newPixels;
 	}
 
-	public void decompressPixels(byte[] pixels) throws IOException {
-		ByteArrayInputStream bais = new ByteArrayInputStream(pixels);
-		GZIPInputStream decompressor = new GZIPInputStream(bais);
-		DataInputStream in = new DataInputStream(decompressor);
+	public void decompressPixels(byte[] compressed) throws IOException {
+		GZIPInputStream decompressor = new GZIPInputStream(new ByteArrayInputStream(compressed));
+		byte[] decompressed = new byte[this.pixels.length * Float.BYTES];
+		readFully(decompressor, decompressed);
+		DataInputStream in = new DataInputStream(new ByteArrayInputStream(decompressed));
 		for (int index = 0, length = this.pixels.length; index < length; index++) {
 			this.pixels[index] = in.readFloat();
 		}
-		if (in.available() != 0) throw new IOException("Trailing data");
+	}
+
+	//why does stream.read(destination) not read ALL available input bytes?
+	public static void readFully(InputStream stream, byte[] destination) throws IOException {
+		int start = 0;
+		while (start < destination.length) {
+			int read = stream.read(destination, start, destination.length - start);
+			if (read <= 0) throw new IOException("Could not read enough bytes! Successfully read " + start + " / " + destination.length + " + bytes");
+			start += read;
+		}
+		if (start > destination.length /* ??? */ || stream.available() > 0 /* more likely. */) throw new IOException("Trailing data");
 	}
 
 	public int baseIndex(int x, int y) {
