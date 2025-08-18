@@ -1,124 +1,196 @@
 package builderb0y.notgimp.sources;
 
-import javafx.beans.value.ChangeListener;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.VectorMask;
-import jdk.incubator.vector.VectorOperators;
 
-import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.Gradient;
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.types.UtilityOperations;
 import builderb0y.notgimp.scripting.types.VectorOperations;
+import builderb0y.notgimp.sources.dependencies.MainMaskDependencies;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.notgimp.sources.dependencies.inputs.UnmovableInputBinding;
 
-public class GradientRemapLayerSource extends SingleInputEffectLayerSource {
+public class GradientRemapLayerSource extends PerPixelLayerSource {
 
-	public ColorBoxGroup
-		activeBox;
+	public static class Dependencies extends MainMaskDependencies {
+
+		public UnmovableInputBinding
+			fromStart = this.addBinding("from_start", "From Start: "),
+			fromEnd   = this.addBinding("from_end",   "From End: "  ),
+			toStart   = this.addBinding("to_start",   "To Start: "  ),
+			toEnd     = this.addBinding("to_end",     "To End: "    );
+
+		public Dependencies(LayerSource source) {
+			super(source);
+			this.fromStart.colorBox.color.set(Util.BLACK);
+			this.  toStart.colorBox.color.set(Util.BLACK);
+		}
+	}
+
+	@Override
+	public MainMaskDependencies createDependencies() {
+		return new Dependencies(this);
+	}
+
+	public Dependencies dependencies() {
+		return (Dependencies)(this.dependencies);
+	}
+
 	public GradientRow
-		from = new GradientRow(this, false),
-		to   = new GradientRow(this, true);
+		fromGradient = new GradientRow(this, false),
+		toGradient = new GradientRow(this, true);
 	public CheckBox
-		perChannel    = this.addCheckbox("per_channel", "Per Channel", false),
-		preserveAlpha = this.addCheckbox("preserve_alpha", "Preserve Alpha", false);
+		perChannel    = this.parameters.addCheckbox("per_channel", "Per Channel", false),
+		preserveAlpha = this.parameters.addCheckbox("preserve_alpha", "Preserve Alpha", false);
 	public HBox
 		toggles = new HBox(this.perChannel, this.preserveAlpha);
-	public GridPane
-		gridPane = new GridPane();
 
 	public GradientRemapLayerSource(LayerSources sources) {
-		super(sources, "gradient_remap", "Gradient Remap");
+		super(Type.GRADIENT_REMAP, sources);
+		this.dependencies.addExtraNodeRow(this.fromGradient.getRootPane());
+		this.dependencies.addExtraNodeRow(this.toGradient.getRootPane());
+		this.dependencies.addExtraNodeRow(this.toggles);
 	}
 
 	@Override
-	public void init(boolean fromSave) {
-		super.init(fromSave);
-		ColorHelper colorHelper = this.sources.layer.openImage.mainWindow.colorPicker.currentColor;
-		this.activeBox = new ColorBoxGroup(colorHelper, this.rootNode, this.from.start, this.from.end, this.to.start, this.to.end);
-		this.from.init();
-		this.to.init();
-		this.from.addTo(this.gridPane, 0, "From: ");
-		this.to.addTo(this.gridPane, 1, "To: ");
-		this.gridPane.add(this.toggles, 0, 2, 4, 1);
-		this.rootNode.setCenter(this.gridPane);
-	}
-
-	@Override
-	public void doRedraw() throws RedrawException {
-		HDRImage source = this.getSingleInput(true).image;
-		HDRImage destination = this.sources.layer.image;
-		FloatVector
-			fromStart = this.from.start.color.get(),
-			fromEnd   = this.from.end  .color.get(),
-			toStart   = this.to  .start.color.get(),
-			toEnd     = this.to  .end  .color.get();
+	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
 		if (this.perChannel.isSelected()) {
-			VectorMask<Float> usedChannels = fromStart.compare(VectorOperators.NE, fromEnd);
 			if (this.preserveAlpha.isSelected()) {
-				//why is there no withLane() for masks?
-				boolean[] array = usedChannels.toArray();
-				array[HDRImage.ALPHA_OFFSET] = false;
-				usedChannels = VectorMask.fromArray(FloatVector.SPECIES_128, array, 0);
+				return new PerChannelRGBApplicator(this);
 			}
-			for (int index = 0; index < source.pixels.length; index += 4) {
-				FloatVector color = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-				FloatVector fraction = VectorOperations.unmix_float4_float4_float4(fromStart, fromEnd, color);
-				FloatVector remixed = VectorOperations.mix_float4_float4_float4(toStart, toEnd, fraction);
-				color.blend(remixed, usedChannels).intoArray(destination.pixels, index);
+			else {
+				return new PerChannelAlphaApplicator(this);
 			}
 		}
 		else {
 			if (this.preserveAlpha.isSelected()) {
-				for (int index = 0; index < source.pixels.length; index += 4) {
-					FloatVector color = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-					float fraction = UtilityOperations.projectLineFrac_float3_float3_float3(fromStart, fromEnd, color);
-					color = color.blend(VectorOperations.mix_float3_float3_float(toStart, toEnd, fraction), RGB_MASK);
-					color.intoArray(destination.pixels, index);
-				}
+				return new UniformRGBApplicator(this);
 			}
 			else {
-				for (int index = 0; index < source.pixels.length; index += 4) {
-					FloatVector color = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-					float fraction = UtilityOperations.projectLineFrac_float4_float4_float4(fromStart, fromEnd, color);
-					color = VectorOperations.mix_float4_float4_float(toStart, toEnd, fraction);
-					color.intoArray(destination.pixels, index);
-				}
+				return new UniformAlphaApplicator(this);
 			}
+		}
+	}
+
+	public static abstract class Applicator extends PerPixelApplicator {
+
+		public final LayerSourceInput fromStart, fromEnd, toStart, toEnd;
+
+		public Applicator(GradientRemapLayerSource source) {
+			Dependencies dependencies = source.dependencies();
+			this.fromStart = dependencies.fromStart.getCurrent();
+			this.fromEnd   = dependencies.fromEnd  .getCurrent();
+			this.toStart   = dependencies.toStart  .getCurrent();
+			this.toEnd     = dependencies.toEnd    .getCurrent();
+		}
+	}
+
+	public static class UniformAlphaApplicator extends Applicator {
+
+		public UniformAlphaApplicator(GradientRemapLayerSource source) {
+			super(source);
+		}
+
+		@Override
+		public FloatVector apply(int x, int y, FloatVector original) {
+			return VectorOperations.mix_float4_float4_float(
+				this.toStart.getColor(x, y),
+				this.toEnd.getColor(x, y),
+				UtilityOperations.projectLineFrac_float4_float4_float4(
+					this.fromStart.getColor(x, y),
+					this.fromEnd.getColor(x, y),
+					original
+				)
+			);
+		}
+	}
+
+	public static class UniformRGBApplicator extends Applicator {
+
+		public UniformRGBApplicator(GradientRemapLayerSource source) {
+			super(source);
+		}
+
+		@Override
+		public FloatVector apply(int x, int y, FloatVector original) {
+			return VectorOperations.mix_float3_float3_float(
+				this.toStart.getColor(x, y),
+				this.toEnd.getColor(x, y),
+				UtilityOperations.projectLineFrac_float3_float3_float3(
+					this.fromStart.getColor(x, y),
+					this.fromEnd.getColor(x, y),
+					original
+				)
+			)
+			.withLane(HDRImage.ALPHA_OFFSET, original.lane(HDRImage.ALPHA_OFFSET));
+		}
+	}
+
+	public static class PerChannelAlphaApplicator extends Applicator {
+
+		public PerChannelAlphaApplicator(GradientRemapLayerSource source) {
+			super(source);
+		}
+
+		@Override
+		public FloatVector apply(int x, int y, FloatVector original) {
+			return VectorOperations.mix_float4_float4_float4(
+				this.toStart.getColor(x, y),
+				this.toEnd.getColor(x, y),
+				VectorOperations.unmix_float4_float4_float4(
+					this.fromStart.getColor(x, y),
+					this.fromEnd.getColor(x, y),
+					original
+				)
+			);
+		}
+	}
+
+	public static class PerChannelRGBApplicator extends Applicator {
+
+		public PerChannelRGBApplicator(GradientRemapLayerSource source) {
+			super(source);
+		}
+
+		@Override
+		public FloatVector apply(int x, int y, FloatVector original) {
+			return VectorOperations.mix_float3_float3_float3(
+				this.toStart.getColor(x, y),
+				this.toEnd.getColor(x, y),
+				VectorOperations.unmix_float3_float3_float3(
+					this.fromStart.getColor(x, y),
+					this.fromEnd.getColor(x, y),
+					original
+				)
+			)
+			.withLane(HDRImage.ALPHA_OFFSET, original.lane(HDRImage.ALPHA_OFFSET));
 		}
 	}
 
 	public static class GradientRow extends Gradient {
 
-		public ColorBox start, end;
+		public UnmovableInputBinding start, end;
+		public FloatVector startColor, endColor;
 
 		public GradientRow(GradientRemapLayerSource source, boolean to) {
 			this.checkerboard().popOut().fixedSize(129.0D, 16.0D);
-			this.start = source.addColorBox((to ? "to" : "from") + "_start", 0.0F, 0.0F, 0.0F, 1.0F);
-			this.end = source.addColorBox((to ? "to" : "from") + "_end", 1.0F, 1.0F, 1.0F, 1.0F);
+			this.start = to ? source.dependencies().toStart : source.dependencies().fromStart;
+			this.end   = to ? source.dependencies().toEnd   : source.dependencies().fromEnd;
 		}
 
-		public void init() {
-			ChangeListener<Object> redrawer = Util.change(this::redraw);
-			this.start.color.addListener(redrawer);
-			this.end.color.addListener(redrawer);
-			this.redraw();
+		@Override
+		public void redraw() {
+			this.startColor = this.start.colorBox.getColor();
+			this.endColor = this.end.colorBox.getColor();
+			super.redraw();
 		}
 
 		@Override
 		public FloatVector computeColor(int pixelPos, float fraction) {
-			return VectorOperations.mix_float4_float4_float(this.start.color.get(), this.end.color.get(), fraction);
-		}
-
-		public void addTo(GridPane gridPane, int y, String name) {
-			gridPane.add(new Label(name), 0, y);
-			gridPane.add(this.start.box.getRootPane(), 1, y);
-			gridPane.add(this.getRootPane(), 2, y);
-			gridPane.add(this.end.box.getRootPane(), 3, y);
+			return VectorOperations.mix_float4_float4_float(this.startColor, this.endColor, fraction);
 		}
 	}
 }

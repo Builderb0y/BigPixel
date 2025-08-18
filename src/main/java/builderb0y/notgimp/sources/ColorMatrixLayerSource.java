@@ -1,60 +1,66 @@
 package builderb0y.notgimp.sources;
 
-import javafx.scene.control.Label;
-import javafx.scene.layout.GridPane;
-import javafx.scene.paint.Color;
 import jdk.incubator.vector.FloatVector;
 
-import builderb0y.notgimp.ColorHelper;
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.RectangleHelper;
-import builderb0y.notgimp.Util;
+import builderb0y.notgimp.sources.dependencies.MainMaskDependencies;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.notgimp.sources.dependencies.inputs.UnmovableInputBinding;
 
-public class ColorMatrixLayerSource extends SingleInputEffectLayerSource {
+public class ColorMatrixLayerSource extends PerPixelLayerSource {
 
-	public ColorBoxGroup
-		activeBox;
-	public RectangleHelper
-		fromRed   = new RectangleHelper().fixedSize(16.0D, 16.0D).popOut().paint(Color.RED),
-		fromGreen = new RectangleHelper().fixedSize(16.0D, 16.0D).popOut().paint(Color.LIME),
-		fromBlue  = new RectangleHelper().fixedSize(16.0D, 16.0D).popOut().paint(Color.BLUE);
-	public ColorBox
-		toRed   = this.addColorBox("to_red",   Util.rgba(1.0F, 0.0F, 0.0F, 1.0F)),
-		toGreen = this.addColorBox("to_green", Util.rgba(0.0F, 1.0F, 0.0F, 1.0F)),
-		toBlue  = this.addColorBox("to_blue",  Util.rgba(0.0F, 0.0F, 1.0F, 1.0F));
-	public GridPane
-		gridPane = new GridPane();
+	public static class Dependencies extends MainMaskDependencies {
+
+		public UnmovableInputBinding
+			toRed   = this.addBinding("to_red",   "Red -> "),
+			toGreen = this.addBinding("to_green", "Green -> "),
+			toBlue  = this.addBinding("to_blue",  "Blue -> ");
+
+		public Dependencies(LayerSource source) {
+			super(source);
+		}
+	}
+
+	@Override
+	public MainMaskDependencies createDependencies() {
+		return new Dependencies(this);
+	}
+
+	public Dependencies dependencies() {
+		return (Dependencies)(this.dependencies);
+	}
 
 	public ColorMatrixLayerSource(LayerSources sources) {
-		super(sources, "color_matrix", "Color Matrix");
+		super(Type.COLOR_MATRIX, sources);
 	}
 
 	@Override
-	public void init(boolean fromSave) {
-		super.init(fromSave);
-		ColorHelper colorHelper = this.sources.layer.openImage.mainWindow.colorPicker.currentColor;
-		this.activeBox = new ColorBoxGroup(colorHelper, this.rootNode, this.toRed, this.toGreen, this.toBlue);
-		this.gridPane.addRow(0, this.fromRed  .getRootPane(), new Label(" -> "), this.toRed  .box.getRootPane());
-		this.gridPane.addRow(1, this.fromGreen.getRootPane(), new Label(" -> "), this.toGreen.box.getRootPane());
-		this.gridPane.addRow(2, this.fromBlue .getRootPane(), new Label(" -> "), this.toBlue .box.getRootPane());
-		this.rootNode.setCenter(this.gridPane);
+	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
+		return new Applicator(
+			this.dependencies().toRed.getCurrent(),
+			this.dependencies().toGreen.getCurrent(),
+			this.dependencies().toBlue.getCurrent()
+		);
 	}
 
-	@Override
-	public void doRedraw() throws RedrawException {
-		HDRImage source = this.getSingleInput(true).image;
-		HDRImage destination = this.sources.layer.image;
-		FloatVector
-			red   = this.toRed  .color.get(),
-			green = this.toGreen.color.get(),
-			blue  = this.toBlue .color.get();
-		for (int index = 0; index < source.pixels.length; index += 4) {
-			FloatVector color = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-			red.mul(color.lane(HDRImage.RED_OFFSET))
-			.add(green.mul(color.lane(HDRImage.GREEN_OFFSET)))
-			.add(blue.mul(color.lane(HDRImage.BLUE_OFFSET)))
-			.withLane(HDRImage.ALPHA_OFFSET, color.lane(HDRImage.ALPHA_OFFSET))
-			.intoArray(destination.pixels, index);
+	public static class Applicator extends PerPixelApplicator {
+
+		public final LayerSourceInput red, green, blue;
+
+		public Applicator(LayerSourceInput red, LayerSourceInput green, LayerSourceInput blue) {
+			this.red = red;
+			this.green = green;
+			this.blue = blue;
+		}
+
+		@Override
+		public FloatVector apply(int x, int y, FloatVector original) {
+			return (
+				this.red.getColor(x, y).mul(original.lane(HDRImage.RED_OFFSET))
+				.add(this.green.getColor(x, y).mul(original.lane(HDRImage.GREEN_OFFSET)))
+				.add(this.blue.getColor(x, y).mul(original.lane(HDRImage.BLUE_OFFSET)))
+				.withLane(HDRImage.ALPHA_OFFSET, original.lane(HDRImage.ALPHA_OFFSET))
+			);
 		}
 	}
 }

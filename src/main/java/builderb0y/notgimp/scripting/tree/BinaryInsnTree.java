@@ -24,7 +24,7 @@ public class BinaryInsnTree extends InsnTree {
 		InsnTree left2 = left.cast(emitter.left());
 		InsnTree right2 = right.cast(emitter.right());
 		if (left2 == null || right2 == null) {
-			throw new AssertionError(STR."\{left} \{operator.name()} \{right} = null");
+			throw new AssertionError(left + " " + operator.name() + " " + right + " = null");
 		}
 		this(emitter.out(), new InsnTree[] { left2, right2 }, emitter.value());
 	}
@@ -33,7 +33,7 @@ public class BinaryInsnTree extends InsnTree {
 		BinaryValue<CodeEmitter> emitter = VectorOpCompiler.INSTANCE.binary(both.types()[0], both.types()[1], operator);
 		InsnTree both2 = both.cast(emitter.left(), emitter.right());
 		if (both2 == null) {
-			throw new AssertionError(STR."\{operator.name()} (\{both}) = null");
+			throw new AssertionError(operator.name() + " (" + both + ") = null");
 		}
 		this(emitter.out(), new InsnTree[] { both2 }, emitter.value());
 	}

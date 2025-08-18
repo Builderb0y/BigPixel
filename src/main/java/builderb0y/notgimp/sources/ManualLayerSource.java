@@ -1,8 +1,5 @@
 package builderb0y.notgimp.sources;
 
-import java.util.Collection;
-import java.util.Collections;
-
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
@@ -13,13 +10,16 @@ import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.History;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.sources.dependencies.LayerDependencies;
+import builderb0y.notgimp.sources.dependencies.NoDependencies;
 import builderb0y.notgimp.tools.*;
 
 public class ManualLayerSource extends LayerSource {
 
+	public History history = new History(this);
 	public HDRImage toollessImage;
 	public FreehandTool   freehandTool = new  FreehandTool(this);
 	public LineTool           lineTool = new      LineTool(this);
@@ -46,11 +46,11 @@ public class ManualLayerSource extends LayerSource {
 
 	@Override
 	public void load(JsonMap map) {
-		this.toollessImage = new HDRImage(map.getMap("image"));
+		this.toollessImage.copyFrom(map.getMap("image"));
 	}
 
 	public ManualLayerSource(LayerSources sources) {
-		super(sources, "manual", "Manual");
+		super(Type.MANUAL, sources);
 		this.toolSelection.add(this.rectButton, 0, 0);
 		this.toolSelection.add(this.lineButton, 1, 0);
 		this.toolSelection.add(this.freehandButton, 2, 0);
@@ -66,13 +66,7 @@ public class ManualLayerSource extends LayerSource {
 		this.toolWithoutColorPicker.addListener(Util.change((Tool<?> oldTool, Tool<?> newTool) -> {
 			if (oldTool != null) oldTool.enter();
 		}));
-	}
-
-	@Override
-	public void init(boolean fromSave) {
-		if (this.toollessImage == null) {
-			this.toollessImage = new HDRImage(this.sources.layer.image);
-		}
+		this.toollessImage = new HDRImage(this.sources.layer.image);
 	}
 
 	public Button button(Tool<?> tool) {
@@ -105,26 +99,12 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void onDeselected() {}
-
-	@Override
-	public void onSelected() {}
-
-	@Override
-	public void invalidateStructure() {}
-
-	@Override
-	public Collection<Layer> getDependencies() {
-		return Collections.emptySet();
+	public LayerDependencies getDependencies() {
+		return NoDependencies.INSTANCE;
 	}
 
 	@Override
-	public boolean isAnimated() {
-		return false;
-	}
-
-	@Override
-	public Node getRootNode() {
+	public Node getConfigNode() {
 		return this.toolSelection;
 	}
 
@@ -132,9 +112,7 @@ public class ManualLayerSource extends LayerSource {
 	public void doRedraw() throws RedrawException {
 		HDRImage source = this.toollessImage;
 		HDRImage destination = this.sources.layer.image;
-		if (source.width != destination.width || source.height != destination.height) {
-			source.resize(destination.width, destination.height, true);
-		}
+		source.checkSize(destination.width, destination.height, true);
 		System.arraycopy(source.pixels, 0, destination.pixels, 0, destination.pixels.length);
 		Tool<?> tool = this.toolWithoutColorPicker.get();
 		if (tool != null) tool.redraw();

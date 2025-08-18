@@ -16,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.types.UtilityOperations;
 import builderb0y.notgimp.scripting.types.VectorOperations;
@@ -50,7 +50,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 		}
 		Point clickedPoint = new Point(x, y);
 		if (button == MouseButton.PRIMARY) {
-			this.work.start = new Start(clickedPoint, this.source.toollessImage.getPixel(x, y), null);
+			this.work.start = new Start(clickedPoint, this.source.toollessImage.getColor(x, y), null);
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
 	}
@@ -58,7 +58,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	@Override
 	public void mouseDragged(int x, int y, MouseButton button) {
 		if (this.work != null && this.work.start != null) {
-			this.work.start = this.work.start.withBorder(this.source.toollessImage.getPixel(x, y));
+			this.work.start = this.work.start.withBorder(this.source.toollessImage.getColor(x, y));
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
 	}
@@ -84,7 +84,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 		for (int y = 0; y < image.height; y++) {
 			for (int x = 0; x < image.width; x++) {
 				Point point = new Point(x, y);
-				FloatVector currentPixel = image.getPixel(x, y);
+				FloatVector currentPixel = image.getColor(x, y);
 				if (currentPixel.sub(startingColor).abs().compare(VectorOperators.LE, 1.0F / 512.0F).allTrue()) {
 					work.enqueue(point, 1.0F);
 				}
@@ -107,7 +107,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 				if (adjacentX >= 0 && adjacentX < image.width && adjacentY >= 0 && adjacentY < image.height) {
 					Point adjacentPoint = new Point(adjacentX, adjacentY);
 					if (work.endingPoints.containsKey(adjacentPoint)) continue;
-					FloatVector adjacentColor = image.getPixel(adjacentX, adjacentY);
+					FloatVector adjacentColor = image.getColor(adjacentX, adjacentY);
 					if (blend && work.start.borderColor != null && !work.start.color.equals(work.start.borderColor)) {
 						float fraction = UtilityOperations.projectLineFrac_float4_float4_float4(work.start.borderColor, work.start.color, adjacentColor);
 						if (fraction >= 1.0F / 512.0F && fraction < 1.0F + 1.0F / 512.0F) {
@@ -133,8 +133,8 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	public void redraw() {
 		Work work = this.work;
 		if (work == null || work.endingPoints.isEmpty()) return;
-		Layer layer = this.layer();
-		FloatVector to = layer.openImage.mainWindow.colorPicker.currentColor.toFloatVector();
+		LayerNode layer = this.layer();
+		FloatVector to = layer.graph.openImage.mainWindow.colorPicker.currentColor.toFloatVector();
 		FloatVector from = this.work.start.borderColor;
 		if (from == null) from = to;
 		for (Map.Entry<Point, Float> entry : work.endingPoints.entrySet()) {

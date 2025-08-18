@@ -25,7 +25,7 @@ public class ColorHelper implements ColorPickerCallback {
 
 	public ColorHelper() {
 		float[] color = new float[4];
-		color[HDRImage.RED_OFFSET] =
+		color[HDRImage.  RED_OFFSET] =
 		color[HDRImage.ALPHA_OFFSET] =
 		1.0F;
 		this.rgba.set(FloatVector.fromArray(FloatVector.SPECIES_128, color, 0));

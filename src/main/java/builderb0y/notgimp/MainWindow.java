@@ -12,9 +12,11 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener.Change;
 import javafx.event.ActionEvent;
+import javafx.geometry.Orientation;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.control.TabPane.TabDragPolicy;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -31,6 +33,7 @@ import builderb0y.notgimp.ColorSelector.SavedColor;
 import builderb0y.notgimp.HDRImage.SaveProgress;
 import builderb0y.notgimp.json.JsonMap;
 import builderb0y.notgimp.json.JsonReader;
+import builderb0y.notgimp.sources.LayerSource;
 import builderb0y.notgimp.sources.ManualLayerSource;
 import builderb0y.notgimp.tools.MoveTool;
 import builderb0y.notgimp.tools.SourcelessTool;
@@ -42,9 +45,11 @@ public class MainWindow {
 	public Stage
 		stage;
 	public SplitPane
-		rootPane = new SplitPane();
+		bottomSplit = new SplitPane();
 	public BorderPane
-		leftPane = new BorderPane();
+		leftPane   = new BorderPane(),
+		bottomHalf = new BorderPane(),
+		topHalf    = new BorderPane();
 	public MenuBar
 		menuBar  = new MenuBar();
 	public Menu
@@ -54,10 +59,10 @@ public class MainWindow {
 	public MenuItem
 		fileNewMenuItem        = new MenuItem("New..."),
 		fileOpenMenuItem       = new MenuItem("Open..."),
-		fileSaveMenuItem       = new MenuItem("Save"),
-		fileSaveAsMenuItem     = new MenuItem("Save as..."),
-		fileExportMenuItem     = new MenuItem("Export"),
-		fileExportAsMenuItem   = new MenuItem("Export as..."),
+		fileSaveMenuItem       = new MenuItem("Save all layers"),
+		fileSaveAsMenuItem     = new MenuItem("Save all layers as..."),
+		fileExportMenuItem     = new MenuItem("Export visible layer"),
+		fileExportAsMenuItem   = new MenuItem("Export visible layer as..."),
 		editUndoMenuItem       = new MenuItem(),
 		editRedoMenuItem       = new MenuItem(),
 		viewLightThemeMenuItem = new MenuItem("Light theme"),
@@ -66,10 +71,14 @@ public class MainWindow {
 		viewTilingMenuItem = new CheckMenuItem("Tile view");
 	public TabPane
 		openImages = new TabPane();
+	public ObservableValue<OpenImage>
+		currentOpenImage = this.openImages.getSelectionModel().selectedItemProperty().map((Tab tab) -> (OpenImage)(tab.getUserData()));
 	public ColorSelector
 		colorPicker = new ColorSelector(this);
 	public Histogram
 		histogram = new Histogram(this);
+	public TabPane
+		histogramAndAnimation = new TabPane();
 	public File
 		lastOpenedDirectory = new File(System.getProperty("user.dir"));
 	public SimpleObjectProperty<String>
@@ -91,15 +100,27 @@ public class MainWindow {
 		);
 		this.viewMenu.getItems().addAll(this.viewLightThemeMenuItem, this.viewDarkThemeMenuItem, this.viewTilingMenuItem);
 		this.menuBar.getMenus().addAll(this.fileMenu, this.editMenu, this.viewMenu);
+		Tab colorPickerTab = new Tab("Color Picker", this.colorPicker.mainPane);
+		Tab histogramTab = new Tab("Histogram", this.histogram.getRootNode());
+		Tab animationTab = new Tab("Animation");
+		animationTab.contentProperty().bind(
+			this.currentOpenImage.map(
+				(OpenImage image) -> image.animationSource.getRootNode()
+			)
+		);
+		this.histogramAndAnimation.getTabs().addAll(colorPickerTab, histogramTab, animationTab);
+		this.histogramAndAnimation.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
 		this.leftPane.setTop(this.menuBar);
-		this.leftPane.setCenter(this.histogram.rootPane);
-		this.leftPane.setBottom(this.colorPicker.mainPane);
-		this.rootPane.getItems().add(this.leftPane);
+		this.leftPane.setCenter(this.histogramAndAnimation);
+		this.topHalf.setLeft(this.leftPane);
+		this.topHalf.setCenter(this.openImages);
+		this.bottomSplit.setOrientation(Orientation.VERTICAL);
+		this.bottomSplit.getItems().addAll(this.topHalf, this.bottomHalf);
+		this.bottomSplit.setDividerPosition(0, 0.65D);
+		this.bottomHalf.centerProperty().bind(this.currentOpenImage.map((OpenImage image) -> image.layerGraph.getRootNode()));
 		this.openImages.setTabDragPolicy(TabDragPolicy.REORDER);
 		this.openImages.setTabMinHeight(48.0D);
 		this.openImages.setTabMaxHeight(48.0D);
-		this.rootPane.getItems().add(this.openImages);
-		this.rootPane.getDividers().getFirst().setPosition(0.0D);
 	}
 
 	public void init() {
@@ -140,8 +161,9 @@ public class MainWindow {
 			.selectedItemProperty()
 			.map(Tab::getUserData)
 			.map(OpenImage.class::cast)
-			.flatMap((OpenImage image) -> image.layerTree.getSelectionModel().selectedItemProperty())
-			.flatMap((TreeItem<Layer> item) -> item.getValue().history.currentEntry)
+			.flatMap((OpenImage image) -> image.layerGraph.selectedLayer)
+			.flatMap((LayerNode layer) -> layer.sources.currentSourceProperty)
+			.flatMap((LayerSource source) -> source instanceof ManualLayerSource manual ? manual.history.currentEntry : null)
 		);
 		ObservableValue<String> undoText = currentAction.map((History.Entry entry) -> entry.prev).map((History.Entry entry) -> entry.next.name).map("Undo "::concat);
 		ObservableValue<String> redoText = currentAction.map((History.Entry entry) -> entry.next).map((History.Entry entry) -> entry.name).map("Redo "::concat);
@@ -149,18 +171,18 @@ public class MainWindow {
 		this.editRedoMenuItem.textProperty().bind(redoText.orElse("Nothing to redo"));
 		this.editUndoMenuItem.disableProperty().bind(undoText.map((String _) -> Boolean.FALSE).orElse(Boolean.TRUE));
 		this.editRedoMenuItem.disableProperty().bind(redoText.map((String _) -> Boolean.FALSE).orElse(Boolean.TRUE));
-		this.editUndoMenuItem.setOnAction((ActionEvent _) -> this.getCurrentImage().getSelectedLayer().history.undo());
-		this.editRedoMenuItem.setOnAction((ActionEvent _) -> this.getCurrentImage().getSelectedLayer().history.redo());
+		this.editUndoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.getCurrentSource())).history.undo());
+		this.editRedoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.getCurrentSource())).history.redo());
 		this.viewLightThemeMenuItem.setOnAction((ActionEvent _) -> {
 			this.styleSheetName.set("assets/themes/light.css");
 		});
 		this.viewDarkThemeMenuItem.setOnAction((ActionEvent _) -> {
 			this.styleSheetName.set("assets/themes/dark.css");
 		});
-		this.rootPane.getStylesheets().add("assets/themes/dark.css");
+		this.bottomSplit.getStylesheets().add("assets/themes/dark.css");
 		this.styleSheetName.addListener((ObservableValue<? extends String> _, String oldValue, String newValue) -> {
-			this.rootPane.getStylesheets().remove(oldValue);
-			this.rootPane.getStylesheets().add(newValue);
+			this.bottomSplit.getStylesheets().remove(oldValue);
+			this.bottomSplit.getStylesheets().add(newValue);
 		});
 		this.viewTilingMenuItem.disableProperty().bind(noOpenFile);
 		this.viewTilingMenuItem.selectedProperty().bindBidirectional(new SimpleObjectProperty<>() {
@@ -204,22 +226,21 @@ public class MainWindow {
 	}
 
 	public void show() {
-		Scene scene = new Scene(this.rootPane, 1536, 896);
+		Scene scene = new Scene(this.bottomSplit, 1536, 896);
 		scene.setOnKeyPressed((KeyEvent event) -> {
 			OpenImage openImage = this.getCurrentImage();
 			boolean shift = event.isShiftDown();
 			if (event.isControlDown()) {
 				switch (event.getCode()) {
 					case Z -> {
-						if (openImage != null) {
-							History history = openImage.getSelectedLayer().history;
-							if (shift) history.redo();
-							else history.undo();
+						if (openImage != null && openImage.layerGraph.selectedLayer.get().sources.getCurrentSource() instanceof ManualLayerSource manual) {
+							if (shift) manual.history.redo();
+							else manual.history.undo();
 						}
 					}
 					case C -> {
 						if (openImage != null) {
-							Layer layer = openImage.getSelectedLayer();
+							LayerNode layer = openImage.layerGraph.selectedLayer.get();
 							if (layer != null) {
 								this.copyToClipboard(layer);
 							}
@@ -290,7 +311,7 @@ public class MainWindow {
 		this.stage.show();
 	}
 
-	public void copyToClipboard(Layer layer) {
+	public void copyToClipboard(LayerNode layer) {
 		HDRImage image = layer.image;
 		if (layer.sources.getCurrentSource() instanceof ManualLayerSource source) {
 			Selection selection = new Selection();
@@ -300,7 +321,7 @@ public class MainWindow {
 				for (int y = selection.minY; y <= selection.maxY; y++) {
 					for (int x = selection.minX; x <= selection.maxX; x++) {
 						if (x >= 0 && x < image.width && y >= 0 && y < image.height) {
-							image2.setColor(x - selection.minX, y - selection.minY, image.getPixel(x, y));
+							image2.setColor(x - selection.minX, y - selection.minY, image.getColor(x, y));
 						}
 					}
 				}
@@ -331,8 +352,9 @@ public class MainWindow {
 		if (images != null) {
 			for (NamedImage image : images) {
 				OpenImage openImage = new OpenImage(this);
-				Layer layer = new Layer(openImage, image.name, new HDRImage(image.image));
-				openImage.initFirstLayer(layer, false);
+				LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, image.image.width, image.image.height, image.name);
+				layer.image.doCopyFrom(image.image);
+				openImage.layerGraph.addLayer(layer);
 				this.addOpenImage(image.name, openImage);
 			}
 		}
@@ -346,17 +368,18 @@ public class MainWindow {
 		}
 		NamedImage[] images = this.getClipboardImage();
 		if (images != null) {
-			TreeItem<Layer> selected = openImage.getSelectedLayer().item;
-			List<TreeItem<Layer>> layers = new ArrayList<>(images.length);
+			LayerNode selected = openImage.layerGraph.selectedLayer.get();
+			int x = selected.getGridX();
+			int y = selected.getGridY();
 			for (NamedImage image : images) {
-				Layer layer = new Layer(openImage, image.name, new HDRImage(image.image));
-				layers.add(layer.item);
-				openImage.addToMap(layer);
-			}
-			selected.getChildren().addAll(0, layers);
-			selected.setExpanded(true);
-			for (TreeItem<Layer> layer : layers) {
-				layer.getValue().init(false);
+				y++;
+				LayerNode layer = new LayerNode(openImage.layerGraph, x, y, image.image.width, image.image.height, image.name);
+				layer.sources.manualSource().toollessImage.copyFrom(image.image);
+				if (openImage.layerGraph.hasLayerAt(x, y)) {
+					openImage.layerGraph.shiftDown(x, y);
+				}
+				openImage.layerGraph.addLayer(layer);
+				layer.requestRedraw();
 			}
 		}
 	}
@@ -370,7 +393,7 @@ public class MainWindow {
 		NamedImage[] images = this.getClipboardImage();
 		if (images != null) {
 			if (images.length == 1) {
-				Layer layer = openImage.getSelectedLayer();
+				LayerNode layer = openImage.layerGraph.selectedLayer.get();
 				if (layer.sources.getCurrentSource() instanceof ManualLayerSource manual) {
 					Tool<?> tool = manual.toolWithoutColorPicker.get();
 					if (tool != null) {
@@ -458,8 +481,9 @@ public class MainWindow {
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 		if (dialog.showAndWait().orElse(null) == ButtonType.OK) {
 			OpenImage image = new OpenImage(this);
-			Layer layer = new Layer(image, nameField.getText(), width.getValue(), height.getValue());
-			image.initFirstLayer(layer, false);
+			LayerNode layer = new LayerNode(image.layerGraph, 0, 0, width.getValue(), height.getValue(), nameField.getText());
+			image.layerGraph.addLayer(layer);
+			image.layerGraph.visibleLayer.selectToggle(layer.showing);
 			this.addOpenImage(nameField.getText(), image);
 		}
 	}
@@ -481,31 +505,64 @@ public class MainWindow {
 	}
 
 	public void doOpen(File file) {
-		OpenImage openImage;
 		try {
+			OpenImage openImage;
 			if (Util.getExtension(file).equals("json")) {
+				long startTime = System.currentTimeMillis();
 				String contents = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+				long afterReadTime = System.currentTimeMillis();
 				JsonMap map = new JsonReader(contents).readValueAfterWhitespace().asMap();
+				long afterParseTime = System.currentTimeMillis();
 				SaveVersions.process(map);
+				long afterUpdateTime = System.currentTimeMillis();
 				openImage = new OpenImage(this);
+				long afterImageCreated = System.currentTimeMillis();
+				/*
+				Thread caller = Thread.currentThread();
+				Thread thread = new Thread(() -> {
+					while (!Thread.interrupted()) try {
+						Throwable throwable = new Throwable("profiling stack trace");
+						throwable.setStackTrace(caller.getStackTrace());
+						throwable.printStackTrace();
+						Thread.sleep(10L);
+					}
+					catch (InterruptedException ignored) {
+						break;
+					}
+				});
+				*/
+				//thread.start();
 				openImage.load(map);
+				//thread.interrupt();
+				long afterFinishedTime = System.currentTimeMillis();
+				System.out.println(
+					"Loaded " + file.getAbsolutePath() + ": " +
+					"reading file: " + (afterReadTime - startTime) + " ms, " +
+					"parsing file: " + (afterParseTime - afterReadTime) + " ms, " +
+					"updating data: " + (afterUpdateTime - afterParseTime) + " ms, " +
+					"image creation: " + (afterImageCreated - afterUpdateTime) + " ms, " +
+					"loading data: " + (afterFinishedTime - afterImageCreated) + " ms, " +
+					"total: " + (afterFinishedTime - startTime) + " ms."
+				);
 			}
 			else {
 				Image image = new Image(new FileInputStream(file));
 				Exception exception = image.getException();
 				if (exception != null) throw exception;
 				openImage = new OpenImage(this);
-				Layer layer = new Layer(openImage, file.getName(), new HDRImage(image));
-				openImage.initFirstLayer(layer, false);
+				LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, (int)(image.getWidth()), (int)(image.getHeight()), file.getName());
+				layer.sources.manualSource().toollessImage.copyFrom(image);
+				layer.requestRedraw();
+				openImage.layerGraph.addLayer(layer);
+				openImage.layerGraph.visibleLayer.selectToggle(layer.showing);
 			}
+			openImage.file.set(file);
+			this.addOpenImage(file.getName(), openImage);
 		}
 		catch (Exception exception) {
 			exception.printStackTrace();
 			new ExceptionDialog(exception).showAndWait();
-			return;
 		}
-		openImage.file.set(file);
-		this.addOpenImage(file.getName(), openImage);
 	}
 
 	public void save(ActionEvent event) {
@@ -555,7 +612,7 @@ public class MainWindow {
 		if (file != null) {
 			file = Util.changeExtension(file, "png");
 			try {
-				HDRImage hdrImage = openImage.layerTree.getRoot().getValue().image;
+				HDRImage hdrImage = openImage.layerGraph.visibleLayerProperty.getValue().image;
 				BufferedImage bufferedImage = hdrImage.toAwtImage(openImage.animationSource);
 				byte[] bytes = HDRImage.toPngByteArray(bufferedImage, new SaveProgress());
 				try (FileOutputStream stream = new FileOutputStream(file)) {
@@ -573,8 +630,7 @@ public class MainWindow {
 		Tab tab = this.openImages.getSelectionModel().getSelectedItem();
 		if (tab == null) return;
 		OpenImage openImage = ((OpenImage)(tab.getUserData()));
-		Layer layer = openImage.layerTree.getRoot().getValue();
-		HDRImage image = layer.image;
+		HDRImage image = openImage.layerGraph.visibleLayerProperty.getValue().image;
 		BufferedImage bufferedImage = image.toAwtImage(openImage.animationSource);
 		SaveProgress progress = new SaveProgress();
 		CompletableFuture<byte[]> future = CompletableFuture.supplyAsync(() -> HDRImage.toPngByteArray(bufferedImage, progress));
@@ -609,10 +665,9 @@ public class MainWindow {
 		Tab tab = new Tab(name, openImage.getMainNode());
 		tab.setUserData(openImage);
 		ImageView thumbnail = new ImageView();
-		thumbnail.imageProperty().bind(openImage.layerTree.rootProperty().flatMap((TreeItem<Layer> item) -> item.getValue().thumbnail));
-		HDRImage image = openImage.layerTree.getRoot().getValue().image;
-		if (image.width >= image.height) thumbnail.setFitWidth(32.0D);
-		else thumbnail.setFitHeight(32.0D);
+		thumbnail.imageProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.imageProperty()));
+		thumbnail.fitWidthProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitWidthProperty()));
+		thumbnail.fitHeightProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitHeightProperty()));
 		thumbnail.setPreserveRatio(true);
 		tab.setGraphic(thumbnail);
 		tab.textProperty().bind(

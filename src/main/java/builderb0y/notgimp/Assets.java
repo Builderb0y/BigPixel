@@ -5,8 +5,7 @@ import javafx.scene.image.Image;
 public class Assets {
 
 	public static final Image
-		ICON      = of("/assets/icon.png"),
-		SWAP_VIEW = of("/assets/swap_view.png");
+		ICON = of("/assets/icon.png");
 
 	public static class Tools {
 
@@ -28,8 +27,8 @@ public class Assets {
 				FLIP_V     = of("/assets/tools/move/flip_v.png"),
 				ROTATE_180 = of("/assets/tools/move/rotate_180.png"),
 				ROTATE_CCW = of("/assets/tools/move/rotate_ccw.png"),
-				ROTATE_CW  = of("/assets/tools/move/rotate_cw.png"),
-				EXTRACT    = of("/assets/tools/move/extract.png");
+				ROTATE_CW  = of("/assets/tools/move/rotate_cw.png");
+				//EXTRACT    = of("/assets/tools/move/extract.png");
 		}
 	}
 

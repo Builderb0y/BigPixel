@@ -6,7 +6,7 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.ColorHelper;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
@@ -88,7 +88,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 	public void redraw() {
 		Work work = this.work;
 		if (work == null) return;
-		Layer layer = this.layer();
+		LayerNode layer = this.layer();
 		int
 			thickness = this.thickness.getValue(),
 			width = layer.image.width,
@@ -105,7 +105,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 			drawMinY = Math.max(rectMinY, 0),
 			drawMaxX = Math.min(rectMaxX, width - 1),
 			drawMaxY = Math.min(rectMaxY, height - 1);
-		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
+		ColorHelper color = layer.graph.openImage.mainWindow.colorPicker.currentColor;
 		if (thickness == 0 || Math.min(rectMaxX - rectMinX + 1, rectMaxY - rectMinY + 1) < thickness << 1) {
 			for (int y = drawMinY; y <= drawMaxY; y++) {
 				for (int x = drawMinX; x <= drawMaxX; x++) {

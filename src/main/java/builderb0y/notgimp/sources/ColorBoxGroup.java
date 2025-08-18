@@ -2,7 +2,6 @@ package builderb0y.notgimp.sources;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import jdk.incubator.vector.FloatVector;
 
@@ -49,18 +48,20 @@ public class ColorBoxGroup {
 	public void add(ColorBox box) {
 		box.selectWhen(this.selected);
 		box.box.display.setOnMouseClicked((MouseEvent event) -> {
-			switch (event.getButton()) {
-				case PRIMARY -> {
-					this.updateColor = true;
+			if (!box.disabled.get()) {
+				switch (event.getButton()) {
+					case PRIMARY -> {
+						this.updateColor = true;
+					}
+					case SECONDARY -> {
+						this.updateColor = false;
+					}
+					default -> {
+						return;
+					}
 				}
-				case SECONDARY -> {
-					this.updateColor = false;
-				}
-				default -> {
-					return;
-				}
+				this.selected.set(this.selected.getValue() == box ? null : box);
 			}
-			this.selected.set(this.selected.getValue() == box ? null : box);
 		});
 	}
 

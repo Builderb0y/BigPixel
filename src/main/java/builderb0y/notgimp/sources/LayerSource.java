@@ -1,179 +1,60 @@
 package builderb0y.notgimp.sources;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import javafx.beans.value.ChangeListener;
 import javafx.scene.Node;
-import javafx.scene.control.*;
-import javafx.scene.text.Font;
-import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.VectorMask;
 
-import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.sources.dependencies.LayerDependencies;
 
 public abstract class LayerSource {
 
-	public static final VectorMask<Float> RGB_MASK;
+	public final Type type;
+	public final LayerSources sources;
+	public final SourceParameters parameters;
 
-	static {
-		boolean[] mask = new boolean[4];
-		mask[HDRImage.  RED_OFFSET] =
-		mask[HDRImage.GREEN_OFFSET] =
-		mask[HDRImage. BLUE_OFFSET] =
-		true;
-		RGB_MASK = VectorMask.fromValues(FloatVector.SPECIES_128, mask);
-	}
-
-	public LayerSources sources;
-	public String saveName, displayName;
-	public List<SourceParameter<?, ?>> parameters;
-	public ChangeListener<Object> parameterListener;
-
-	public LayerSource(LayerSources sources, String saveName, String displayName) {
+	public LayerSource(Type type, LayerSources sources) {
+		this.type = type;
 		this.sources = sources;
-		this.saveName = saveName;
-		this.displayName = displayName;
-		this.parameters = new ArrayList<>();
-		this.parameterListener = Util.change(this::requestRedraw);
-	}
-
-	public <V, T> T addParameter(SourceParameter<V, T> parameter) {
-		parameter.value().addListener(this.parameterListener);
-		this.parameters.add(parameter);
-		return parameter.holder;
-	}
-
-	public CheckBox addCheckbox(String saveName, String displayName, boolean defaultSelected) {
-		CheckBox checkBox = new CheckBox(displayName);
-		checkBox.setSelected(defaultSelected);
-		this.addParameter(SourceParameter.checkbox(checkBox, saveName));
-		return checkBox;
-	}
-
-	public Spinner<Integer> addIntSpinner(String saveName, int min, int max, int start, int step, double width) {
-		Spinner<Integer> spinner = Util.setupSpinner(new Spinner<>(min, max, start, step), width);
-		this.addParameter(SourceParameter.intSpinner(spinner, saveName));
-		return spinner;
-	}
-
-	public Spinner<Double> addDoubleSpinner(String saveName, double min, double max, double start, double step, double width) {
-		Spinner<Double> spinner = Util.setupSpinner(new Spinner<>(min, max, start, step), width);
-		this.addParameter(SourceParameter.doubleSpinner(spinner, saveName));
-		return spinner;
-	}
-
-	public Spinner<Integer> addIntSpinner(String saveName, SpinnerValueFactory<Integer> valueFactory, double width) {
-		Spinner<Integer> spinner = Util.setupSpinner(new Spinner<>(valueFactory), width);
-		this.addParameter(SourceParameter.intSpinner(spinner, saveName));
-		return spinner;
-	}
-
-	public Spinner<Float> addFloatSpinner(String saveName, SpinnerValueFactory<Float> valueFactory, double width) {
-		Spinner<Float> spinner = Util.setupSpinner(new Spinner<>(valueFactory), width);
-		this.addParameter(SourceParameter.floatSpinner(spinner, saveName));
-		return spinner;
-	}
-
-	public Spinner<Double> addDoubleSpinner(String saveName, SpinnerValueFactory<Double> valueFactory, double width) {
-		Spinner<Double> spinner = Util.setupSpinner(new Spinner<>(valueFactory), width);
-		this.addParameter(SourceParameter.doubleSpinner(spinner, saveName));
-		return spinner;
-	}
-
-	public <E extends Enum<E>> ChoiceBox<E> addEnumChoiceBox(String saveName, Class<E> enumClass) {
-		return this.addEnumChoiceBox(saveName, enumClass, null);
-	}
-
-	public <E extends Enum<E>> ChoiceBox<E> addEnumChoiceBox(String saveName, Class<E> enumClass, E defaultValue) {
-		ChoiceBox<E> box = new ChoiceBox<>();
-		E[] values = enumClass.getEnumConstants();
-		box.getItems().addAll(values);
-		box.setValue(defaultValue != null ? defaultValue : values[0]);
-		this.addParameter(SourceParameter.enumChoiceBox(box, enumClass, saveName));
-		return box;
-	}
-
-	public ChoiceBox<String> addStringChoiceBox(String saveName) {
-		return this.addParameter(SourceParameter.stringChoiceBox(new ChoiceBox<>(), saveName));
-	}
-
-	public ColorBox addColorBox(String saveName, FloatVector initialColor) {
-		ColorBox box = new ColorBox(initialColor);
-		this.addParameter(SourceParameter.colorBox(box, saveName));
-		return box;
-	}
-
-	public ColorBox addColorBox(String saveName, float red, float green, float blue, float alpha) {
-		return this.addColorBox(saveName, Util.rgba(red, green, blue, alpha));
-	}
-
-	public TextArea addCode(String saveName) {
-		TextArea textArea = new TextArea();
-		textArea.setFont(Font.font("monospace"));
-		this.addParameter(SourceParameter.code(textArea, saveName));
-		return textArea;
+		this.parameters = new SourceParameters(this);
 	}
 
 	public JsonMap save() {
-		JsonMap map = new JsonMap().with("type",this.saveName);
+		JsonMap map = new JsonMap().with("type", this.type.saveName);
 		for (SourceParameter<?, ?> parameter : this.parameters) {
 			parameter.save(map);
 		}
-		return map;
+		return map.with("dependencies", this.getDependencies().save());
 	}
 
 	public void load(JsonMap map) {
 		for (SourceParameter<?, ?> parameter : this.parameters) {
 			parameter.load(map);
 		}
+		this.getDependencies().load(map.getMap("dependencies"));
 	}
 
-	public abstract void init(boolean fromSave);
-
-	public void copyFrom(LayerSource source) {
-		if (this.getClass() != source.getClass()) {
-			throw new IllegalArgumentException("Class mismatch: attempting to copy " + source.getClass() + " to " + this.getClass());
+	public void copyFrom(LayerSource that) {
+		if (this.getClass() != that.getClass()) {
+			throw new IllegalArgumentException("Class mismatch: attempting to copy " + that.getClass() + " to " + this.getClass());
 		}
-		if (this.parameters.size() != source.parameters.size()) {
-			throw new IllegalStateException("Parameter lengths differ: attempting to copy " + source.parameters.size() + " parameters to " + this.parameters.size() + " (on " + this.getClass() + ')');
-		}
-		for (int index = 0; index < this.parameters.size(); index++) {
-			SourceParameter<?, ?> parameter = this.parameters.get(index);
-			Object sourceValue = source.parameters.get(index).value().getValue();
-			_set(parameter, sourceValue);
-		}
+		this.parameters.copyFrom(that.parameters);
 	}
 
-	public static <T> void _set(SourceParameter<T, ?> parameter, Object value) {
-		parameter.value().setValue(parameter.valueClass.cast(value));
+	public Node getConfigNode() {
+		return this.getDependencies().getConfigPane();
 	}
 
-	public void onSelected() {
-		this.invalidateStructure();
-	}
-
-	public void onDeselected() {
-		this.sources.layer.redrawException.set(null);
-	}
-
-	public abstract void invalidateStructure();
-
-	public abstract Collection<Layer> getDependencies();
-
-	public abstract boolean isAnimated();
-
-	public abstract Node getRootNode();
+	public abstract LayerDependencies getDependencies();
 
 	public void requestRedraw() {
 		this.sources.layer.requestRedraw();
 	}
 
-	public void redraw() {
+	public void redrawImmediately() {
 		try {
 			this.doRedraw();
 			this.sources.layer.redrawException.set(null);
@@ -190,13 +71,52 @@ public abstract class LayerSource {
 
 	@Override
 	public String toString() {
-		return this.displayName;
+		return this.type.displayName;
 	}
 
 	public static class RedrawException extends Exception {
 
 		public RedrawException(String reason) {
 			super(reason, null, false, false);
+		}
+	}
+
+	public static enum Type {
+		MANUAL        ("manual",         "Manual",                ManualLayerSource::new),
+		PASSTHROUGH   ("passthrough", "Passthrough",         PassthroughLayerSource::new),
+		ALPHA         ("alpha",          "Alpha Blend",            AlphaLayerSource::new),
+		ADD           ("add",            "Addition",                 AddLayerSource::new),
+		AVERAGE       ("avg",            "Average",              AverageLayerSource::new),
+		MULTIPLY      ("mul",            "Multiply",            MultiplyLayerSource::new),
+		SCREEN        ("screen",         "Screen",                ScreenLayerSource::new),
+		MIN           ("min",            "Min",                      MinLayerSource::new),
+		MAX           ("max",            "Max",                      MaxLayerSource::new),
+		INVERT        ("invert",         "Invert",                InvertLayerSource::new),
+		NORMALIZE     ("normalize",      "Normalize",          NormalizeLayerSource::new),
+		CLAMP         ("clamp",          "Clamp",                  ClampLayerSource::new),
+		GRADIENT_REMAP("gradient_remap", "Gradient Remap", GradientRemapLayerSource::new),
+		COLOR_MATRIX  ("color_matrix",   "Color Matrix",     ColorMatrixLayerSource::new),
+		CLIFF_CURVE   ("cliff",          "Cliff Curve",       CliffCurveLayerSource::new),
+		CONVOLVE      ("convolve",       "Convolve",            ConvolveLayerSource::new),
+		K_MEANS       ("kmeans",         "K-Means",               KMeansLayerSource::new),
+		WFC           ("wfc",            "Wave Function Collapse",   WFCLayerSource::new),
+		DERIVED       ("derived",        "Derived",              DerivedLayerSource::new);
+
+		public static final Type[] VALUES = values();
+		public static final Map<String, Type> BY_SAVE_NAME = Arrays.stream(VALUES).collect(Collectors.toMap((Type type) -> type.saveName, Function.identity()));
+
+		public final String saveName, displayName;
+		public final Function<LayerSources, LayerSource> factory;
+
+		Type(String saveName, String displayName, Function<LayerSources, LayerSource> factory) {
+			this.saveName = saveName;
+			this.displayName = displayName;
+			this.factory = factory;
+		}
+
+		@Override
+		public String toString() {
+			return this.displayName;
 		}
 	}
 }

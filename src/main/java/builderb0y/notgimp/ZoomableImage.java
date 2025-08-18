@@ -3,7 +3,6 @@ package builderb0y.notgimp;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -83,7 +82,7 @@ public class ZoomableImage {
 		Canvas canvas = this.display.display;
 		ChangeListener<Object> redrawer = Util.change(this::redraw);
 		this.openImage.wrap.addListener(redrawer);
-		this.openImage.showingLayerProperty.addListener(redrawer);
+		this.openImage.layerGraph.visibleLayerProperty.addListener(redrawer);
 		canvas.setOnScroll((ScrollEvent event) -> {
 			int oldZoomIndex = this.zoomIndex.get();
 			int newZoomIndex;
@@ -138,7 +137,7 @@ public class ZoomableImage {
 					}
 				}
 				else if (event.getButton() == MouseButton.PRIMARY || event.getButton() == MouseButton.SECONDARY) {
-					Layer layer = ZoomableImage.this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue();
+					LayerNode layer = ZoomableImage.this.openImage.layerGraph.selectedLayer.get();
 					SourcelessTool<?> tool = ZoomableImage.this.openImage.toolWithColorPicker.get();
 					if (tool != null) {
 						double zoom = ZoomableImage.this.zoom.getValue();
@@ -174,7 +173,7 @@ public class ZoomableImage {
 			int x = (int)(Math.floor((event.getX() - this.offsetX) / zoom));
 			int y = (int)(Math.floor((event.getY() - this.offsetY) / zoom));
 			if (this.openImage.wrap.get()) {
-				Layer layer = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue();
+				LayerNode layer = this.openImage.layerGraph.selectedLayer.get();
 				x = Math.floorMod(x, layer.image.width);
 				y = Math.floorMod(y, layer.image.height);
 			}
@@ -189,7 +188,9 @@ public class ZoomableImage {
 	}
 
 	public void setPosition(double posX, double posY) {
-		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
+		LayerNode layer = this.openImage.layerGraph.visibleLayerProperty.getValue();
+		if (layer == null) return;
+		HDRImage image = layer.image;
 		double zoom = this.zoom.getValue();
 		if (posX + image.width  * zoom < 0) posX = image.width  * -zoom;
 		if (posY + image.height * zoom < 0) posY = image.height * -zoom;
@@ -211,7 +212,9 @@ public class ZoomableImage {
 	public boolean center() {
 		Canvas canvas = this.display.display;
 		if (canvas.getWidth() == 0.0D || canvas.getHeight() == 0.0D) return false;
-		HDRImage image = this.openImage.layerTree.getSelectionModel().getSelectedItem().getValue().image;
+		LayerNode layer = this.openImage.layerGraph.visibleLayerProperty.getValue();
+		if (layer == null) return false;
+		HDRImage image = layer.image;
 		int zoomIndex = Arrays.binarySearch(
 			ZOOMS,
 			Math.min(
@@ -232,15 +235,21 @@ public class ZoomableImage {
 	}
 
 	public void doRedraw() {
-		HDRImage image = this.openImage.showingLayerProperty.getValue().image;
 		Canvas canvas = this.display.display;
+		int width = (int)(canvas.getWidth());
+		int height = (int)(canvas.getHeight());
 		PixelWriter writer = canvas.getGraphicsContext2D().getPixelWriter();
 		if (writer.getPixelFormat() != PixelFormat.getByteBgraPreInstance()) {
 			throw new IllegalStateException("Pixel format changed");
 		}
+		LayerNode visibleLayer = this.openImage.layerGraph.visibleLayerProperty.getValue();
+		if (visibleLayer == null) {
+			byte[] row = new byte[width * 4];
+			writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), row, 0, 0);
+			return;
+		}
+		HDRImage image = visibleLayer.image;
 		double zoom = this.zoom.getValue();
-		int width = (int)(canvas.getWidth());
-		int height = (int)(canvas.getHeight());
 		byte[] pixels = new byte[width * height * 4];
 		boolean wrap = this.openImage.wrap.get();
 		IntStream.range(0, height).parallel().forEach((int y) -> {
@@ -280,7 +289,7 @@ public class ZoomableImage {
 			0xFF7F7F3F,
 			0xFFFFFFBF
 		);
-		if (this.openImage.getSelectedLayer().sources.getCurrentSource() instanceof ManualLayerSource manual) {
+		if (this.openImage.layerGraph.selectedLayer.get().sources.getCurrentSource() instanceof ManualLayerSource manual) {
 			Selection selection = new Selection();
 			Tool<?> tool = manual.toolWithoutColorPicker.get();
 			if (tool != null && tool.getSelection(selection)) {

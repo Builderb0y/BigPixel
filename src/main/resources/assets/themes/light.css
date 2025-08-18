@@ -8,10 +8,22 @@
 	-fx-tab-size: 4;
 }
 
-.tree-cell:filled:selected:focused,
-.tree-cell:filled:selected {
+.layer-preview {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: black;
+}
+
+.layer-preview:selected {
     -fx-background-color: derive(-fx-accent, 90%);
     -fx-text-fill: black;
+}
+
+.phantom-button {
+	-fx-text-fill: #7F7F7F;
+}
+
+.phantom-button:hover {
+	-fx-text-fill: #000000;
 }
 
 .checkerboards {

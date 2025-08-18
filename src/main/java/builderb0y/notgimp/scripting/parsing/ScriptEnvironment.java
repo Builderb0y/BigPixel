@@ -83,7 +83,7 @@ public class ScriptEnvironment implements
 			InsnTree result = handler.getFunction(parser, name, params);
 			if (result != null) return result;
 		}
-		throw new ScriptParsingException(STR."Incorrect arguments: \{name}(\{Arrays.toString(params)})", parser.reader);
+		throw new ScriptParsingException("Incorrect arguments: " + name + Arrays.toString(params), parser.reader);
 	}
 
 	@Override
@@ -98,7 +98,7 @@ public class ScriptEnvironment implements
 			InsnTree result = handler.getMethod(parser, receiver, name, params);
 			if (result != null) return result;
 		}
-		throw new ScriptParsingException(STR."Incorrect arguments: \{name}(\{Arrays.toString(params)})", parser.reader);
+		throw new ScriptParsingException("Incorrect arguments: " + name + Arrays.toString(params), parser.reader);
 	}
 
 	@Override
@@ -109,7 +109,7 @@ public class ScriptEnvironment implements
 			InsnTree result = handler.getStaticFunction(parser, type, name, params);
 			if (result != null) return result;
 		}
-		throw new ScriptParsingException(STR."Incorrect arguments: \{type}.\{name}(\{Arrays.toString(params)})", parser.reader);
+		throw new ScriptParsingException("Incorrect arguments: " + type + "." + name + Arrays.toString(params), parser.reader);
 	}
 
 	@Override
@@ -127,7 +127,7 @@ public class ScriptEnvironment implements
 
 	public ScriptEnvironment addField(VectorType type, String name, FieldHandler handler) {
 		if (this.fields.putIfAbsent(new NamedVectorType(name, type), handler) != null) {
-			throw new IllegalArgumentException(STR."Duplicate field handler: \{type}.\{name}");
+			throw new IllegalArgumentException("Duplicate field handler: " + type + "." + name);
 		}
 		return this;
 	}

@@ -10,11 +10,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory;
-import javafx.scene.control.TreeItem;
 import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
@@ -148,20 +148,19 @@ public class AnimationSource {
 	}
 
 	public void tickAnimation() {
-		if (this.recursiveTickAnimation(this.openImage.layerTree.getRoot())) {
-			this.openImage.requestRedraw();
+		boolean changed = false;
+		for (LayerNode layer : this.openImage.layerGraph.layerList) {
+			if (layer.getDependencies().isAnimated()) {
+				layer.redrawRequested = true;
+				changed = true;
+			}
+		}
+		if (changed) {
+			this.openImage.layerGraph.requestRedraw();
 		}
 	}
 
-	public boolean recursiveTickAnimation(TreeItem<Layer> item) {
-		boolean anyChanged = false;
-		for (TreeItem<Layer> child : item.getChildren()) {
-			anyChanged |= this.recursiveTickAnimation(child);
-		}
-		if (item.getValue().sources.getCurrentSource().isAnimated()) {
-			item.getValue().needsRedraw = true;
-			anyChanged = true;
-		}
-		return anyChanged;
+	public Node getRootNode() {
+		return this.hbox;
 	}
 }

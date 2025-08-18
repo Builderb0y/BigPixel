@@ -8,7 +8,7 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.ColorHelper;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class FreehandTool extends Tool<FreehandTool.Work> {
@@ -34,7 +34,7 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 	}
 
 	public void handleMouse(int x, int y, MouseButton button) {
-		Layer layer = this.layer();
+		LayerNode layer = this.layer();
 		if (x >= 0 && x < layer.image.width && y >= 0 && y < layer.image.height) {
 			if (button == MouseButton.PRIMARY) {
 				this.work.points.add(new Point(x, y));
@@ -58,8 +58,8 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 	public void redraw() {
 		Work work = this.work;
 		if (work == null) return;
-		Layer layer = this.layer();
-		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
+		LayerNode layer = this.layer();
+		ColorHelper color = layer.graph.openImage.mainWindow.colorPicker.currentColor;
 		for (Point point : work.points) {
 			layer.image.setColor(point.x, point.y, color);
 		}

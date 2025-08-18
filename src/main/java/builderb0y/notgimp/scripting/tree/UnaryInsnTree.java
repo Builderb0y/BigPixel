@@ -20,7 +20,7 @@ public class UnaryInsnTree extends InsnTree {
 		this.operator = operator;
 		this.emitter = emitter.value();
 		if (this.operand == null) {
-			throw new AssertionError(STR."\{operator.name()} \{operand} = null");
+			throw new AssertionError(operator.name() + " " + operand + " = null");
 		}
 	}
 

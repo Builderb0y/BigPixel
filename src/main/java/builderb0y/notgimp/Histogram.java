@@ -2,6 +2,7 @@ package builderb0y.notgimp;
 
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Tab;
@@ -20,7 +21,10 @@ public class Histogram {
 
 	public Histogram(MainWindow window) {
 		this.window = window;
-		window.openImages.getSelectionModel().selectedItemProperty().flatMap((Tab tab) -> ((OpenImage)(tab.getUserData())).showingLayerProperty).addListener(Util.change(this::redrawLayer));
+		window.openImages.getSelectionModel().selectedItemProperty().flatMap(
+			(Tab tab) -> ((OpenImage)(tab.getUserData())).layerGraph.visibleLayerProperty
+		)
+		.addListener(Util.change(this::redrawLayer));
 		this.rootPane.setCenter(this.canvas.getRootPane());
 		this.settings.setPadding(new Insets(4.0D));
 		this.settings.setSpacing(4.0D);
@@ -37,17 +41,18 @@ public class Histogram {
 	public void redrawCanvas(Canvas canvas) {
 		OpenImage image = this.window.getCurrentImage();
 		if (image != null) {
-			this.redraw(canvas, image.getVisibleLayer());
+			this.redraw(canvas, image.layerGraph.visibleLayerProperty.getValue());
 		}
 	}
 
-	public void redrawLayer(Layer layer) {
+	public void redrawLayer(LayerNode layer) {
 		this.redraw(this.canvas.display, layer);
 	}
 
-	public void redraw(Canvas canvas, Layer layer) {
+	public void redraw(Canvas canvas, LayerNode layer) {
 		int width = (int)(canvas.getWidth());
 		int height = (int)(canvas.getHeight());
+		if (width == 0 || height == 0) return;
 		byte[] colors = new byte[width * height * 4];
 		for (int index = 3; index < colors.length; index += 4) {
 			colors[index] = -1;
@@ -81,7 +86,7 @@ public class Histogram {
 		return Math.max(Math.max(a, b), c);
 	}
 
-	public int collectValues(int[] buckets, Layer layer, int component) {
+	public int collectValues(int[] buckets, LayerNode layer, int component) {
 		int max = 0;
 		float[] pixels = layer.image.pixels;
 		for (int index = component; index < pixels.length; index += 4) {
@@ -106,5 +111,9 @@ public class Histogram {
 				colors[(((canvasHeight + ~y) * canvasWidth + x) << 2) | component] = -1;
 			}
 		}
+	}
+
+	public Node getRootNode() {
+		return this.rootPane;
 	}
 }

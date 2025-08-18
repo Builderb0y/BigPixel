@@ -1,7 +1,5 @@
 package builderb0y.notgimp;
 
-import java.util.Arrays;
-
 import javafx.beans.Observable;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -67,24 +65,25 @@ public class ColorSelector {
 		light = this.new ColorSlider(ColorComponent.LIGHT),
 		alpha = this.new ColorSlider(ColorComponent.ALPHA);
 	public SavedColor[] savedColors = new SavedColor[10];
-	public HBox savedColorBox = new HBox();
+	public VBox savedColorBox = new VBox();
 
 	public ColorSelector(MainWindow mainWindow) {
 		this.mainWindow = mainWindow;
+		super();
 		for (int index = 0; index < 10; index++) {
 			this.savedColors[index] = new SavedColor(index);
 			this.savedColorBox.getChildren().add(this.savedColors[index].canvas.getRootPane());
 		}
-		this.mainPane.add(this.savedColorBox, 1, 0, 3, 1);
-		this.mainPane.add(this.gradient.getRootPane(), 1, 1, 1, 2);
-		this.mainPane.add(this.rectangle.getRootPane(), 2, 1);
+		this.mainPane.add(this.savedColorBox, 0, 0, 1, 2);
+		this.mainPane.add(this.gradient.getRootPane(), 1, 0, 1, 2);
+		this.mainPane.add(this.rectangle.getRootPane(), 2, 0);
 		this.colorPickerButton.setGraphic(new ImageView(ColorPickerTool.TYPE.icon()));
 		AnchorPane colorPickerButtonPane = new AnchorPane(this.fractionalDisplay, this.colorPickerButton);
 		AnchorPane.setLeftAnchor(this.fractionalDisplay, 4.0D);
 		AnchorPane.setBottomAnchor(this.fractionalDisplay, 4.0D);
 		AnchorPane.setRightAnchor(this.colorPickerButton, 4.0D);
 		AnchorPane.setBottomAnchor(this.colorPickerButton, 4.0D);
-		this.mainPane.add(colorPickerButtonPane, 2, 2);
+		this.mainPane.add(colorPickerButtonPane, 2, 1);
 		this.currentColor.any.addListener((Observable _) -> this.redrawGradient());
 	}
 
@@ -200,7 +199,7 @@ public class ColorSelector {
 		}
 
 		public void init() {
-			this.addToGrid(ColorSelector.this.mainPane, this.component.ordinal() + 3);
+			this.addToGrid(ColorSelector.this.mainPane, this.component.ordinal() + 2);
 			boolean[] changing = new boolean[1];
 			ColorSelector.this.currentColor.getComponent(this.component).addListener(
 				Util.change((Number number) -> {

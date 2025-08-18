@@ -7,8 +7,7 @@ import javafx.scene.Node;
 import javafx.scene.image.Image;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.notgimp.Layer;
-import builderb0y.notgimp.NotGimp;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public abstract class Tool<W> extends SourcelessTool<W> {
@@ -23,13 +22,13 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 		this.updateLabelText();
 	}
 
-	public Layer layer() {
+	public LayerNode layer() {
 		return this.source.sources.layer;
 	}
 
 	@Override
 	public void enter() {
-		if (this.work != null) this.layer().history.save(this.labelText.get());
+		if (this.work != null) this.source.history.save(this.labelText.get());
 		this.source.finishUsingTool();
 		this.work = null;
 		this.updateLabelText();

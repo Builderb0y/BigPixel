@@ -148,7 +148,7 @@ public class ScriptHandlers {
 					InsnTree result = parser.nextExpression();
 					parser.reader.expectOperatorAfterWhitespace(";");
 					if (result.type() != type) {
-						throw new ScriptParsingException(STR."Can't return \{result.type()} from method expecting \{type}", parser.reader);
+						throw new ScriptParsingException("Can't return " + result.type() + " from method expecting " + type, parser.reader);
 					}
 					return new ReturnInsnTree(result);
 				}

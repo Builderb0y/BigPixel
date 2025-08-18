@@ -1,165 +1,103 @@
 package builderb0y.notgimp.sources;
 
-import javafx.beans.binding.BooleanBinding;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
-import javafx.scene.layout.GridPane;
-import javafx.util.StringConverter;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
-import builderb0y.notgimp.CanvasHelper;
 import builderb0y.notgimp.Gradient;
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Util;
+import builderb0y.notgimp.sources.dependencies.MainMaskDependencies;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
+import builderb0y.notgimp.sources.dependencies.inputs.UnmovableInputBinding;
 
-public class CliffCurveLayerSource extends SingleInputEffectLayerSource {
+public class CliffCurveLayerSource extends PerPixelLayerSource {
+
+	public static class Dependencies extends MainMaskDependencies {
+
+		public UnmovableInputBinding
+			strength = this.addBinding("strength", "Strength: ", (FloatVector color) -> {
+				color = color.div(color.sub(1.0F));
+				return color.mul(color);
+			}),
+			midpoint = this.addBinding("midpoint", "Midpoint: ");
+
+		public Dependencies(LayerSource source) {
+			super(source);
+		}
+	}
+
+	@Override
+	public MainMaskDependencies createDependencies() {
+		return new Dependencies(this);
+	}
+
+	public Dependencies dependencies() {
+		return (Dependencies)(this.dependencies);
+	}
 
 	public CheckBox
-		splitRgb = this.addCheckbox("split_rgb", null, false),
-		dual     = this.addCheckbox("dual",      null, false),
-		linear   = this.addCheckbox("linear",    null, true);
-	public Spinner<Float>
-		rgbCoefficient   = this.addFloatSpinner("rgb_coefficient",   new CoefficientModel(), 96.0D),
-		redCoefficient   = this.addFloatSpinner("red_coefficient",   new CoefficientModel(), 96.0D),
-		greenCoefficient = this.addFloatSpinner("green_coefficient", new CoefficientModel(), 96.0D),
-		blueCoefficient  = this.addFloatSpinner("blue_coefficient",  new CoefficientModel(), 96.0D),
-		alphaCoefficient = this.addFloatSpinner("alpha_coefficient", new CoefficientModel(), 96.0D),
-		rgbMid           = this.addFloatSpinner("rgb_mid",           new MidModel(), 96.0D),
-		redMid           = this.addFloatSpinner("red_mid",           new MidModel(), 96.0D),
-		greenMid         = this.addFloatSpinner("green_mid",         new MidModel(), 96.0D),
-		blueMid          = this.addFloatSpinner("blue_mid",          new MidModel(), 96.0D),
-		alphaMid         = this.addFloatSpinner("alpha_mid",         new MidModel(), 96.0D);
+		dual     = this.parameters.addCheckbox("dual",   "Dual", false),
+		linear   = this.parameters.addCheckbox("linear", "Linear", true);
 	public CliffGradient
 		gradient = (CliffGradient)(new CliffGradient().fixedSize(128.0D, 16.0D).popIn());
-	public GridPane
-		gridPane = new GridPane();
 
 	public CliffCurveLayerSource(LayerSources sources) {
-		super(sources, "cliff", "Cliff Curve");
-		this.splitRgb.selectedProperty().addListener(Util.change(this::layout));
-		BooleanBinding disableMid = this.dual.selectedProperty().not();
-		this.rgbMid  .disableProperty().bind(disableMid);
-		this.redMid  .disableProperty().bind(disableMid);
-		this.greenMid.disableProperty().bind(disableMid);
-		this.blueMid .disableProperty().bind(disableMid);
-		this.alphaMid.disableProperty().bind(disableMid);
-		this.layout();
-		this.rootNode.setCenter(this.gridPane);
+		super(Type.CLIFF_CURVE, sources);
+		this.dependencies().midpoint.bindDisabled(this.dual.selectedProperty().not());
+		this.dependencies().addExtraNodeRow(this.gradient.getRootPane());
 	}
 
-	public void layout() {
-		this.gridPane.getChildren().clear();
-		int row = 0;
-		this.gridPane.addRow(row++, new Label("Split RGB: "), this.splitRgb);
-		if (this.splitRgb.isSelected()) {
-			this.gridPane.addRow(row++, new Label(  "Red: "), this.  redCoefficient);
-			this.gridPane.addRow(row++, new Label("Green: "), this.greenCoefficient);
-			this.gridPane.addRow(row++, new Label( "Blue: "), this. blueCoefficient);
-		}
-		else {
-			this.gridPane.addRow(row++, new Label("RGB: "), this.rgbCoefficient);
-		}
-		this.gridPane.addRow(row++, new Label("Alpha: "), this.alphaCoefficient);
-		this.gridPane.addRow(row++, new Label("Dual: "), this.dual);
-		if (this.splitRgb.isSelected()) {
-			this.gridPane.addRow(row++, new Label(  "Red mid: "), this.  redMid);
-			this.gridPane.addRow(row++, new Label("Green mid: "), this.greenMid);
-			this.gridPane.addRow(row++, new Label( "Blue mid: "), this. blueMid);
-		}
-		else {
-			this.gridPane.addRow(row++, new Label("RGB mid: "), this.rgbMid);
-		}
-		this.gridPane.addRow(row++, new Label("Alpha mid: "), this.alphaMid);
-		this.gridPane.addRow(row++, new Label("Linear: "), this.linear);
-		this.gridPane.add(this.gradient.getRootPane(), 0, row++, 2, 1);
-	}
-
-	public FloatVector getCoefficients() {
-		float[] floats = new float[4];
-		if (this.splitRgb.isSelected()) {
-			floats[HDRImage.  RED_OFFSET] = this.  redCoefficient.getValue();
-			floats[HDRImage.GREEN_OFFSET] = this.greenCoefficient.getValue();
-			floats[HDRImage. BLUE_OFFSET] = this. blueCoefficient.getValue();
-		}
-		else {
-			floats[HDRImage.  RED_OFFSET] =
-			floats[HDRImage.GREEN_OFFSET] =
-			floats[HDRImage. BLUE_OFFSET] =
-			this.rgbCoefficient.getValue();
-		}
-		floats[HDRImage.ALPHA_OFFSET] = this.alphaCoefficient.getValue();
-		return FloatVector.fromArray(FloatVector.SPECIES_128, floats, 0);
-	}
-
-	public FloatVector getMids() {
-		float[] floats = new float[4];
-		if (this.splitRgb.isSelected()) {
-			floats[HDRImage.  RED_OFFSET] = this.  redMid.getValue();
-			floats[HDRImage.GREEN_OFFSET] = this.greenMid.getValue();
-			floats[HDRImage. BLUE_OFFSET] = this. blueMid.getValue();
-		}
-		else {
-			floats[HDRImage.  RED_OFFSET] =
-			floats[HDRImage.GREEN_OFFSET] =
-			floats[HDRImage. BLUE_OFFSET] =
-			this.rgbMid.getValue();
-		}
-		floats[HDRImage.ALPHA_OFFSET] = this.alphaMid.getValue();
-		return FloatVector.fromArray(FloatVector.SPECIES_128, floats, 0);
-	}
-
-	public CliffCurver getCurver() {
-		FloatVector coefficients = this.getCoefficients();
+	public CliffCurver getCurver(boolean requireUniform) {
+		LayerSourceInput strength = this.dependencies().strength.getCurrent();
+		if (requireUniform && !(strength instanceof UniformLayerSourceInput)) return null;
 		boolean linear = this.linear.isSelected();
 		if (this.dual.isSelected()) {
-			FloatVector mids = this.getMids();
-			return new DualCliffCurver(coefficients, mids, linear);
+			LayerSourceInput midpoint = this.dependencies().midpoint.getCurrent();
+			if (requireUniform && !(midpoint instanceof UniformLayerSourceInput)) return null;
+			return new DualCliffCurver(strength, midpoint, linear);
 		}
 		else {
-			return new SingleCliffCurver(coefficients, linear);
+			return new SingleCliffCurver(strength, linear);
 		}
 	}
 
 	@Override
 	public void doRedraw() throws RedrawException {
 		this.gradient.redraw();
-		HDRImage source = this.getSingleInput(true).image;
-		HDRImage destination = this.sources.layer.image;
-		CliffCurver curver = this.getCurver();
-		for (int index = 0, length = source.pixels.length; index < length; index += 4) {
-			FloatVector value = FloatVector.fromArray(FloatVector.SPECIES_128, source.pixels, index);
-			curver.curve(value).intoArray(destination.pixels, index);
-		}
+		super.doRedraw();
 	}
 
-	public static abstract class CliffCurver {
+	@Override
+	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
+		return this.getCurver(false);
+	}
+
+	public static abstract class CliffCurver extends PerPixelApplicator {
 
 		public final boolean linear;
-		public final FloatVector coefficients;
+		public final LayerSourceInput strength;
 
-		public CliffCurver(FloatVector coefficients, boolean linear) {
-			this.coefficients = coefficients;
+		public CliffCurver(LayerSourceInput strength, boolean linear) {
+			this.strength = strength;
 			this.linear = linear;
 		}
-
-		public abstract FloatVector curve(FloatVector input);
 	}
 
 	public static class SingleCliffCurver extends CliffCurver {
 
-		public SingleCliffCurver(FloatVector coefficients, boolean linear) {
-			super(coefficients, linear);
+		public SingleCliffCurver(LayerSourceInput strength, boolean linear) {
+			super(strength, linear);
 		}
 
 		@Override
-		public FloatVector curve(FloatVector input) {
+		public FloatVector apply(int x, int y, FloatVector input) {
 			input = input.min(1.0F).max(0.0F);
 			if (this.linear) input = input.mul(input);
-			input = input.mul(this.coefficients).div(this.coefficients.sub(1.0F).mul(input).add(1.0F));
+			FloatVector strength = this.strength.getColor(x, y);
+			input = input.mul(strength).div(strength.sub(1.0F).mul(input).add(1.0F));
 			if (this.linear) input = input.sqrt();
 			return input;
 		}
@@ -167,37 +105,40 @@ public class CliffCurveLayerSource extends SingleInputEffectLayerSource {
 
 	public static class DualCliffCurver extends CliffCurver {
 
-		public final FloatVector rcpCoefficients, mids;
+		public final LayerSourceInput midpoint;
 
-		public DualCliffCurver(FloatVector coefficients, FloatVector mids, boolean linear) {
-			super(coefficients, linear);
-			this.rcpCoefficients = coefficients.broadcast(1.0F).div(coefficients);
-			this.mids = mids;
+		public DualCliffCurver(LayerSourceInput strength, LayerSourceInput midpoint, boolean linear) {
+			super(strength, linear);
+			this.midpoint = midpoint;
 		}
 
 		@Override
-		public FloatVector curve(FloatVector input) {
+		public FloatVector apply(int x, int y, FloatVector input) {
+			FloatVector strength = this.strength.getColor(x, y);
+			FloatVector midpoint = this.midpoint.getColor(x, y);
 			input = input.min(1.0F).max(0.0F);
 			if (this.linear) input = input.mul(input);
-			VectorMask<Float> low = input.compare(VectorOperators.LE, this.mids);
-			VectorMask<Float> high = input.compare(VectorOperators.GE, this.mids);
+			VectorMask<Float> low = input.compare(VectorOperators.LE, midpoint);
+			VectorMask<Float> high = input.compare(VectorOperators.GE, midpoint);
 			if (low.allTrue()) {
 				//fast path: only need to compute curve for low end.
-				input = input.mul(this.coefficients).div(this.coefficients.sub(1.0F).mul(input).add(1.0F)).mul(this.mids);
+				input = input.mul(strength).div(strength.sub(1.0F).mul(input).add(1.0F)).mul(midpoint);
 			}
 			else if (high.allTrue()) {
 				//medium path: need to compute curve for high end only.
-				FloatVector invMids = this.mids.broadcast(1.0F).sub(this.mids);
-				input = input.sub(this.mids).div(invMids);
-				input = input.mul(this.rcpCoefficients).div(this.rcpCoefficients.sub(1.0F).mul(input).add(1.0F)).mul(invMids).add(this.mids);
+				FloatVector rcpStrength = Util.WHITE.div(strength);
+				FloatVector invMidpoint = Util.WHITE.sub(midpoint);
+				input = input.sub(midpoint).div(invMidpoint);
+				input = input.mul(rcpStrength).div(rcpStrength.sub(1.0F).mul(input).add(1.0F)).mul(invMidpoint).add(midpoint);
 			}
 			else {
 				//slow path: need to compute curve for high and low ends.
-				FloatVector lowValue = input.div(this.mids);
-				lowValue = lowValue.mul(this.coefficients).div(this.coefficients.sub(1.0F).mul(lowValue).add(1.0F)).mul(this.mids);
-				FloatVector invMids = this.mids.broadcast(1.0F).sub(this.mids);
-				FloatVector highValue = input.sub(this.mids).div(invMids);
-				highValue = highValue.mul(this.rcpCoefficients).div(this.rcpCoefficients.sub(1.0F).mul(highValue).add(1.0F)).mul(invMids).add(this.mids);
+				FloatVector lowValue = input.div(midpoint);
+				lowValue = lowValue.mul(strength).div(strength.sub(1.0F).mul(lowValue).add(1.0F)).mul(midpoint);
+				FloatVector rcpStrength = Util.WHITE.div(strength);
+				FloatVector invMidpoint = Util.WHITE.sub(midpoint);
+				FloatVector highValue = input.sub(midpoint).div(invMidpoint);
+				highValue = highValue.mul(rcpStrength).div(rcpStrength.sub(1.0F).mul(highValue).add(1.0F)).mul(invMidpoint).add(midpoint);
 				input = input.blend(lowValue, low).blend(highValue, high);
 			}
 			if (this.linear) input = input.sqrt();
@@ -211,73 +152,14 @@ public class CliffCurveLayerSource extends SingleInputEffectLayerSource {
 
 		@Override
 		public void redraw() {
-			this.curver = CliffCurveLayerSource.this.getCurver();
-			super.redraw();
+			this.curver = CliffCurveLayerSource.this.getCurver(true);
+			this.getRootPane().setVisible(this.curver != null);
+			if (this.curver != null) super.redraw();
 		}
 
 		@Override
 		public FloatVector computeColor(int pixelPos, float fraction) {
-			return curver.curve(FloatVector.broadcast(FloatVector.SPECIES_128, fraction).withLane(HDRImage.ALPHA_OFFSET, 1.0F));
-		}
-	}
-
-	public static class CoefficientModel extends SpinnerValueFactory<Float> {
-
-		{
-			this.setValue(1.0F);
-			this.setConverter(new StringConverter<>() {
-
-				@Override
-				public String toString(Float object) {
-					return object.toString();
-				}
-
-				@Override
-				public Float fromString(String string) {
-					return Float.valueOf(string.trim());
-				}
-			});
-		}
-
-		@Override
-		public void increment(int steps) {
-			this.setValue(Float.intBitsToFloat(Float.floatToRawIntBits(this.getValue()) + (steps << 21)));
-		}
-
-		@Override
-		public void decrement(int steps) {
-			this.setValue(Float.intBitsToFloat(Float.floatToRawIntBits(this.getValue()) - (steps << 21)));
-		}
-	}
-
-	public static class MidModel extends SpinnerValueFactory<Float> {
-
-		{
-			this.setValue(0.5F);
-			this.setConverter(new StringConverter<>() {
-
-				@Override
-				public String toString(Float object) {
-					return object.toString();
-				}
-
-				@Override
-				public Float fromString(String string) {
-					if (string.isBlank()) return 0.5F;
-					float value = Float.parseFloat(string.trim());
-					return Math.clamp(value, 0.0F, 1.0F);
-				}
-			});
-		}
-
-		@Override
-		public void increment(int steps) {
-			this.setValue(Math.min(this.getValue() + 0.0625F, 1.0F));
-		}
-
-		@Override
-		public void decrement(int steps) {
-			this.setValue(Math.max(this.getValue() - 0.0625F, 0.0F));
+			return this.curver.apply(0, 0, FloatVector.broadcast(FloatVector.SPECIES_128, fraction).withLane(HDRImage.ALPHA_OFFSET, 1.0F));
 		}
 	}
 }

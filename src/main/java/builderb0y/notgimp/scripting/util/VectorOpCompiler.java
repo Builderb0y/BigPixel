@@ -12,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.tree.CodeEmitter;
 
-@SuppressWarnings("preview")
 public class VectorOpCompiler extends BinaryCombiner<CodeEmitter> {
 
 	public static final VectorOpCompiler INSTANCE = new VectorOpCompiler();
@@ -26,7 +25,7 @@ public class VectorOpCompiler extends BinaryCombiner<CodeEmitter> {
 		Opcode opcode = Modifier.isStatic(method.getModifiers()) ? Opcode.INVOKESTATIC : owner.isInterface() ? Opcode.INVOKEINTERFACE : Opcode.INVOKEVIRTUAL;
 		MethodTypeDesc paramDesc = MethodTypeDesc.of(Util.desc(method.getReturnType()), Arrays.stream(paramTypes).map(Class::descriptorString).map(ClassDesc::ofDescriptor).toArray(ClassDesc[]::new));
 		boolean isInterface = owner.isInterface();
-		return (CodeEmitter.Context context) -> context.codeBuilder.invokeInstruction(
+		return (CodeEmitter.Context context) -> context.codeBuilder.invoke(
 			opcode,
 			ownerDesc,
 			name,

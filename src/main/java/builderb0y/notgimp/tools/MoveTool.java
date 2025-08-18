@@ -6,7 +6,6 @@ import javafx.event.ActionEvent;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.TreeItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
@@ -14,8 +13,10 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.notgimp.*;
-import builderb0y.notgimp.sources.AlphaLayerSource;
+import builderb0y.notgimp.Assets;
+import builderb0y.notgimp.ColorHelper;
+import builderb0y.notgimp.HDRImage;
+import builderb0y.notgimp.Util;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class MoveTool extends Tool<MoveTool.Work> {
@@ -32,8 +33,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		flipH     = this.symmetrifyButton(Assets.Tools.Move.FLIP_H,     Symmetry.FLIP_H),
 		flipV     = this.symmetrifyButton(Assets.Tools.Move.FLIP_V,     Symmetry.FLIP_V),
 		flipL     = this.symmetrifyButton(Assets.Tools.Move.FLIP_L,     Symmetry.FLIP_L),
-		flipR     = this.symmetrifyButton(Assets.Tools.Move.FLIP_R,     Symmetry.FLIP_R),
-		extract   = this.button(Assets.Tools.Move.EXTRACT, this::extract);
+		flipR     = this.symmetrifyButton(Assets.Tools.Move.FLIP_R,     Symmetry.FLIP_R);
 	public GridPane
 		buttons = new GridPane();
 	public BorderPane
@@ -51,7 +51,6 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		);
 		this.buttons.addRow(0, this.again, this.rotate90, this.rotate180, this.rotate270);
 		this.buttons.addRow(1, this.flipH, this.flipV, this.flipL, this.flipR);
-		this.buttons.addRow(2, this.extract);
 		this.rootPane.setTop(this.fill);
 		this.rootPane.setCenter(this.buttons);
 	}
@@ -141,7 +140,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		int maxX = Math.max(work.x1, work.x2);
 		int maxY = Math.max(work.y1, work.y2);
 		if (this.fill.isSelected()) {
-			ColorHelper color = this.layer().openImage.mainWindow.colorPicker.currentColor;
+			ColorHelper color = this.layer().graph.openImage.mainWindow.colorPicker.currentColor;
 			for (int fromY = minY; fromY <= maxY; fromY++) {
 				for (int fromX = minX; fromX <= maxX; fromX++) {
 					if (fromX >= 0 && fromX < fillImage.width && fromY >= 0 && fromY < fillImage.height) {
@@ -214,30 +213,6 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			this.work.y2 = work.y2 + work.offsetY;
 			this.requestRedraw();
 		}
-	}
-
-	public void extract() {
-		Work work = this.work;
-		if (work == null) return;
-		this.work = null;
-		Layer layer = this.layer();
-		System.arraycopy(this.source.toollessImage.pixels, 0, layer.image.pixels, 0, layer.image.pixels.length);
-		TreeItem<Layer> item = layer.item;
-		OpenImage image = layer.openImage;
-		Layer newLayer;
-		if (item.getParent() != null && item.getParent().getValue().sources.getCurrentSource() instanceof AlphaLayerSource) {
-			newLayer = image.createLayerAbove(layer.item, "extract");
-		}
-		else {
-			newLayer = image.createParentLayer(layer.item, "merge");
-			newLayer.sources.choiceBox.getSelectionModel().select(newLayer.sources.alphaSource);
-			newLayer = image.createLayerAbove(layer.item, "extract");
-		}
-		this.transfer(work, layer.image, newLayer.sources.manualSource.toollessImage);
-		this.maybeFill(work, layer.image);
-		image.layerTree.getSelectionModel().select(newLayer.item);
-		newLayer.requestRedraw();
-		layer.requestRedraw();
 	}
 
 	public boolean transformWorkPos(Selection selection) {

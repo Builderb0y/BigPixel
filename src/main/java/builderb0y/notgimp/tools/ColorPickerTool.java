@@ -4,7 +4,7 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.OpenImage;
 import builderb0y.notgimp.tools.ColorPickerTool.ColorPickerCallback;
 import builderb0y.notgimp.tools.Tool.ToolType;
@@ -26,7 +26,7 @@ public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 			this.escape();
 			return;
 		}
-		Layer layer = this.openImage.getVisibleLayer();
+		LayerNode layer = this.openImage.layerGraph.visibleLayerProperty.getValue();
 		if (x >= 0 && x < layer.image.width && y >= 0 && y < layer.image.height) {
 			int baseIndex = layer.image.baseIndex(x, y);
 			this.work.onColorPicked(

@@ -22,17 +22,17 @@ public class InvokeInsnTree extends InsnTree {
 		if (Modifier.isStatic(method.access())) {
 			for (int index = 0; index < length; index++) {
 				if (!method.paramTypes()[index].isAssignableFrom(paramTypes[index].holderClass())) {
-					throw new IllegalArgumentException(STR."Expected \{Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]"))}, got \{Arrays.toString(paramTypes)}");
+					throw new IllegalArgumentException("Expected " + Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]")) + ", got " + Arrays.toString(paramTypes));
 				}
 			}
 		}
 		else {
 			if (!method.owner().isAssignableFrom(paramTypes[0].holderClass())) {
-				throw new IllegalArgumentException(STR."Expected receiver to be of type \{method.owner().getSimpleName()} but it was \{paramTypes[0].holderClass().getSimpleName()}");
+				throw new IllegalArgumentException("Expected receiver to be of type " + method.owner().getSimpleName() + " but it was " + paramTypes[0].holderClass().getSimpleName());
 			}
 			for (int index = 0; index < length; index++) {
 				if (!method.paramTypes()[index].isAssignableFrom(paramTypes[index + 1].holderClass())) {
-					throw new IllegalArgumentException(STR."Expected \{Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]"))}, got \{Arrays.toString(paramTypes)}");
+					throw new IllegalArgumentException("Expected " + Arrays.stream(method.paramTypes()).map(Class::getSimpleName).collect(Collectors.joining(", ", "[", "]")) + ", got " + Arrays.toString(paramTypes));
 				}
 			}
 		}

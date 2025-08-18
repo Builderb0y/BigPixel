@@ -6,7 +6,7 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.notgimp.Assets;
 import builderb0y.notgimp.ColorHelper;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.sources.ManualLayerSource;
 
@@ -90,11 +90,11 @@ public class LineTool extends Tool<LineTool.Work> {
 	public void redraw() {
 		Work work = this.work;
 		if (work == null) return;
-		Layer layer = this.layer();
+		LayerNode layer = this.layer();
 		double radius = this.radius.getValue();
 		int width = layer.image.width;
 		int height = layer.image.height;
-		ColorHelper color = layer.openImage.mainWindow.colorPicker.currentColor;
+		ColorHelper color = layer.graph.openImage.mainWindow.colorPicker.currentColor;
 		if (radius == 0.0D) {
 			if (work.x1 == work.x2 && work.y1 == work.y2) {
 				if (work.x1 >= 0 && work.x1 < width && work.y1 >= 0 && work.y1 < height) {

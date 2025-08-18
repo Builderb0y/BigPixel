@@ -42,13 +42,13 @@ public abstract class BinaryCombiner<T> {
 	public UnaryValue<T> unary(VectorType type, UnaryOperatorWrapper operator) {
 		UnaryValue<T> result = this.unaryCombiners.get(new UnaryKey(type, operator));
 		if (result != null) return result;
-		else throw new InvalidOperandException(STR."Can't \{operator.name().toLowerCase(Locale.ROOT)} \{type}");
+		else throw new InvalidOperandException("Can't " + operator.name().toLowerCase(Locale.ROOT) + " " + type);
 	}
 
 	public BinaryValue<T> binary(VectorType left, VectorType right, BinaryOperatorWrapper operator) {
 		BinaryValue<T> result = this.binaryCombiners.get(new BinaryKey(left, right, operator));
 		if (result != null) return result;
-		else throw new InvalidOperandException(STR."Can't \{operator.name().toLowerCase(Locale.ROOT)} \{left} and \{right}");
+		else throw new InvalidOperandException("Can't " + operator.name().toLowerCase(Locale.ROOT) + " " + left + " and " + right);
 	}
 
 	public @Nullable UnaryValue<T> createUnary(VectorType type, UnaryOperatorWrapper operator) {

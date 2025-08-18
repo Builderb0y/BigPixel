@@ -9,9 +9,10 @@ import java.util.zip.GZIPOutputStream;
 
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.scene.control.TreeItem;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import builderb0y.notgimp.sources.ManualLayerSource;
 
 public class History implements Comparable<History> {
 
@@ -20,13 +21,13 @@ public class History implements Comparable<History> {
 	public static final TreeSet<History> ALL_HISTORIES = new TreeSet<>();
 	public static int historyCount;
 
-	public Layer layer;
+	public ManualLayerSource source;
 	public Entry oldestEntry;
 	public SimpleObjectProperty<@Nullable Entry> currentEntry = new SimpleObjectProperty<>();
 	public int entryCount, uniquifier;
 
-	public History(Layer layer) {
-		this.layer = layer;
+	public History(ManualLayerSource source) {
+		this.source = source;
 		this.uniquifier = historyCount++;
 		ALL_HISTORIES.add(this);
 	}
@@ -36,16 +37,14 @@ public class History implements Comparable<History> {
 	}
 
 	public static void onImageClosed(OpenImage image) {
-		TreeItem<Layer> root = image.layerTree.getRoot();
-		if (root != null) onLayerDeleted(root);
+		for (LayerNode layer : image.layerGraph.layerList) {
+			onLayerDeleted(layer);
+		}
 	}
 
-	public static void onLayerDeleted(TreeItem<Layer> layer) {
-		System.out.println("Deleting history for layer " + layer.getValue().name.get());
-		for (TreeItem<Layer> child : layer.getChildren()) {
-			onLayerDeleted(child);
-		}
-		History history = layer.getValue().history;
+	public static void onLayerDeleted(LayerNode layer) {
+		System.out.println("Deleting history for layer " + layer.getDisplayName());
+		History history = layer.sources.manualSource().history;
 		history.clear();
 		ALL_HISTORIES.remove(history);
 	}
@@ -54,7 +53,7 @@ public class History implements Comparable<History> {
 		Entry entry = this.currentEntry.get();
 		if (entry != null && entry.prev != null) {
 			this.currentEntry.set(entry.prev);
-			entry.prev.restore(this.layer);
+			entry.prev.restore(this.source);
 		}
 	}
 
@@ -62,12 +61,12 @@ public class History implements Comparable<History> {
 		Entry entry = this.currentEntry.get();
 		if (entry != null && entry.next != null) {
 			this.currentEntry.set(entry.next);
-			entry.next.restore(this.layer);
+			entry.next.restore(this.source);
 		}
 	}
 
 	public void save(String name) {
-		long toAdd = ((long)(this.layer.image.pixels.length)) * ((long)(Float.BYTES));
+		long toAdd = ((long)(this.source.sources.layer.image.pixels.length)) * ((long)(Float.BYTES));
 		if (toAdd > MAX_MEMORY) {
 			System.err.println("Insufficient memory to store undo history for current layer.");
 			return;
@@ -82,7 +81,7 @@ public class History implements Comparable<History> {
 		while (currentMemory > MAX_MEMORY) {
 			for (History history : ALL_HISTORIES) {
 				if (history.oldestEntry == null) continue;
-				System.out.println("Removing oldest history entry from layer " + history.layer.name.get() + " to free up memory.");
+				System.out.println("Removing oldest history entry from layer " + history.source.sources.layer.getDisplayName() + " to free up memory.");
 				history.removeEntry(history.oldestEntry);
 				continue outer;
 			}
@@ -90,7 +89,7 @@ public class History implements Comparable<History> {
 			currentMemory -= toAdd;
 			return;
 		}
-		Entry next = new Entry(name, this.layer.image);
+		Entry next = new Entry(name, this.source.sources.layer.image);
 		Entry current = this.currentEntry.get();
 		next.prev = current;
 		if (current != null) current.next = next;
@@ -120,7 +119,7 @@ public class History implements Comparable<History> {
 				entry.next = null;
 				next.prev = null;
 			}
-			currentMemory += -entry.getUsedMemory();
+			currentMemory -= entry.getUsedMemory();
 			entry = next;
 		}
 		this.oldestEntry = null;
@@ -174,11 +173,9 @@ public class History implements Comparable<History> {
 			else return ((long)(this.uncompressedPixels.length)) * ((long)(Float.BYTES));
 		}
 
-		public void restore(Layer layer) {
-			HDRImage destination = layer.sources.manualSource.toollessImage;
-			if (destination.width != this.width || destination.height != this.height) {
-				destination.resize(this.width, this.height, false);
-			}
+		public void restore(ManualLayerSource source) {
+			HDRImage destination = source.toollessImage;
+			destination.checkSize(this.width, this.height, false);
 			if (this.compressedPixels != null) try {
 				destination.decompressPixels(this.compressedPixels);
 			}
@@ -188,7 +185,7 @@ public class History implements Comparable<History> {
 			else {
 				System.arraycopy(this.uncompressedPixels, 0, destination.pixels, 0, this.uncompressedPixels.length);
 			}
-			layer.requestRedraw();
+			source.requestRedraw();
 		}
 
 		@Override

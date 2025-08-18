@@ -3,51 +3,62 @@ package builderb0y.notgimp.sources;
 import java.util.Arrays;
 import java.util.List;
 
-import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.TreeItem;
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.Util;
+import builderb0y.notgimp.sources.dependencies.inputs.InputBinding;
 
-public class AddLayerSource extends EffectLayerSource {
+public class AddLayerSource extends MultiInputLayerSource {
 
-	public CheckBox alphaWeighting = this.addCheckbox("alpha_weighting", "Alpha Weighting", false);
+	public CheckBox linear = this.parameters.addCheckbox("linear", "Linear", false);
+	public CheckBox alphaWeighting = this.parameters.addCheckbox("alpha_weighting", "Alpha Weighting", false);
 
 	public AddLayerSource(LayerSources sources) {
-		super(sources, "add", "Addition");
+		super(Type.ADD, sources);
+		this.dependencies.getBottomPane().getChildren().addAll(this.linear, this.alphaWeighting);
 	}
 
 	@Override
-	public void doRedraw() throws RedrawException {
-		List<TreeItem<Layer>> watching = this.getWatchedItems();
-		this.checkSameSize(watching);
-		HDRImage destination = this.sources.layer.image;
-		Arrays.fill(destination.pixels, 0.0F);
-		boolean alphaWeighting = this.alphaWeighting.isSelected();
-		for (TreeItem<Layer> item : watching) {
-			HDRImage image = item.getValue().image;
-			for (int base = 0; base < image.pixels.length; base += 4) {
-				FloatVector oldColor = FloatVector.fromArray(FloatVector.SPECIES_128, destination.pixels, base);
-				FloatVector newColor = FloatVector.fromArray(FloatVector.SPECIES_128, image.pixels, base);
-				if (alphaWeighting) {
-					newColor.mul(newColor.lane(HDRImage.ALPHA_OFFSET)).add(oldColor).intoArray(destination.pixels, base);
-				}
-				else {
-					newColor.add(oldColor).intoArray(destination.pixels, base);
-				}
-			}
-		}
-		if (alphaWeighting) {
-			for (int base = HDRImage.ALPHA_OFFSET; base < destination.pixels.length; base += 4) {
-				destination.pixels[base] = 1.0F;
-			}
-		}
+	public MultiInputAccumulator getAccumulator() {
+		return new Accumulator(this.linear.isSelected(), this.alphaWeighting.isSelected());
 	}
 
-	@Override
-	public Node getRootNode() {
-		return this.alphaWeighting;
+	public static class Accumulator extends MultiInputAccumulator {
+
+		public final boolean linear, alphaWeighting;
+
+		public Accumulator(boolean linear, boolean alphaWeighting) {
+			this.linear = linear;
+			this.alphaWeighting = alphaWeighting;
+		}
+
+		@Override
+		public void preprocess(HDRImage image, List<? extends InputBinding> bindings) {
+			Arrays.fill(image.pixels, 0.0F);
+		}
+
+		@Override
+		public FloatVector accumulate(FloatVector existingColor, FloatVector newColor) {
+			if (this.linear) newColor = newColor.mul(newColor, Util.RGB_MASK);
+			if (this.alphaWeighting) newColor = newColor.mul(newColor.lane(HDRImage.ALPHA_OFFSET));
+			return newColor.add(existingColor);
+		}
+
+		@Override
+		public void postProcess(HDRImage image, List<? extends InputBinding> bindings) {
+			if (this.linear) {
+				for (int base = 0; base < image.pixels.length; base += 4) {
+					FloatVector.fromArray(FloatVector.SPECIES_128, image.pixels, base).lanewise(VectorOperators.SQRT, Util.RGB_MASK).intoArray(image.pixels, base);
+				}
+			}
+			if (this.alphaWeighting) {
+				for (int base = HDRImage.ALPHA_OFFSET; base < image.pixels.length; base += 4) {
+					image.pixels[base] = 1.0F;
+				}
+			}
+		}
 	}
 }

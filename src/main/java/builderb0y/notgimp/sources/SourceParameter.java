@@ -174,33 +174,38 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 			@Override
 			public void save(JsonMap map) {
 				FloatVector color = this.get();
-				map.put(
-					this.name,
-					new JsonArray()
-					.with(color.lane(0))
-					.with(color.lane(1))
-					.with(color.lane(2))
-					.with(color.lane(3))
-				);
+				map.put(this.name, colorToJson(color));
 			}
 
 			@Override
 			public void load(JsonMap map) {
 				JsonArray array = map.getArray(this.name);
-				this.set(
-					FloatVector.fromArray(
-						FloatVector.SPECIES_128,
-						new float[] {
-							array.getFloat(0),
-							array.getFloat(1),
-							array.getFloat(2),
-							array.getFloat(3)
-						},
-						0
-					)
-				);
+				this.set(colorFromJson(array));
 			}
 		};
+	}
+
+	public static JsonArray colorToJson(FloatVector color) {
+		return (
+			new JsonArray()
+			.with(color.lane(0))
+			.with(color.lane(1))
+			.with(color.lane(2))
+			.with(color.lane(3))
+		);
+	}
+
+	public static FloatVector colorFromJson(JsonArray array) {
+		return FloatVector.fromArray(
+			FloatVector.SPECIES_128,
+			new float[] {
+				array.getFloat(0),
+				array.getFloat(1),
+				array.getFloat(2),
+				array.getFloat(3)
+			},
+			0
+		);
 	}
 
 	public static SourceParameter<String, TextArea> code(TextArea area, String name) {

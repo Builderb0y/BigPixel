@@ -4,8 +4,6 @@ import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.MethodBuilder;
-import java.lang.classfile.components.ClassPrinter;
-import java.lang.classfile.components.ClassPrinter.Verbosity;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
@@ -21,11 +19,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import javafx.scene.control.TreeItem;
+import jdk.internal.classfile.components.ClassPrinter.Verbosity;
 import org.jetbrains.annotations.NotNull;
 
 import builderb0y.notgimp.CommonReader.CursorPos;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.FunctionHandler;
 import builderb0y.notgimp.scripting.parsing.ScriptHandlers.KeywordHandler;
@@ -179,13 +177,13 @@ public class ExpressionParser<I> {
 		return this;
 	}
 
-	public static final MethodInfo getPixelWrappedOneArg = new MethodInfo(Layer.class, "getPixelWrapped", 1);
-	public static final MethodInfo getPixelWrappedTwoArgs = new MethodInfo(Layer.class, "getPixelWrapped", 2);
+	public static final MethodInfo getPixelWrappedOneArg  = new MethodInfo(LayerNode.class, "getPixelWrapped", 1);
+	public static final MethodInfo getPixelWrappedTwoArgs = new MethodInfo(LayerNode.class, "getPixelWrapped", 2);
 
-	public ExpressionParser<I> addLayers(TreeItem<Layer> current) {
-		for (TreeItem<Layer> child : current.getChildren()) {
+	public ExpressionParser<I> addLayers(Collection<LayerNode> layers) {
+		for (LayerNode layer : layers) {
 			this.scope.environment.addFunction(
-				child.getValue().name.get(),
+				layer.getDisplayName(),
 				(ExpressionParser<?> parser, String name, InsnTree[] params) -> {
 					VectorType[] types = InsnTree.flattenTypes(params);
 					int index = parser.usedLayers.computeIfAbsent(name, (String _) -> parser.usedLayers.size());
@@ -206,7 +204,6 @@ public class ExpressionParser<I> {
 					};
 				}
 			);
-			this.addLayers(child);
 		}
 		return this;
 	}
@@ -216,8 +213,7 @@ public class ExpressionParser<I> {
 		return this;
 	}
 
-	@SuppressWarnings("preview")
-	public I parse(Map<String, Layer> layers) throws ScriptParsingException {
+	public I parse(Map<String, LayerNode> layers) throws ScriptParsingException {
 		InsnTree tree;
 		try {
 			tree = this.nextScript();
@@ -244,7 +240,7 @@ public class ExpressionParser<I> {
 			.withInterfaceSymbols(Util.desc(this.implMethod.getDeclaringClass()));
 
 			for (Map.Entry<String, Integer> entry : this.usedLayers.entrySet()) {
-				clazz.withField("layer" + entry.getValue(), Util.desc(Layer.class), Modifier.PUBLIC | Modifier.FINAL);
+				clazz.withField("layer" + entry.getValue(), Util.desc(LayerNode.class), Modifier.PUBLIC | Modifier.FINAL);
 			}
 
 			clazz
@@ -263,8 +259,8 @@ public class ExpressionParser<I> {
 						.aload(code.parameterSlot(0))
 						.ldc(entry.getKey())
 						.invokeinterface(Util.desc(Map.class), "get", MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object))
-						.checkcast(Util.desc(Layer.class))
-						.putfield(generatedClassDesc, "layer" + entry.getValue(), Util.desc(Layer.class));
+						.checkcast(Util.desc(LayerNode.class))
+						.putfield(generatedClassDesc, "layer" + entry.getValue(), Util.desc(LayerNode.class));
 					}
 
 					code.return_();
@@ -295,7 +291,7 @@ public class ExpressionParser<I> {
 		}
 		catch (Throwable throwable) {
 			StringBuilder message = new StringBuilder("Error defining class!\n");
-			ClassPrinter.toJson(ClassFile.of().parse(bytes), Verbosity.TRACE_ALL, message::append);
+			jdk.internal.classfile.components.ClassPrinter.toJson(ClassFile.of().parse(bytes), Verbosity.TRACE_ALL, message::append);
 			throw new ScriptParsingException(message.toString(), throwable, null);
 		}
 	}
@@ -572,7 +568,7 @@ public class ExpressionParser<I> {
 						return new VariableDeclarationInsnTree(declarationName, initializer);
 					}
 					else {
-						throw new ScriptParsingException(STR."Attempt to initialize \{type} with \{initializer.type()}", this.reader);
+						throw new ScriptParsingException("Attempt to initialize " + type + " with " + initializer.type(), this.reader);
 					}
 				}
 				else {

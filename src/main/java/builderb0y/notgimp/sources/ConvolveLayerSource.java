@@ -6,31 +6,32 @@ import java.util.Locale;
 import javafx.beans.binding.When;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.ObservableList;
+import javafx.geometry.Orientation;
 import javafx.scene.Node;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Spinner;
+import javafx.scene.control.*;
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextFormatter;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.util.StringConverter;
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.notgimp.HDRImage;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.json.JsonArray;
 import builderb0y.notgimp.json.JsonMap;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput;
 
-public class ConvolveLayerSource extends SingleInputEffectLayerSource {
+public class ConvolveLayerSource extends MainMaskLayerSource {
 
 	public BorderPane borderPane = new BorderPane();
-	public ChoiceBox<ConvolveShape> shape = this.addEnumChoiceBox("shape", ConvolveShape.class, ConvolveShape.SQUARE);
-	public ChoiceBox<BlurWeight> weight = this.addEnumChoiceBox("weight_type", BlurWeight.class, BlurWeight.CUSTOM);
-	public Spinner<Integer> radius = this.addIntSpinner("radius", 1, 3, 1, 1, 64.0D);
+	public ChoiceBox<ConvolveShape> shape = this.parameters.addEnumChoiceBox("shape", ConvolveShape.class, ConvolveShape.SQUARE);
+	public ChoiceBox<BlurWeight> weight = this.parameters.addEnumChoiceBox("weight_type", BlurWeight.class, BlurWeight.CUSTOM);
+	public Spinner<Integer> radius = this.parameters.addIntSpinner("radius", 1, 3, 1, 1, 64.0D);
 	public GridPane customWeights = new GridPane();
+	public SplitPane configPane = new SplitPane(this.dependencies.getConfigPane(), this.borderPane);
 	public HDRImage separableScratch;
 
 	@Override
@@ -68,28 +69,23 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 	}
 
 	public ConvolveLayerSource(LayerSources sources) {
-		super(sources, "convolve", "Convolve");
+		super(Type.CONVOLVE, sources);
 		this.layout();
 		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius));
 		this.borderPane.setCenter(this.customWeights);
-		this.rootNode.setCenter(this.borderPane);
+		this.configPane.setOrientation(Orientation.VERTICAL);
 		((IntegerSpinnerValueFactory)(this.radius.getValueFactory())).maxProperty().bind(
 			new When(this.weight.valueProperty().isEqualTo(BlurWeight.CUSTOM))
 			.then(3)
 			.otherwise(64)
 		);
-	}
-
-	@Override
-	public void init(boolean fromSave) {
 		ChangeListener<Object> listener = Util.change(() -> {
 			this.layout();
 			this.requestRedraw();
 		});
-		this.shape.valueProperty().addListener(listener);
+		this.shape .valueProperty().addListener(listener);
 		this.weight.valueProperty().addListener(listener);
 		this.radius.valueProperty().addListener(listener);
-		super.init(fromSave);
 	}
 
 	@Override
@@ -215,90 +211,123 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 		if (this.separableScratch == null) {
 			this.separableScratch = new HDRImage(from.width, from.height);
 		}
-		if (this.separableScratch.width != from.width || this.separableScratch.height != from.height) {
-			this.separableScratch.resize(from.width, from.height, false);
-		}
+		this.separableScratch.checkSize(from.width, from.height, false);
 		return this.separableScratch;
 	}
 
 	@Override
-	public void doRedraw() throws RedrawException {
-		HDRImage source = this.getSingleInput(true).image;
-		HDRImage destination = this.sources.layer.image;
+	public void doRedraw(LayerSourceInput main, LayerSourceInput mask, HDRImage destination) throws RedrawException {
 		int radius = this.radius.getValue();
 		float[] weights = this.weight.getValue().getWeights(this);
 		switch (this.shape.getValue()) {
 			case HORIZONTAL -> {
-				for (int y = 0; y < source.height; y++) {
-					for (int x = 0; x < source.width; x++) {
-						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
-						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-							sum = sum.add(source.getPixel(Math.floorMod(x + offset, source.width), y).mul(weights[index]));
+				for (int y = 0; y < destination.height; y++) {
+					for (int x = 0; x < destination.width; x++) {
+						FloatVector mainColor = main.getColor(x, y);
+						FloatVector maskColor = mask.getColor(x, y);
+						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
+							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
+							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
+								sum = sum.add(main.getColor(Math.floorMod(x + offset, destination.width), y).mul(weights[index]));
+							}
+							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
 						}
-						destination.setPixel(x, y, sum);
+						else {
+							destination.setColor(x, y, mainColor);
+						}
 					}
 				}
 			}
 			case VERTICAL -> {
-				for (int y = 0; y < source.height; y++) {
-					for (int x = 0; x < source.width; x++) {
-						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
-						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-							sum = sum.add(source.getPixel(x, Math.floorMod(y + offset, source.height)).mul(weights[index]));
+				for (int y = 0; y < destination.height; y++) {
+					for (int x = 0; x < destination.width; x++) {
+						FloatVector mainColor = main.getColor(x, y);
+						FloatVector maskColor = mask.getColor(x, y);
+						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
+							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
+							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
+								sum = sum.add(main.getColor(x, Math.floorMod(y + offset, destination.height)).mul(weights[index]));
+							}
+							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
 						}
-						destination.setPixel(x, y, sum);
+						else {
+							destination.setColor(x, y, mainColor);
+						}
 					}
 				}
 			}
 			case SEPARABLE -> {
 				HDRImage scratch = this.getSeparableScratch();
-				for (int y = 0; y < source.height; y++) {
-					for (int x = 0; x < source.width; x++) {
+				for (int y = 0; y < destination.height; y++) {
+					for (int x = 0; x < destination.width; x++) {
 						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-							sum = sum.add(source.getPixel(Math.floorMod(x + offset, source.width), y).mul(weights[index]));
+							sum = sum.add(main.getColor(Math.floorMod(x + offset, destination.width), y).mul(weights[index]));
 						}
-						scratch.setPixel(x, y, sum);
+						scratch.setColor(x, y, sum);
 					}
 				}
 				for (int y = 0; y < scratch.height; y++) {
 					for (int x = 0; x < scratch.width; x++) {
-						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
-						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-							sum = sum.add(scratch.getPixel(x, Math.floorMod(y + offset, scratch.height)).mul(weights[index]));
+						FloatVector mainColor = main.getColor(x, y);
+						FloatVector maskColor = mask.getColor(x, y);
+						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
+							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
+							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
+								sum = sum.add(scratch.getColor(x, Math.floorMod(y + offset, scratch.height)).mul(weights[index]));
+							}
+							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
 						}
-						destination.setPixel(x, y, sum);
+						else {
+							destination.setColor(x, y, mainColor);
+						}
 					}
 				}
 			}
 			case CONCENTRIC -> {
-				int minSize = Math.min(source.width, source.height);
-				//int maxSize = Math.max(source.width, source.height);
+				int minSize = Math.min(destination.width, destination.height);
+				//int maxSize = Math.max(destination.width, destination.height);
 				int imageR = (minSize + 1) >> 1;
 				for (int ring = 0; ring < imageR; ring++) {
-					int pixelsInRing = Math.max(pixelsInRing(source.width, source.height, ring), 1);
+					int pixelsInRing = Math.max(pixelsInRing(destination.width, destination.height, ring), 1);
 					for (int start = 0; start < pixelsInRing; start++) {
-						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
-						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-							int packedPos = concentricPos(source.width, source.height, ring, Math.floorMod(start + offset, pixelsInRing));
-							sum = sum.add(source.getPixel(unpackX(packedPos), unpackY(packedPos)).mul(weights[index]));
+						int packedPos = concentricPos(destination.width, destination.height, ring, start);
+						int x = unpackX(packedPos);
+						int y = unpackY(packedPos);
+						FloatVector mainColor = main.getColor(x, y);
+						FloatVector maskColor = mask.getColor(x, y);
+						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
+							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
+							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
+								packedPos = concentricPos(destination.width, destination.height, ring, Math.floorMod(start + offset, pixelsInRing));
+								sum = sum.add(main.getColor(unpackX(packedPos), unpackY(packedPos)).mul(weights[index]));
+							}
+							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
 						}
-						int packedPos = concentricPos(source.width, source.height, ring, start);
-						destination.setPixel(unpackX(packedPos), unpackY(packedPos), sum);
+						else {
+							destination.setColor(x, y, mainColor);
+						}
 					}
 				}
 			}
 			case SQUARE -> {
-				for (int y = 0; y < source.height; y++) {
-					for (int x = 0; x < source.width; x++) {
-						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
-						int index = 0;
-						for (int offsetY = -radius; offsetY <= radius; offsetY++) {
-							for (int offsetX = -radius; offsetX <= radius; offsetX++) {
-								sum = sum.add(source.getPixel(Math.floorMod(x + offsetX, source.width), Math.floorMod(y + offsetY, source.height)).mul(weights[index++]));
+				for (int y = 0; y < destination.height; y++) {
+					for (int x = 0; x < destination.width; x++) {
+						FloatVector mainColor = main.getColor(x, y);
+						FloatVector maskColor = mask.getColor(x, y);
+						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
+							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
+							int index = 0;
+							for (int offsetY = -radius; offsetY <= radius; offsetY++) {
+								for (int offsetX = -radius; offsetX <= radius; offsetX++) {
+									sum = sum.add(main.getColor(Math.floorMod(x + offsetX, destination.width), Math.floorMod(y + offsetY, destination.height)).mul(weights[index++]));
+								}
 							}
+							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
 						}
-						destination.setPixel(x, y, sum);
+						else {
+							destination.setColor(x, y, mainColor);
+						}
 					}
 				}
 			}
@@ -328,6 +357,11 @@ public class ConvolveLayerSource extends SingleInputEffectLayerSource {
 
 	public static int unpackY(int packed) {
 		return packed >> 16;
+	}
+
+	@Override
+	public Node getConfigNode() {
+		return this.configPane;
 	}
 
 	public static enum ConvolveShape {

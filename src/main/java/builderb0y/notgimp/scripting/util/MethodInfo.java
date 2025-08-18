@@ -34,10 +34,10 @@ public record MethodInfo(int access, Class<?> owner, String name, AnnotatedType 
 		for (Method declared : owner.getDeclaredMethods()) {
 			if (declared.getName().equals(name)) {
 				if (method == null) method = declared;
-				else throw new IllegalArgumentException(STR."Multiple methods in \{owner} with name \{name}");
+				else throw new IllegalArgumentException("Multiple methods in " + owner + " with name " + name);
 			}
 		}
-		if (method == null) throw new IllegalArgumentException(STR."No methods in \{owner} with name \{name}");
+		if (method == null) throw new IllegalArgumentException("No methods in " + owner + " with name " + name);
 		this(method);
 	}
 
@@ -46,10 +46,10 @@ public record MethodInfo(int access, Class<?> owner, String name, AnnotatedType 
 		for (Method declared : owner.getDeclaredMethods()) {
 			if (declared.getName().equals(name) && declared.getParameterCount() == paramCount) {
 				if (method == null) method = declared;
-				else throw new IllegalArgumentException(STR."Multiple methods in \{owner} with name \{name} and \{paramCount} parameter(s).");
+				else throw new IllegalArgumentException("Multiple methods in " + owner + " with name " + name + " and " + paramCount + " parameter(s).");
 			}
 		}
-		if (method == null) throw new IllegalArgumentException(STR."No methods in \{owner} with name \{name} and \{paramCount} parameter(s).");
+		if (method == null) throw new IllegalArgumentException("No methods in " + owner + " with name " + name + " and " + paramCount + " parameter(s).");
 		this(method);
 	}
 
@@ -71,7 +71,7 @@ public record MethodInfo(int access, Class<?> owner, String name, AnnotatedType 
 
 	@Override
 	public void emitBytecode(Context context) {
-		context.codeBuilder.invokeInstruction(
+		context.codeBuilder.invoke(
 			Modifier.isStatic(this.access)
 			? Opcode.INVOKESTATIC
 			: this.owner.isInterface()

@@ -6,7 +6,6 @@ import java.io.*;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.ImageWriter;
@@ -46,14 +45,7 @@ public class HDRImage implements Externalizable {
 
 	public HDRImage(JsonMap saveData) {
 		this(saveData.getInt("width"), saveData.getInt("height"));
-		try {
-			String base64Pixels = saveData.getString("pixels");
-			byte[] compressedPixels = Base64.getDecoder().decode(base64Pixels);
-			this.decompressPixels(compressedPixels);
-		}
-		catch (IOException exception) {
-			throw new SaveException(exception);
-		}
+		this.doCopyFrom(saveData);
 	}
 
 	//for serialization.
@@ -76,8 +68,47 @@ public class HDRImage implements Externalizable {
 		this.pixels = pixels;
 	}
 
-	public HDRImage(Image image) {
-		this((int)(image.getWidth()), (int)(image.getHeight()));
+	public HDRImage(Image from) {
+		this((int)(from.getWidth()), (int)(from.getHeight()));
+		this.doCopyFrom(from);
+	}
+
+	public HDRImage(HDRImage from) {
+		this(from.width, from.height);
+		this.doCopyFrom(from);
+	}
+
+	public void copyFrom(JsonMap saveData) {
+		this.checkSize(saveData.getInt("width"), saveData.getInt("height"), false);
+		this.doCopyFrom(saveData);
+	}
+
+	public void doCopyFrom(JsonMap saveData) {
+		try {
+			String base64Pixels = saveData.getString("pixels");
+			byte[] compressedPixels = Base64.getDecoder().decode(base64Pixels);
+			this.decompressPixels(compressedPixels);
+		}
+		catch (IOException exception) {
+			throw new SaveException(exception);
+		}
+	}
+
+	public void copyFrom(HDRImage from) {
+		this.checkSize(from.width, from.height, false);
+		this.doCopyFrom(from);
+	}
+
+	public void doCopyFrom(HDRImage from) {
+		System.arraycopy(from.pixels, 0, this.pixels, 0, from.pixels.length);
+	}
+
+	public void copyFrom(Image image) {
+		this.checkSize((int)(image.getWidth()), (int)(image.getHeight()), false);
+		this.doCopyFrom(image);
+	}
+
+	public void doCopyFrom(Image image) {
 		PixelReader reader = image.getPixelReader();
 		for (int y = 0; y < this.height; y++) {
 			for (int x = 0; x < this.width; x++) {
@@ -87,10 +118,10 @@ public class HDRImage implements Externalizable {
 		}
 	}
 
-	public HDRImage(HDRImage from) {
-		this.width = from.width;
-		this.height = from.height;
-		this.pixels = from.pixels.clone();
+	public void checkSize(int width, int height, boolean copy) {
+		if (this.width != width || this.height != height) {
+			this.resize(width, height, copy);
+		}
 	}
 
 	public void resize(int width, int height, boolean copy) {
@@ -146,12 +177,8 @@ public class HDRImage implements Externalizable {
 		return packRgbaToArgb(red, green, blue, alpha);
 	}
 
-	public FloatVector getPixel(int x, int y) {
+	public FloatVector getColor(int x, int y) {
 		return FloatVector.fromArray(FloatVector.SPECIES_128, this.pixels, this.baseIndex(x, y));
-	}
-
-	public void setPixel(int x, int y, FloatVector vector) {
-		vector.intoArray(this.pixels, this.baseIndex(x, y));
 	}
 
 	public void setRgba(int x, int y, float red, float green, float blue, float alpha) {
@@ -246,7 +273,7 @@ public class HDRImage implements Externalizable {
 		int oldFrame = animation.frame.get();
 		for (int frame = 0; frame < frames; frame++) {
 			animation.frame.set(frame);
-			animation.openImage.redrawAll(false);
+			animation.openImage.layerGraph.redrawAllImmediately(false);
 			for (int y = 0; y < this.height; y++) {
 				for (int x = 0; x < this.width; x++) {
 					pixel[0] = this.getPackedArgb(x, y);
@@ -255,7 +282,7 @@ public class HDRImage implements Externalizable {
 			}
 		}
 		animation.frame.set(oldFrame);
-		animation.openImage.redrawAll(false);
+		animation.openImage.layerGraph.redrawAllImmediately(false);
 		return image;
 	}
 

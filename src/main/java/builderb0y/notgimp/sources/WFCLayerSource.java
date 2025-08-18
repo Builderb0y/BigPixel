@@ -16,6 +16,7 @@ import javafx.animation.Interpolator;
 import javafx.animation.Transition;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
@@ -27,25 +28,42 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.notgimp.FastRandom;
 import builderb0y.notgimp.HDRImage;
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
+import builderb0y.notgimp.sources.dependencies.LayerDependencies;
+import builderb0y.notgimp.sources.dependencies.NamedLayerDependencies;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
+import builderb0y.notgimp.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.notgimp.sources.dependencies.inputs.UnmovableInputBinding;
 import builderb0y.notgimp.tools.Symmetry;
 
-public class WFCLayerSource extends SingleInputEffectLayerSource {
+public class WFCLayerSource extends LayerSource {
 
+	public static class Dependencies extends NamedLayerDependencies {
+
+		public UnmovableInputBinding main = this.addBinding("main", "Input: ");
+
+		public Dependencies(LayerSource source) {
+			super(source);
+		}
+	}
+
+	public Dependencies
+		dependencies = new Dependencies(this);
 	public Spinner<Integer>
-		seed = this.addIntSpinner("seed", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80.0D),
-		kernel = this.addIntSpinner("kernel", 2, 8, 1, 1, 80.0D);
+		seed      = this.parameters.addIntSpinner("seed", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80.0D),
+		kernel    = this.parameters.addIntSpinner("kernel", 2, 8, 1, 1, 80.0D);
 	public GridPane
 		mainSettings = new GridPane();
 	public CheckBox
-		identity  = this.addCheckbox("identity", "None: ", true),
-		rotate90  = this.addCheckbox("rotate90", "Rot 90: ", false),
-		rotate180 = this.addCheckbox("rotate180", "Rot 180: ", false),
-		rotate270 = this.addCheckbox("rotate270", "Rot 270: ", false),
-		flipH     = this.addCheckbox("flipH", "Flip H: ", false),
-		flipV     = this.addCheckbox("flipV", "Flip V: ", false),
-		flipL     = this.addCheckbox("flipL", "Flip L: ", false),
-		flipR     = this.addCheckbox("flipR", "Flip R: ", false);
+		identity  = this.parameters.addCheckbox("identity", "None: ", true),
+		rotate90  = this.parameters.addCheckbox("rotate90", "Rot 90: ", false),
+		rotate180 = this.parameters.addCheckbox("rotate180", "Rot 180: ", false),
+		rotate270 = this.parameters.addCheckbox("rotate270", "Rot 270: ", false),
+		flipH     = this.parameters.addCheckbox("flipH", "Flip H: ", false),
+		flipV     = this.parameters.addCheckbox("flipV", "Flip V: ", false),
+		flipL     = this.parameters.addCheckbox("flipL", "Flip L: ", false),
+		flipR     = this.parameters.addCheckbox("flipR", "Flip R: ", false);
 	public GridPane
 		symmetrySettings = new GridPane();
 	public VBox
@@ -56,7 +74,7 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 		redrawing;
 
 	public WFCLayerSource(LayerSources sources) {
-		super(sources, "wfc", "Wave Function Collapse");
+		super(Type.WFC, sources);
 		this.mainSettings.add(new Label("Seed: "), 0, 0);
 		this.mainSettings.add(this.seed, 1, 0);
 		this.mainSettings.add(new Label("Kernel: "), 0, 1);
@@ -78,8 +96,6 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 		this.symmetrySettings.add(none, 1, 4);
 
 		this.mainPane.getChildren().addAll(this.mainSettings, this.symmetrySettings);
-
-		this.rootNode.setCenter(this.mainPane);
 	}
 
 	public void setAllSymmetries(boolean selected) {
@@ -108,6 +124,16 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 		(this.thread = new WorkerThread(this)).start();
 	}
 
+	@Override
+	public Node getConfigNode() {
+		return this.mainPane;
+	}
+
+	@Override
+	public LayerDependencies getDependencies() {
+		return this.dependencies;
+	}
+
 	public static class Tile {
 
 		public final int kernel;
@@ -134,45 +160,63 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 			this.hashCode = Arrays.hashCode(this.pixels);
 		}
 
-		public static Tile[] generate(HDRImage image, int kernel, int symmetries) {
-			ConcurrentHashMap<Tile, Integer> tiles = new ConcurrentHashMap<>(image.width * image.height * Symmetry.VALUES.length);
-			LinkedList<CompletableFuture<?>> futures = new LinkedList<>();
-			for (int baseY = 0; baseY < image.height; baseY++) {
-				int baseY_ = baseY;
-				for (int baseX = 0; baseX < image.width; baseX++) {
-					int baseX_ = baseX;
-					for (Symmetry symmetry : Symmetry.VALUES) {
-						if ((symmetries & symmetry.flag()) != 0) {
-							futures.add(CompletableFuture.runAsync(() -> {
-								tiles.merge(new Tile(image, baseX_, baseY_, kernel, symmetry), 1, Integer::sum);
-							}));
+		public Tile(FloatVector constant, int kernel) {
+			this.kernel = kernel;
+			this.pixels = new float[kernel * kernel * 4];
+			for (int base = 0; base < this.pixels.length; base += 4) {
+				constant.intoArray(this.pixels, base);
+			}
+			this.hashCode = Arrays.hashCode(this.pixels);
+			this.seen = 1;
+		}
+
+		public static Tile[] generate(LayerSourceInput source, int kernel, int symmetries) {
+			return switch (source) {
+				case UniformLayerSourceInput uniform -> {
+					yield new Tile[] { new Tile(uniform.getColor(), kernel) };
+				}
+				case VaryingLayerSourceInput varying -> {
+					HDRImage image = varying.getBackingLayer().image;
+					ConcurrentHashMap<Tile, Integer> tiles = new ConcurrentHashMap<>(image.width * image.height * Symmetry.VALUES.length);
+					LinkedList<CompletableFuture<?>> futures = new LinkedList<>();
+					for (int baseY = 0; baseY < image.height; baseY++) {
+						int baseY_ = baseY;
+						for (int baseX = 0; baseX < image.width; baseX++) {
+							int baseX_ = baseX;
+							for (Symmetry symmetry : Symmetry.VALUES) {
+								if ((symmetries & symmetry.flag()) != 0) {
+									futures.add(CompletableFuture.runAsync(() -> {
+										tiles.merge(new Tile(image, baseX_, baseY_, kernel, symmetry), 1, Integer::sum);
+									}));
+								}
+							}
+						}
+						if (Thread.interrupted()) {
+							yield null;
 						}
 					}
+					for (CompletableFuture<?> future; (future = futures.poll()) != null;) {
+						if (Thread.interrupted()) {
+							yield null;
+						}
+						else {
+							future.join();
+						}
+					}
+					Tile[] result = new Tile[tiles.size()];
+					{
+						int index = 0;
+						for (Map.Entry<Tile, Integer> entry : tiles.entrySet()) {
+							(result[index++] = entry.getKey()).seen = entry.getValue();
+						}
+					}
+					Arrays.sort(result, (Tile tile1, Tile tile2) -> {
+						return Arrays.compare(tile1.pixels, tile2.pixels);
+					});
+					//dumpTiles(result);
+					yield result;
 				}
-				if (Thread.interrupted()) {
-					return null;
-				}
-			}
-			for (CompletableFuture<?> future; (future = futures.poll()) != null;) {
-				if (Thread.interrupted()) {
-					return null;
-				}
-				else {
-					future.join();
-				}
-			}
-			Tile[] result = new Tile[tiles.size()];
-			{
-				int index = 0;
-				for (Map.Entry<Tile, Integer> entry : tiles.entrySet()) {
-					(result[index++] = entry.getKey()).seen = entry.getValue();
-				}
-			}
-			Arrays.sort(result, (Tile tile1, Tile tile2) -> {
-				return Arrays.compare(tile1.pixels, tile2.pixels);
-			});
-			//dumpTiles(result);
-			return result;
+			};
 		}
 
 		public static void dumpTiles(Tile[] tiles) {
@@ -279,7 +323,8 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 
 		public final WFCLayerSource layerSource;
 		public final int kernel, symmetries;
-		public HDRImage source, intermediate, writing;
+		public LayerSourceInput source;
+		public HDRImage intermediate, writing;
 		public boolean swapCalled;
 		public final RandomGenerator random;
 		public PresentationSwapper presentationSwapper;
@@ -290,7 +335,7 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 			super("Wave Function Collapse Thread");
 			this.layerSource = layerSource;
 			this.kernel = layerSource.kernel.getValue();
-			this.source = layerSource.getSingleInput(false).image;
+			this.source = layerSource.dependencies.main.getCurrent();
 			HDRImage destination = layerSource.sources.layer.image;
 			this.intermediate = new HDRImage(destination.width, destination.height);
 			this.writing = new HDRImage(destination.width, destination.height);
@@ -310,15 +355,15 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 		}
 
 		public synchronized void swapPresentation() {
-			Layer layer = this.layerSource.sources.layer;
+			LayerNode layer = this.layerSource.sources.layer;
 			HDRImage presentation = layer.image;
 			layer.image = this.intermediate;
 			this.intermediate = presentation;
 
-			this.layerSource.sources.layer.needsRedraw = true;
+			layer.graph.redrawRequested = true;
 			this.layerSource.redrawing = true;
 			try {
-				this.layerSource.sources.layer.openImage.redrawAll(true);
+				layer.graph.redrawAllImmediately(true);
 			}
 			finally {
 				this.layerSource.redrawing = false;
@@ -407,7 +452,7 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 					int imageX1 = Math.floorMod(list.x + offsetX1, this.writing.width);
 					int imageY1 = Math.floorMod(list.y + offsetY1, this.writing.height);
 					if (this.filledPixels.get(imageY1 * this.writing.width + imageX1)) {
-						FloatVector existingColor = this.writing.getPixel(imageX1, imageY1);
+						FloatVector existingColor = this.writing.getColor(imageX1, imageY1);
 						if (!color.equals(existingColor)) {
 							throw new IllegalStateException("Overwriting color at " + imageX1 + ", " + imageY1 + " from " + existingColor + " to " + color);
 						}
@@ -519,7 +564,7 @@ public class WFCLayerSource extends SingleInputEffectLayerSource {
 
 		public WorkerThread(WFCLayerSource layerSource) throws RedrawException {
 			super("Wave Function Collapse Thread");
-			this.source = layerSource.getSingleInput(false).image;
+			this.source = layerSource.getMainInput(false).image;
 			if (this.source.width > 64 || this.source.height > 64) {
 				throw new RedrawException("Child layer too large");
 			}

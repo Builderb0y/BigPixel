@@ -1,6 +1,6 @@
 package builderb0y.notgimp.scripting.tree;
 
-import builderb0y.notgimp.Layer;
+import builderb0y.notgimp.LayerNode;
 import builderb0y.notgimp.Util;
 import builderb0y.notgimp.scripting.types.VectorType;
 import builderb0y.notgimp.scripting.util.MethodInfo;
@@ -23,7 +23,7 @@ public class SampleInsnTree extends InsnTree {
 		context
 		.codeBuilder
 		.aload(context.codeBuilder.receiverSlot())
-		.getfield(context.self, this.layerName, Util.desc(Layer.class));
+		.getfield(context.self, this.layerName, Util.desc(LayerNode.class));
 		for (InsnTree argument : this.arguments) {
 			argument.emitBytecode(context);
 		}

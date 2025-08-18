@@ -15,8 +15,24 @@ import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Spinner;
 import javafx.scene.input.ScrollEvent;
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorMask;
 
 public class Util {
+
+	public static final FloatVector
+		INVISIBLACK = FloatVector.broadcast(FloatVector.SPECIES_128, 0.0F),
+		WHITE       = FloatVector.broadcast(FloatVector.SPECIES_128, 1.0F),
+		BLACK       = INVISIBLACK.withLane(HDRImage.ALPHA_OFFSET, 1.0F);
+	public static final VectorMask<Float> RGB_MASK;
+
+	static {
+		boolean[] mask = new boolean[4];
+		mask[HDRImage.  RED_OFFSET] =
+		mask[HDRImage.GREEN_OFFSET] =
+		mask[HDRImage. BLUE_OFFSET] =
+		true;
+		RGB_MASK = VectorMask.fromValues(FloatVector.SPECIES_128, mask);
+	}
 
 	public static <T> Spinner<T> setupSpinner(Spinner<T> spinner, double width) {
 		spinner.setEditable(true);

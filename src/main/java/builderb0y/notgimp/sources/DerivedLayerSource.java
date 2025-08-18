@@ -1,9 +1,7 @@
 package builderb0y.notgimp.sources;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javafx.scene.Node;
@@ -24,14 +22,15 @@ import builderb0y.notgimp.scripting.parsing.ScriptHandlers.VariableHandler;
 import builderb0y.notgimp.scripting.types.VectorOperations;
 import builderb0y.notgimp.scripting.types.VectorType;
 import builderb0y.notgimp.scripting.types.VectorType.Vec;
+import builderb0y.notgimp.sources.dependencies.DerivedLayerDependencies;
+import builderb0y.notgimp.sources.dependencies.LayerDependencies;
 
 public class DerivedLayerSource extends LayerSource {
 
-	public TextArea textArea = this.addCode("code");
+	public TextArea textArea = this.parameters.addCode("code");
 	public RateLimiter recompiler = new NonPeriodicRateLimiter(500L, () -> this.doRecompile(true));
 	public @Nullable DerivedImageScript script;
-	public Map<String, Layer> watching = Collections.emptyMap();
-	public boolean isAnimated;
+	public DerivedLayerDependencies dependencies = new DerivedLayerDependencies(this);
 	public boolean loading;
 
 	@Override
@@ -46,55 +45,34 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	public DerivedLayerSource(LayerSources sources) {
-		super(sources, "derived", "Derived");
+		super(Type.DERIVED, sources);
 		this.textArea.setFont(Font.font("monospace"));
 		this.textArea.textProperty().addListener(Util.change(this::recompile));
 	}
 
 	@Override
-	public void init(boolean fromSave) {}
-
-	@Override
-	public Collection<Layer> getDependencies() {
-		return this.watching.values();
+	public LayerDependencies getDependencies() {
+		return this.dependencies;
 	}
 
 	@Override
-	public boolean isAnimated() {
-		return this.isAnimated;
-	}
-
-	@Override
-	public Node getRootNode() {
+	public Node getConfigNode() {
 		return this.textArea;
-	}
-
-	@Override
-	public void onDeselected() {
-		super.onDeselected();
-		this.script = null;
-		this.setWatching(Collections.emptyMap(), false);
-	}
-
-	@Override
-	public void invalidateStructure() {
-		this.recompile();
-	}
-
-	public void setWatching(Map<String, Layer> watching, boolean animated) {
-		this.watching = watching;
-		this.isAnimated = animated;
 	}
 
 	@Override
 	public void doRedraw() throws RedrawException {
 		if (this.script == null) throw new RedrawException("Script failed to compile");
-		AnimationSource animation = this.sources.layer.openImage.animationSource;
+		AnimationSource animation = this.sources.layer.graph.openImage.animationSource;
 		HDRImage image = this.sources.layer.image;
 		int width = image.width;
 		int height = image.height;
 		IntVector iResolution = VectorOperations.int2_from_int_int(width, height);
 		FloatVector fRcpResolution = VectorOperations.float2_from_float(1.0F).div(VectorOperations.float2_from_int2(iResolution));
+		int frames = animation.frames.get();
+		int frame = animation.frame.get();
+		float seconds = animation.seconds.get();
+		float fraction = animation.fraction.get();
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
 				IntVector UV = VectorOperations.int2_from_int_int(x, height - y - 1);
@@ -103,10 +81,10 @@ public class DerivedLayerSource extends LayerSource {
 					UV,
 					uv,
 					iResolution,
-					animation.frames.get(),
-					animation.frame.get(),
-					animation.seconds.get(),
-					animation.fraction.get()
+					frames,
+					frame,
+					seconds,
+					fraction
 				)
 				.intoArray(image.pixels, image.baseIndex(x, y));
 			}
@@ -120,13 +98,13 @@ public class DerivedLayerSource extends LayerSource {
 
 	public void doRecompile(boolean redraw) {
 		try {
+			Map<String, LayerNode> layerMap = this.sources.layer.graph.layersByName;
 			ExpressionParser<DerivedImageScript> parser = new ExpressionParser<>(this.textArea.getText(), DerivedImageScript.class);
-			Map<String, Layer> layerMap = this.sources.layer.openImage.layerMap;
 			UsageTracker animationTracer = new UsageTracker();
 			this.script = (
 				parser
 				.addBuiltins()
-				.addLayers(this.sources.layer.item)
+				.addLayers(this.dependencies.potentialDependencies.values())
 				.configureEnvironment((ScriptEnvironment environment) -> {
 					environment
 					.addKeyword("return", KeywordHandler.returner(VectorType.FLOAT4))
@@ -141,13 +119,15 @@ public class DerivedLayerSource extends LayerSource {
 				})
 				.parse(layerMap)
 			);
-			this.setWatching(parser.usedLayers.keySet().stream().collect(Collectors.toMap(Function.identity(), layerMap::get)), animationTracer.used);
+			this.dependencies.setActualDependencies(parser.usedLayers.keySet().stream().map(layerMap::get).collect(Collectors.toSet()));
+			this.dependencies.animated = animationTracer.used;
 			if (redraw) this.requestRedraw();
 			this.sources.layer.redrawException.set(null);
 		}
 		catch (Throwable throwable) {
 			this.script = null;
-			this.setWatching(Collections.emptyMap(), false);
+			this.dependencies.setActualDependencies(Collections.emptySet());
+			this.dependencies.animated = false;
 			//throwable.printStackTrace();
 			this.sources.layer.redrawException.set(throwable);
 		}
