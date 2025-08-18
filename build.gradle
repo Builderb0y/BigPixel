@@ -42,12 +42,12 @@ dependencies {
 	implementation('net.synedra:validatorfx:0.5.0') {
 		exclude(group: 'org.openjfx')
 	}
-	implementation('org.openjfx:javafx-base:21')
-	implementation('org.openjfx:javafx-controls:21')
-	implementation('org.openjfx:javafx-graphics:21')
-	implementation('org.openjfx:javafx-base:21:linux')
-	implementation('org.openjfx:javafx-controls:21:linux')
-	implementation('org.openjfx:javafx-graphics:21:linux')
+	implementation('org.openjfx:javafx-base:24')
+	implementation('org.openjfx:javafx-controls:24')
+	implementation('org.openjfx:javafx-graphics:24')
+	implementation('org.openjfx:javafx-base:24:linux')
+	implementation('org.openjfx:javafx-controls:24:linux')
+	implementation('org.openjfx:javafx-graphics:24:linux')
 
 	testImplementation("org.junit.jupiter:junit-jupiter-api:${ junitVersion }")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${ junitVersion }")

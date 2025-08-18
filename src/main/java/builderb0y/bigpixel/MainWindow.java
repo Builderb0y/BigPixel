@@ -222,7 +222,7 @@ public class MainWindow {
 				else if (event.getDeltaY() > 0.0D) this.openImages.getSelectionModel().selectPrevious();
 			}
 		});
-		this.stage.titleProperty().bind(this.openImages.getSelectionModel().selectedItemProperty().map(Tab::getText).orElse("Not Gimp"));
+		this.stage.titleProperty().bind(this.openImages.getSelectionModel().selectedItemProperty().map(Tab::getText).orElse("Big Pixel"));
 	}
 
 	public void show() {
