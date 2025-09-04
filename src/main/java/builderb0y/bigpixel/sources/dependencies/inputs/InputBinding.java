@@ -5,8 +5,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.UnaryOperator;
 
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.image.ImageView;
 import jdk.incubator.vector.FloatVector;
@@ -29,7 +31,7 @@ public class InputBinding {
 	public LayerSource source;
 	public ColorBox colorBox;
 	public ImageView thumbnail;
-	public ComboBox<LayerSourceInput> selection;
+	public ChoiceBox<LayerSourceInput> selection;
 	public ObservableValue<LayerSourceInput> delegate;
 	public CurveHelper curve;
 
@@ -66,14 +68,12 @@ public class InputBinding {
 		}
 	}
 
-	public InputBinding(LayerSource source, ColorBoxGroup group, UnaryOperator<FloatVector> mapper) {
+	public InputBinding(LayerSource source, ColorBoxGroup group) {
 		this.source    = source;
 		this.colorBox  = group.addBox(new ColorBox(Util.WHITE));
 		this.thumbnail = new ImageView();
-		this.selection = new ComboBox<>();
-		this.delegate  = this.selection.valueProperty().map((LayerSourceInput input) -> {
-			return mapper != null ? input.mapColors(mapper) : input;
-		});
+		this.selection = new ChoiceBox<>();
+		this.delegate  = this.selection.valueProperty();
 		this.colorBox.getDisplayPane().visibleProperty().bind(this.selection.valueProperty().isEqualTo(this.colorBox));
 		this.thumbnail.visibleProperty().bind(this.selection.valueProperty().map(VaryingLayerSourceInput.class::isInstance));
 		ObservableValue<ImageView> thumbnailCopying = this.selection.valueProperty().map((LayerSourceInput input) -> {
@@ -88,6 +88,7 @@ public class InputBinding {
 		this.colorBox.color.addListener(listener);
 		this.curve = new CurveHelper(this.source.sources.layer);
 		this.selection.valueProperty().addListener(Util.change(this.curve::setOtherEnd));
+		this.selection.setPrefWidth(128.0D);
 	}
 
 	public @Nullable LayerNode getSelectedLayer() {
@@ -100,12 +101,13 @@ public class InputBinding {
 		inputs.addAll(layers);
 		inputs.sort(Comparator.comparing(LayerNode::getDisplayName, String.CASE_INSENSITIVE_ORDER));
 		inputs.addFirst(this.colorBox);
-		LayerNode selected = this.getSelectedLayer();
+		LayerSourceInput selected = this.selection.getValue();
 		this.selection.getItems().setAll(inputs);
 		this.selection.setValue(
-			selected == null || !layers.contains(selected)
-			? this.colorBox
-			: selected
+			selected instanceof VaryingLayerSourceInput varying
+			&& layers.contains(varying.getBackingLayer())
+			? selected
+			: this.colorBox
 		);
 	}
 

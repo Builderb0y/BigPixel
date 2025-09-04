@@ -4,14 +4,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.layout.GridPane;
-import jdk.incubator.vector.FloatVector;
-import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.LayerNode;
@@ -61,12 +58,8 @@ public class NamedLayerDependencies extends LayerDependencies {
 		return binding;
 	}
 
-	public UnmovableInputBinding addBinding(String saveName, String displayName, @Nullable UnaryOperator<FloatVector> mapper) {
-		return this.addBinding(saveName, new UnmovableInputBinding(this.source, displayName, this.colorBoxGroup, mapper));
-	}
-
 	public UnmovableInputBinding addBinding(String saveName, String displayName) {
-		return this.addBinding(saveName, displayName, null);
+		return this.addBinding(saveName, new UnmovableInputBinding(this.source, displayName, this.colorBoxGroup));
 	}
 
 	public void addExtraNodeRow(Node node) {

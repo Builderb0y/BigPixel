@@ -2,23 +2,13 @@ package builderb0y.bigpixel.sources;
 
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
-import builderb0y.bigpixel.sources.dependencies.NamedLayerDependencies;
-import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
+import builderb0y.bigpixel.sources.dependencies.MainDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
 
 public class PassthroughLayerSource extends LayerSource {
 
-	public static class Dependencies extends NamedLayerDependencies {
-
-		public InputBinding main = this.addBinding("main", "Input: ");
-
-		public Dependencies(LayerSource source) {
-			super(source);
-		}
-	}
-
-	public Dependencies dependencies = new Dependencies(this);
+	public MainDependencies dependencies = new MainDependencies(this);
 
 	public PassthroughLayerSource(LayerSources sources) {
 		super(Type.PASSTHROUGH, sources);

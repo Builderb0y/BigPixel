@@ -21,7 +21,6 @@ public class NormalizeLayerSource extends PerPixelLayerSource {
 	@Override
 	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
 		HDRImage destination = this.sources.layer.image;
-		boolean perChannel = this.perChannel.isSelected();
 		FloatVector min = FloatVector.broadcast(FloatVector.SPECIES_128, Float.POSITIVE_INFINITY);
 		FloatVector max = FloatVector.broadcast(FloatVector.SPECIES_128, Float.NEGATIVE_INFINITY);
 		for (int y = 0; y < destination.height; y++) {
@@ -35,7 +34,7 @@ public class NormalizeLayerSource extends PerPixelLayerSource {
 				}
 			}
 		}
-		if (!perChannel) {
+		if (!this.perChannel.isSelected()) {
 			min = FloatVector.broadcast(FloatVector.SPECIES_128, min.reduceLanes(VectorOperators.MIN));
 			max = FloatVector.broadcast(FloatVector.SPECIES_128, max.reduceLanes(VectorOperators.MAX));
 		}
@@ -58,7 +57,7 @@ public class NormalizeLayerSource extends PerPixelLayerSource {
 
 		@Override
 		public FloatVector apply(int x, int y, FloatVector original) {
-			return VectorOperations.unmix_float4_float4_float4(this.min, this.max, original).blend(original, this.min.lt(this.max));
+			return original.blend(VectorOperations.unmix_float4_float4_float4(this.min, this.max, original), this.min.lt(this.max));
 		}
 	}
 }

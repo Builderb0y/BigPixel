@@ -1,20 +1,22 @@
 package builderb0y.bigpixel.sources.dependencies.inputs;
 
 import java.util.Collections;
-import java.util.function.UnaryOperator;
 
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
-import jdk.incubator.vector.FloatVector;
 
+import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.dependencies.MultiLayerDependencies;
 
 public class MovableInputBinding extends InputBinding {
 
+	public CheckBox
+		enabled = new CheckBox();
 	public Button
 		up = new Button("⏶"),
 		down = new Button("⏷"),
@@ -22,8 +24,20 @@ public class MovableInputBinding extends InputBinding {
 	public GridPane
 		gridPane = new GridPane();
 
-	public MovableInputBinding(MultiLayerDependencies dependencies, ColorBoxGroup group, UnaryOperator<FloatVector> mapper) {
-		super(dependencies.source, group, mapper);
+	@Override
+	public JsonMap save() {
+		return super.save().with("enabled", this.enabled.isSelected());
+	}
+
+	@Override
+	public void load(JsonMap map) {
+		super.load(map);
+		this.enabled.setSelected(map.getBoolean("enabled"));
+	}
+
+	public MovableInputBinding(MultiLayerDependencies dependencies, ColorBoxGroup group) {
+		super(dependencies.source, group);
+		this.enabled.setSelected(true);
 		this.up.getStyleClass().remove("button");
 		this.down.getStyleClass().remove("button");
 		this.delete.getStyleClass().remove("button");
@@ -33,12 +47,13 @@ public class MovableInputBinding extends InputBinding {
 		this.up.visibleProperty().bind(this.gridPane.hoverProperty());
 		this.down.visibleProperty().bind(this.gridPane.hoverProperty());
 		this.delete.visibleProperty().bind(this.gridPane.hoverProperty());
-		this.gridPane.add(this.thumbnail, 0, 0, 1, 2);
-		this.gridPane.add(this.colorBox.getDisplayPane(), 0, 0, 1, 2);
-		this.gridPane.add(this.selection, 1, 0, 1, 2);
-		this.gridPane.add(this.up, 2, 0, 1, 1);
-		this.gridPane.add(this.down, 2, 1, 1, 1);
-		this.gridPane.add(this.delete, 3, 0, 1, 2);
+		this.gridPane.add(this.enabled, 0, 0, 1, 2);
+		this.gridPane.add(this.thumbnail, 1, 0, 1, 2);
+		this.gridPane.add(this.colorBox.getDisplayPane(), 1, 0, 1, 2);
+		this.gridPane.add(this.selection, 2, 0, 1, 2);
+		this.gridPane.add(this.up, 3, 0, 1, 1);
+		this.gridPane.add(this.down, 3, 1, 1, 1);
+		this.gridPane.add(this.delete, 4, 0, 1, 2);
 		this.gridPane.setHgap(4.0D);
 		this.up.setOnAction((ActionEvent _) -> {
 			ObservableList<MovableInputBinding> items = dependencies.listView.getItems();
@@ -53,10 +68,6 @@ public class MovableInputBinding extends InputBinding {
 		this.delete.setOnAction((ActionEvent _) -> {
 			dependencies.removeInput(this);
 		});
-	}
-
-	public MovableInputBinding(MultiLayerDependencies dependencies, ColorBoxGroup group) {
-		this(dependencies, group, null);
 	}
 
 	public Pane getDisplayPane() {

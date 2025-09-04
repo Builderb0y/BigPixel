@@ -15,6 +15,9 @@ import javafx.geometry.Side;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -172,6 +175,15 @@ public class LayerGraph {
 				newLayer.getColorNode().pseudoClassStateChanged(LayerNode.SELECTED, true);
 			}
 		}));
+		this.mainScroll.setOnDragOver((DragEvent event) -> {
+			if (event.getDragboard().hasContent(DataFormat.FILES)) {
+				event.acceptTransferModes(TransferMode.COPY);
+			}
+		});
+		this.mainScroll.setOnDragDropped((DragEvent event) -> {
+			this.openImage.mainWindow.pasteFromClipboardToNewLayer(event.getDragboard());
+			event.consume();
+		});
 	}
 
 	public String adjustName(String displayName) {

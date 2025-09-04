@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import javafx.application.Platform;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
@@ -248,13 +249,13 @@ public class MainWindow {
 					}
 					case V -> {
 						if (event.isShiftDown()) {
-							this.openFromClipboard();
+							this.openFromClipboard(Clipboard.getSystemClipboard());
 						}
 						else if (event.isAltDown()) {
-							this.pasteFromClipboardToNewLayer();
+							this.pasteFromClipboardToNewLayer(Clipboard.getSystemClipboard());
 						}
 						else {
-							this.pasteFromClipboardSameLayer();
+							this.pasteFromClipboardSameLayer(Clipboard.getSystemClipboard());
 						}
 					}
 					case N -> {
@@ -306,6 +307,14 @@ public class MainWindow {
 				}
 			}
 		}));
+		scene.setOnDragOver((DragEvent event) -> {
+			if (event.getDragboard().hasContent(DataFormat.FILES)) {
+				event.acceptTransferModes(TransferMode.COPY);
+			}
+		});
+		scene.setOnDragDropped((DragEvent event) -> {
+			this.openFromClipboard(event.getDragboard());
+		});
 		this.stage.setScene(scene);
 		this.stage.getIcons().add(Assets.ICON);
 		this.stage.show();
@@ -347,27 +356,33 @@ public class MainWindow {
 		return tab != null ? ((OpenImage)(tab.getUserData())) : null;
 	}
 
-	public void openFromClipboard() {
-		NamedImage[] images = this.getClipboardImage();
+	/*
+	public void openFromClipboard(Clipboard clipboard) {
+		NamedImage[] images = this.getClipboardImage(clipboard);
 		if (images != null) {
 			for (NamedImage image : images) {
 				OpenImage openImage = new OpenImage(this);
 				LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, image.image.width, image.image.height, image.name);
 				layer.sources.manualSource().toollessImage.doCopyFrom(image.image);
+				layer.graph.visibleLayer.selectToggle(layer.showing);
+				layer.graph.selectedLayer.set(layer);
+				layer.graph.centerLayer(null);
 				openImage.layerGraph.addLayer(layer, false);
+				openImage.file.set(image.source);
 				this.addOpenImage(image.name, openImage);
 				layer.requestRedraw();
 			}
 		}
 	}
+	*/
 
-	public void pasteFromClipboardToNewLayer() {
+	public void pasteFromClipboardToNewLayer(Clipboard clipboard) {
 		OpenImage openImage = this.getCurrentImage();
 		if (openImage == null) {
-			this.openFromClipboard();
+			this.openFromClipboard(clipboard);
 			return;
 		}
-		NamedImage[] images = this.getClipboardImage();
+		NamedImage[] images = this.getClipboardImage(clipboard);
 		if (images != null) {
 			LayerNode selected = openImage.layerGraph.selectedLayer.get();
 			int x = selected.getGridX();
@@ -385,13 +400,13 @@ public class MainWindow {
 		}
 	}
 
-	public void pasteFromClipboardSameLayer() {
+	public void pasteFromClipboardSameLayer(Clipboard clipboard) {
 		OpenImage openImage = this.getCurrentImage();
 		if (openImage == null) {
-			this.openFromClipboard();
+			this.openFromClipboard(clipboard);
 			return;
 		}
-		NamedImage[] images = this.getClipboardImage();
+		NamedImage[] images = this.getClipboardImage(clipboard);
 		if (images != null) {
 			if (images.length == 1) {
 				LayerNode layer = openImage.layerGraph.selectedLayer.get();
@@ -426,14 +441,14 @@ public class MainWindow {
 		}
 	}
 
-	public static record NamedImage(String name, HDRImage image) {}
+	public static record NamedImage(@Nullable File source, String name, HDRImage image) {}
 
-	public NamedImage @Nullable [] getClipboardImage() {
-		Clipboard clipboard = Clipboard.getSystemClipboard();
-		HDRImage hdr = (HDRImage)(clipboard.getContent(HDRImage.HDR_DATA_FORMAT));
-		if (hdr != null) return new NamedImage[] { new NamedImage("Pasted image", hdr) };
+	public NamedImage @Nullable [] getClipboardImage(Clipboard clipboard) {
+		if (clipboard.getContent(HDRImage.HDR_DATA_FORMAT) instanceof HDRImage hdr) {
+			return new NamedImage[] { new NamedImage(null, "Pasted image", hdr) };
+		}
 		Image image = clipboard.getImage();
-		if (image != null) return new NamedImage[] { new NamedImage("Pasted image", new HDRImage(image)) };
+		if (image != null) return new NamedImage[] { new NamedImage(null, "Pasted image", new HDRImage(image)) };
 		List<File> files = clipboard.getFiles();
 		if (files != null) {
 			return (
@@ -448,7 +463,7 @@ public class MainWindow {
 				})
 				.map((File file) -> {
 					try {
-						return new NamedImage(file.getName(), new HDRImage(new Image(new FileInputStream(file))));
+						return new NamedImage(file, file.getName(), new HDRImage(new Image(new FileInputStream(file))));
 					}
 					catch (FileNotFoundException exception) {
 						System.err.println("File not found: " + file.getAbsolutePath());
@@ -499,6 +514,15 @@ public class MainWindow {
 		List<File> files = fileChooser.showOpenMultipleDialog(this.stage);
 		if (files != null && !files.isEmpty()) {
 			this.lastOpenedDirectory = files.getFirst().getParentFile();
+			for (File file : files) {
+				this.doOpen(file);
+			}
+		}
+	}
+
+	public void openFromClipboard(Clipboard clipboard) {
+		List<File> files = clipboard.getFiles();
+		if (files != null && !files.isEmpty()) {
 			for (File file : files) {
 				this.doOpen(file);
 			}

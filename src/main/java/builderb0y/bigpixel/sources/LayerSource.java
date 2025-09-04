@@ -99,6 +99,7 @@ public abstract class LayerSource {
 		CLIFF_CURVE   ("cliff",          "Cliff Curve",       CliffCurveLayerSource::new),
 		CONVOLVE      ("convolve",       "Convolve",            ConvolveLayerSource::new),
 		K_MEANS       ("kmeans",         "K-Means",               KMeansLayerSource::new),
+		TILE          ("tile",           "Tile",                    TileLayerSource::new),
 		WFC           ("wfc",            "Wave Function Collapse",   WFCLayerSource::new),
 		DERIVED       ("derived",        "Derived",              DerivedLayerSource::new);
 

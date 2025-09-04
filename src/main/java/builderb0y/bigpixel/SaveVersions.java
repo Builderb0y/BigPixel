@@ -6,7 +6,7 @@ import builderb0y.bigpixel.json.*;
 
 public class SaveVersions {
 
-	public static final int CURRENT = 3;
+	public static final int CURRENT = 4;
 
 	@SuppressWarnings({ "fallthrough", "DefaultNotLastCaseInSwitch" })
 	public static void process(JsonMap map) {
@@ -16,7 +16,8 @@ public class SaveVersions {
 			case 0: process0(map);
 			case 1: process1(map);
 			case 2: process2(map);
-			case 3:
+			case 3: process3(map);
+			case 4:
 		}
 	}
 
@@ -55,6 +56,20 @@ public class SaveVersions {
 			.with("selected_layer", root.removeString("selected_layer"))
 		);
 		root.put("layer_graph", layerGraph);
+	}
+
+	public static void process3(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap tab = layer.asMap().getMap("sources").getMap("tab");
+			switch (tab.getString("type")) {
+				case "add", "alpha", "avg", "max", "min", "mul", "screen" -> {
+					for (JsonValue dependency : tab.getMap("dependencies").getArray("main")) {
+						dependency.asMap().put("enabled", true);
+					}
+				}
+				default -> {}
+			}
+		}
 	}
 
 	public static int findMaxDepthOfLayerTree(JsonMap layer) {
@@ -120,6 +135,7 @@ public class SaveVersions {
 				.with("from_end", wrapColor(source.getArray("from_end")))
 				.with("to_start", wrapColor(source.getArray("to_start")))
 				.with("to_end", wrapColor(source.getArray("to_end")));
+				source.putIfAbsent("per_channel", JsonBoolean.FALSE);
 			}
 			case "color_matrix" -> {
 				dependencies

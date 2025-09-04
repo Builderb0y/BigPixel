@@ -30,26 +30,16 @@ import builderb0y.bigpixel.FastRandom;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
-import builderb0y.bigpixel.sources.dependencies.NamedLayerDependencies;
+import builderb0y.bigpixel.sources.dependencies.MainDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
 import builderb0y.bigpixel.tools.Symmetry;
 
 public class WFCLayerSource extends LayerSource {
 
-	public static class Dependencies extends NamedLayerDependencies {
-
-		public UnmovableInputBinding main = this.addBinding("main", "Input: ");
-
-		public Dependencies(LayerSource source) {
-			super(source);
-		}
-	}
-
-	public Dependencies
-		dependencies = new Dependencies(this);
+	public MainDependencies
+		dependencies = new MainDependencies(this);
 	public Spinner<Integer>
 		seed      = this.parameters.addIntSpinner("seed", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80.0D),
 		kernel    = this.parameters.addIntSpinner("kernel", 2, 8, 1, 1, 80.0D);

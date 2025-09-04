@@ -2,7 +2,6 @@ package builderb0y.bigpixel.sources.dependencies;
 
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import javafx.collections.FXCollections;
@@ -17,11 +16,10 @@ import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
-import jdk.incubator.vector.FloatVector;
-import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
@@ -33,7 +31,6 @@ public class MultiLayerDependencies extends LayerDependencies {
 
 	public LayerSource source;
 	public ColorBoxGroup colorBoxGroup;
-	public @Nullable UnaryOperator<FloatVector> mapper;
 	public ListView<MovableInputBinding> listView = new ListView<>();
 	public Button addButton = new Button("+");
 	public HBox bottomPane = new HBox(this.addButton);
@@ -61,9 +58,8 @@ public class MultiLayerDependencies extends LayerDependencies {
 		while (inputs.size() > index) inputs.removeLast();
 	}
 
-	public MultiLayerDependencies(LayerSource source, @Nullable UnaryOperator<FloatVector> mapper) {
+	public MultiLayerDependencies(LayerSource source) {
 		this.source = source;
-		this.mapper = mapper;
 		super();
 		ColorHelper colorHelper = source.sources.layer.graph.openImage.mainWindow.colorPicker.currentColor;
 		this.colorBoxGroup = new ColorBoxGroup(colorHelper, this.listView);
@@ -94,16 +90,13 @@ public class MultiLayerDependencies extends LayerDependencies {
 		this.addButton.setOnAction((ActionEvent _) -> this.addInput());
 	}
 
-	public MultiLayerDependencies(LayerSource source) {
-		this(source, null);
-	}
-
 	public void addInput() {
-		MovableInputBinding binding = new MovableInputBinding(this, this.colorBoxGroup, this.mapper);
+		MovableInputBinding binding = new MovableInputBinding(this, this.colorBoxGroup);
 		LayerNode layer = this.source.sources.layer;
 		binding.retainAll(layer.graph.getPossibleDependencies(layer));
 		this.listView.getItems().add(binding);
 		binding.curve.selfSourceIsSelected.set(true);
+		binding.enabled.selectedProperty().addListener(Util.change(this.source::requestRedraw));
 	}
 
 	public void removeInput(MovableInputBinding binding) {

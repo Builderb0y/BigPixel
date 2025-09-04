@@ -1,5 +1,6 @@
 package builderb0y.bigpixel.sources;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import jdk.incubator.vector.FloatVector;
@@ -10,6 +11,7 @@ import builderb0y.bigpixel.sources.dependencies.MultiLayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.MovableInputBinding;
 
 public abstract class MultiInputLayerSource extends LayerSource {
 
@@ -19,13 +21,14 @@ public abstract class MultiInputLayerSource extends LayerSource {
 		super(type, sources);
 	}
 
-	public List<? extends InputBinding> ensureSameSize() throws RedrawException {
-		List<? extends InputBinding> inputs = this.dependencies.listView.getItems();
+	public List<InputBinding> ensureSameSize() throws RedrawException {
+		List<MovableInputBinding> inputs = this.dependencies.listView.getItems();
 		if (inputs.isEmpty()) {
 			throw new RedrawException("No inputs");
 		}
+		List<InputBinding> filtered = new ArrayList<>(inputs.size());
 		HDRImage first = null;
-		for (InputBinding input : inputs) {
+		for (MovableInputBinding input : inputs) {
 			if (input.selection.getValue() instanceof VaryingLayerSourceInput varying) {
 				HDRImage image = varying.getBackingLayer().image;
 				if (first == null) {
@@ -35,12 +38,18 @@ public abstract class MultiInputLayerSource extends LayerSource {
 					throw new RedrawException("All layer-based dependencies must have the same resolution");
 				}
 			}
+			if (input.enabled.isSelected()) {
+				filtered.add(input);
+			}
+		}
+		if (filtered.isEmpty()) {
+			throw new RedrawException("No enabled inputs");
 		}
 		HDRImage destination = this.sources.layer.image;
 		if (first != null) {
 			destination.checkSize(first.width, first.height, false);
 		}
-		return inputs;
+		return filtered;
 	}
 
 	public abstract MultiInputAccumulator getAccumulator();

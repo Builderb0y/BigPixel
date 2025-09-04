@@ -62,23 +62,6 @@ public class ColorBox implements UniformLayerSourceInput {
 		return this.color.get();
 	}
 
-	@Override
-	public UniformLayerSourceInput mapColors(UnaryOperator<FloatVector> operator) {
-		ObservableValue<FloatVector> mappedColor = this.color.map(operator);
-		return new UniformLayerSourceInput() {
-
-			@Override
-			public FloatVector getColor() {
-				return mappedColor.getValue();
-			}
-
-			@Override
-			public UniformLayerSourceInput mapColors(UnaryOperator<FloatVector> operator2) {
-				return ColorBox.this.mapColors((FloatVector color) -> operator2.apply(operator.apply(color)));
-			}
-		};
-	}
-
 	public Pane getDisplayPane() {
 		return this.box.getRootPane();
 	}

@@ -34,7 +34,7 @@ public class ScreenLayerSource extends MultiInputLayerSource {
 
 		@Override
 		public void preprocess(HDRImage image, List<? extends InputBinding> bindings) {
-			Arrays.fill(image.pixels, 0.0F);
+			Arrays.fill(image.pixels, 1.0F);
 		}
 
 		@Override
@@ -51,7 +51,7 @@ public class ScreenLayerSource extends MultiInputLayerSource {
 			for (int base = 0; base < image.pixels.length; base += 4) {
 				Util.WHITE.sub(FloatVector.fromArray(FloatVector.SPECIES_128, image.pixels, base)).intoArray(image.pixels, base);
 			}
-			if (alphaWeighting) {
+			if (this.alphaWeighting) {
 				for (int base = HDRImage.ALPHA_OFFSET; base < image.pixels.length; base += 4) {
 					image.pixels[base] = 1.0F;
 				}

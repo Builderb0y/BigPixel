@@ -43,10 +43,12 @@ public class History implements Comparable<History> {
 	}
 
 	public static void onLayerDeleted(LayerNode layer) {
-		System.out.println("Deleting history for layer " + layer.getDisplayName());
+		long oldMemory = currentMemory;
 		History history = layer.sources.manualSource().history;
 		history.clear();
 		ALL_HISTORIES.remove(history);
+		long newMemory = currentMemory;
+		System.out.println("Deleted history for layer " + layer.getDisplayName() + ": " + oldMemory + " -> " + newMemory + " (" + (newMemory - oldMemory) + ')');
 	}
 
 	public void undo() {

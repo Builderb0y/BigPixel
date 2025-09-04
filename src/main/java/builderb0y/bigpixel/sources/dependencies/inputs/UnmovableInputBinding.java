@@ -1,11 +1,8 @@
 package builderb0y.bigpixel.sources.dependencies.inputs;
 
-import java.util.function.UnaryOperator;
-
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
-import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.LayerSource;
@@ -14,13 +11,9 @@ public class UnmovableInputBinding extends InputBinding {
 
 	public Label displayName;
 
-	public UnmovableInputBinding(LayerSource source, String displayName, ColorBoxGroup group, UnaryOperator<FloatVector> mapper) {
-		super(source, group, mapper);
-		this.displayName = new Label(displayName);
-	}
-
 	public UnmovableInputBinding(LayerSource source, String displayName, ColorBoxGroup group) {
-		this(source, displayName, group, null);
+		super(source, group);
+		this.displayName = new Label(displayName);
 	}
 
 	public void setDisabled(boolean disabled) {
