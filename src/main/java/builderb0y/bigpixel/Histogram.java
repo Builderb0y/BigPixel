@@ -35,10 +35,10 @@ public class Histogram {
 	}
 
 	public void redrawNone() {
-		this.redrawCanvas(this.canvas.display);
+		this.redrawCanvas(this.canvas);
 	}
 
-	public void redrawCanvas(Canvas canvas) {
+	public void redrawCanvas(CanvasHelper canvas) {
 		OpenImage image = this.window.getCurrentImage();
 		if (image != null) {
 			this.redraw(canvas, image.layerGraph.visibleLayerProperty.getValue());
@@ -46,14 +46,14 @@ public class Histogram {
 	}
 
 	public void redrawLayer(LayerNode layer) {
-		this.redraw(this.canvas.display, layer);
+		this.redraw(this.canvas, layer);
 	}
 
-	public void redraw(Canvas canvas, LayerNode layer) {
-		int width = (int)(canvas.getWidth());
-		int height = (int)(canvas.getHeight());
+	public void redraw(CanvasHelper canvas, LayerNode layer) {
+		int width = (int)(canvas.display.getWidth());
+		int height = (int)(canvas.display.getHeight());
 		if (width == 0 || height == 0) return;
-		byte[] colors = new byte[width * height * 4];
+		byte[] colors = canvas.pixels;
 		for (int index = 3; index < colors.length; index += 4) {
 			colors[index] = -1;
 		}

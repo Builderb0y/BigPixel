@@ -101,6 +101,10 @@ public class F3Menu {
 		this.hover.setText("Hover: " + x + ", " + y);
 	}
 
+	public void clearHoverPos() {
+		this.hover.setText("Hover: n/a");
+	}
+
 	public void updateZoom(double zoom) {
 		this.zoom.setText("Zoom: " + zoom + 'x');
 	}

@@ -7,9 +7,7 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-import javafx.application.Platform;
 import javafx.beans.binding.BooleanBinding;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener.Change;
 import javafx.event.ActionEvent;
@@ -32,11 +30,13 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.ColorSelector.SavedColor;
 import builderb0y.bigpixel.HDRImage.SaveProgress;
+import builderb0y.bigpixel.projectors.ImageProjector;
+import builderb0y.bigpixel.projectors.ImageProjector.Texcoord;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.json.JsonReader;
 import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.ManualLayerSource;
-import builderb0y.bigpixel.tools.MoveTool;
+import builderb0y.bigpixel.tools.MoveTool.Work;
 import builderb0y.bigpixel.tools.SourcelessTool;
 import builderb0y.bigpixel.tools.Tool;
 import builderb0y.bigpixel.tools.Tool.Selection;
@@ -57,6 +57,9 @@ public class MainWindow {
 		fileMenu = new Menu("File"),
 		editMenu = new Menu("Edit"),
 		viewMenu = new Menu("View");
+	public ToggleGroup
+		themeToggleGroup = new ToggleGroup(),
+		projectorToggleGroup = new ToggleGroup();
 	public MenuItem
 		fileNewMenuItem        = new MenuItem("New..."),
 		fileOpenMenuItem       = new MenuItem("Open..."),
@@ -65,11 +68,13 @@ public class MainWindow {
 		fileExportMenuItem     = new MenuItem("Export visible layer"),
 		fileExportAsMenuItem   = new MenuItem("Export visible layer as..."),
 		editUndoMenuItem       = new MenuItem(),
-		editRedoMenuItem       = new MenuItem(),
-		viewLightThemeMenuItem = new MenuItem("Light theme"),
-		viewDarkThemeMenuItem  = new MenuItem("Dark theme");
-	public CheckMenuItem
-		viewTilingMenuItem = new CheckMenuItem("Tile view");
+		editRedoMenuItem       = new MenuItem();
+	public RadioMenuItem
+		viewLightThemeMenuItem = new RadioMenuItem("Light theme"),
+		viewDarkThemeMenuItem  = new RadioMenuItem("Dark theme"),
+		viewFlatClampedMenuItem = new RadioMenuItem("Flat"),
+		viewFlatTilingMenuItem = new RadioMenuItem("Flat (tiling)"),
+		viewCubeMenuItem = new RadioMenuItem("Cube");
 	public TabPane
 		openImages = new TabPane();
 	public ObservableValue<OpenImage>
@@ -82,8 +87,6 @@ public class MainWindow {
 		histogramAndAnimation = new TabPane();
 	public File
 		lastOpenedDirectory = new File(System.getProperty("user.dir"));
-	public SimpleObjectProperty<String>
-		styleSheetName = new SimpleObjectProperty<>("assets/themes/light.css");
 
 	public MainWindow(Stage stage) {
 		this.stage = stage;
@@ -99,7 +102,14 @@ public class MainWindow {
 			this.editUndoMenuItem,
 			this.editRedoMenuItem
 		);
-		this.viewMenu.getItems().addAll(this.viewLightThemeMenuItem, this.viewDarkThemeMenuItem, this.viewTilingMenuItem);
+		this.viewMenu.getItems().addAll(
+			this.viewFlatClampedMenuItem,
+			this.viewFlatTilingMenuItem,
+			this.viewCubeMenuItem,
+			new SeparatorMenuItem(),
+			this.viewLightThemeMenuItem,
+			this.viewDarkThemeMenuItem
+		);
 		this.menuBar.getMenus().addAll(this.fileMenu, this.editMenu, this.viewMenu);
 		Tab colorPickerTab = new Tab("Color Picker", this.colorPicker.mainPane);
 		Tab histogramTab = new Tab("Histogram", this.histogram.getRootNode());
@@ -174,40 +184,42 @@ public class MainWindow {
 		this.editRedoMenuItem.disableProperty().bind(redoText.map((String _) -> Boolean.FALSE).orElse(Boolean.TRUE));
 		this.editUndoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.getCurrentSource())).history.undo());
 		this.editRedoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.getCurrentSource())).history.redo());
-		this.viewLightThemeMenuItem.setOnAction((ActionEvent _) -> {
-			this.styleSheetName.set("assets/themes/light.css");
-		});
-		this.viewDarkThemeMenuItem.setOnAction((ActionEvent _) -> {
-			this.styleSheetName.set("assets/themes/dark.css");
-		});
-		this.bottomSplit.getStylesheets().add("assets/themes/dark.css");
-		this.styleSheetName.addListener((ObservableValue<? extends String> _, String oldValue, String newValue) -> {
-			this.bottomSplit.getStylesheets().remove(oldValue);
-			this.bottomSplit.getStylesheets().add(newValue);
-		});
-		this.viewTilingMenuItem.disableProperty().bind(noOpenFile);
-		this.viewTilingMenuItem.selectedProperty().bindBidirectional(new SimpleObjectProperty<>() {
 
-			{
-				MainWindow.this.openImages.getSelectionModel().selectedItemProperty().addListener(
-					Util.change(this::fireValueChangedEvent)
-				);
-			}
-
-			@Override
-			public Boolean get() {
-				Tab tab = MainWindow.this.openImages.getSelectionModel().getSelectedItem();
-				return tab != null && ((OpenImage)(tab.getUserData())).wrap.get();
-			}
-
-			@Override
-			public void set(Boolean newValue) {
-				Tab tab = MainWindow.this.openImages.getSelectionModel().getSelectedItem();
-				if (tab != null) {
-					((OpenImage)(tab.getUserData())).wrap.set(newValue);
+		this.viewLightThemeMenuItem.setUserData("assets/themes/light.css");
+		this.viewDarkThemeMenuItem.setUserData("assets/themes/dark.css");
+		this.viewLightThemeMenuItem.setToggleGroup(this.themeToggleGroup);
+		this.viewDarkThemeMenuItem.setToggleGroup(this.themeToggleGroup);
+		this.themeToggleGroup.selectToggle(this.viewDarkThemeMenuItem);
+		this.themeToggleGroup.selectedToggleProperty().addListener(Util.change((Toggle oldToggle, Toggle newToggle) -> {
+			this.bottomSplit.getStylesheets().remove((String)(oldToggle.getUserData()));
+			this.bottomSplit.getStylesheets().add((String)(newToggle.getUserData()));
+		}));
+		this.themeToggleGroup.selectToggle(this.viewDarkThemeMenuItem);
+		this.bottomSplit.getStylesheets().add("assets/themes/dark.css"); //why is this necessary?
+		this.viewFlatClampedMenuItem.setToggleGroup(this.projectorToggleGroup);
+		this.viewFlatTilingMenuItem.setToggleGroup(this.projectorToggleGroup);
+		this.viewCubeMenuItem.setToggleGroup(this.projectorToggleGroup);
+		this.viewFlatClampedMenuItem.disableProperty().bind(noOpenFile);
+		this.viewFlatTilingMenuItem.disableProperty().bind(noOpenFile);
+		this.viewCubeMenuItem.disableProperty().bind(noOpenFile);
+		this.viewFlatClampedMenuItem.setUserData(ImageProjector.Type.FLAT_CLAMPED);
+		this.viewFlatTilingMenuItem.setUserData(ImageProjector.Type.FLAT_TILING);
+		this.viewCubeMenuItem.setUserData(ImageProjector.Type.CUBE);
+		this.openImages.getSelectionModel().selectedItemProperty().addListener(Util.change((Tab newTab) -> {
+			this.projectorToggleGroup.selectToggle(
+				switch (((OpenImage)(newTab.getUserData())).imageDisplay.currentProjectorType.get()) {
+					case FLAT_CLAMPED -> this.viewFlatClampedMenuItem;
+					case FLAT_TILING -> this.viewFlatTilingMenuItem;
+					case CUBE -> this.viewCubeMenuItem;
 				}
+			);
+		}));
+		this.projectorToggleGroup.selectedToggleProperty().addListener(Util.change((Toggle toggle) -> {
+			OpenImage image = this.getCurrentImage();
+			if (image != null) {
+				image.imageDisplay.currentProjectorType.set((ImageProjector.Type)(toggle.getUserData()));
 			}
-		});
+		}));
 		this.colorPicker.init();
 		this.openImages.getTabs().addListener((Change<? extends Tab> change) -> {
 			while (change.next()) {
@@ -356,26 +368,6 @@ public class MainWindow {
 		return tab != null ? ((OpenImage)(tab.getUserData())) : null;
 	}
 
-	/*
-	public void openFromClipboard(Clipboard clipboard) {
-		NamedImage[] images = this.getClipboardImage(clipboard);
-		if (images != null) {
-			for (NamedImage image : images) {
-				OpenImage openImage = new OpenImage(this);
-				LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, image.image.width, image.image.height, image.name);
-				layer.sources.manualSource().toollessImage.doCopyFrom(image.image);
-				layer.graph.visibleLayer.selectToggle(layer.showing);
-				layer.graph.selectedLayer.set(layer);
-				layer.graph.centerLayer(null);
-				openImage.layerGraph.addLayer(layer, false);
-				openImage.file.set(image.source);
-				this.addOpenImage(image.name, openImage);
-				layer.requestRedraw();
-			}
-		}
-	}
-	*/
-
 	public void pasteFromClipboardToNewLayer(Clipboard clipboard) {
 		OpenImage openImage = this.getCurrentImage();
 		if (openImage == null) {
@@ -419,15 +411,17 @@ public class MainWindow {
 					HDRImage copied = images[0].image;
 					int width = Math.min(copied.width, manual.toollessImage.width);
 					int height = Math.min(copied.height, manual.toollessImage.height);
-					manual.moveTool.work = new MoveTool.Work(copied);
+					manual.moveTool.work = new Work(copied);
 					manual.moveTool.work.x2 = width - 1;
 					manual.moveTool.work.y2 = height - 1;
 
-					double zoom = openImage.imageDisplay.zoom.getValue();
-					int hoveredX = (int)(Math.floor((openImage.imageDisplay.lastMouseX - openImage.imageDisplay.offsetX) / zoom));
-					int hoveredY = (int)(Math.floor((openImage.imageDisplay.lastMouseY - openImage.imageDisplay.offsetY) / zoom));
-					manual.moveTool.work.offsetX = hoveredX - (width  >> 1);
-					manual.moveTool.work.offsetY = hoveredY - (height >> 1);
+					Texcoord hovered = openImage.imageDisplay.getProjector().project(openImage.imageDisplay.lastMouseX, openImage.imageDisplay.lastMouseY);
+					if (hovered == null) {
+						HDRImage image = openImage.layerGraph.visibleLayerProperty.getValue().image;
+						hovered = new Texcoord(image.width >> 1, image.height >> 1);
+					}
+					manual.moveTool.work.offsetX = hovered.x - (width >> 1);
+					manual.moveTool.work.offsetY = hovered.y - (height >> 1);
 
 					layer.requestRedraw();
 				}
