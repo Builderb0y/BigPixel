@@ -3,6 +3,9 @@ package builderb0y.bigpixel;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.*;
+import java.io.ObjectInputFilter.FilterInfo;
+import java.io.ObjectInputFilter.Status;
+import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.zip.GZIPInputStream;
@@ -15,15 +18,19 @@ import javafx.scene.image.Image;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.Clipboard;
 import javafx.scene.input.DataFormat;
 import javafx.scene.paint.Color;
 import jdk.incubator.vector.FloatVector;
+import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.json.JsonMap;
 
 //serializable for the sole purpose of allowing HDRImage's to be copy-pasted with a Clipboard.
-public class HDRImage implements Externalizable {
+public class HDRImage implements Serializable {
 
+	@Serial
+	private static final long serialVersionUID = 0xBE5393B55731DD65L;
 	public static final DataFormat HDR_DATA_FORMAT = new DataFormat("application/bigpixel.hdrimage");
 
 	public static final int
@@ -76,6 +83,22 @@ public class HDRImage implements Externalizable {
 	public HDRImage(HDRImage from) {
 		this(from.width, from.height);
 		this.doCopyFrom(from);
+	}
+
+	public static @Nullable HDRImage fromClipboard(Clipboard clipboard) {
+		if (clipboard.hasContent(HDR_DATA_FORMAT)) {
+			Object content = clipboard.getContent(HDR_DATA_FORMAT);
+			if (content instanceof HDRImage image) {
+				return image;
+			}
+			else {
+				System.err.println("Clipboard's HDR_DATA_FORMAT contained " + content);
+			}
+		}
+		if (clipboard.hasContent(DataFormat.IMAGE)) {
+			return new HDRImage(clipboard.getImage());
+		}
+		return null;
 	}
 
 	public void copyFrom(JsonMap saveData) {
@@ -220,12 +243,12 @@ public class HDRImage implements Externalizable {
 		return (Util.clampI(alpha) << 24) | (Util.clampI(red) << 16) | (Util.clampI(green) << 8) | Util.clampI(blue);
 	}
 
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+	@Serial
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		this.width = in.readInt();
 		this.height = in.readInt();
 		int channelCount = this.width * this.height * 4;
-		if (this.pixels.length != channelCount) {
+		if (this.pixels == null || this.pixels.length != channelCount) {
 			this.pixels = new float[channelCount];
 		}
 		for (int index = 0; index < channelCount; index++) {
@@ -233,8 +256,8 @@ public class HDRImage implements Externalizable {
 		}
 	}
 
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
+	@Serial
+	private void writeObject(ObjectOutputStream out) throws IOException {
 		out.writeInt(this.width);
 		out.writeInt(this.height);
 		for (float channel : this.pixels) {

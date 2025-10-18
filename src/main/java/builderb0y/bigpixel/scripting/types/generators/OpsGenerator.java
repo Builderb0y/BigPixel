@@ -92,6 +92,13 @@ public class OpsGenerator {
 			"return a - Math.floor(a);"
 		),
 		new ExtraOperator(
+			"sign",
+			"return Integer.signum(a);",
+			"return Long.signum(a);",
+			"return Math.signum(a);",
+			"return Math.signum(a);"
+		),
+		new ExtraOperator(
 			"reverseBits",
 			"return Integer.reverse(a);",
 			"return Long.reverse(a);",

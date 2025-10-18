@@ -59,7 +59,11 @@ public abstract class LayerSource {
 			this.doRedraw();
 			this.sources.layer.redrawException.set(null);
 		}
+		catch (RedrawException exception) {
+			this.sources.layer.redrawException.set(exception);
+		}
 		catch (Throwable exception) {
+			exception.printStackTrace();
 			while (exception.getCause() != null) {
 				exception = exception.getCause();
 			}
@@ -83,7 +87,7 @@ public abstract class LayerSource {
 
 	public static enum Type {
 		MANUAL        ("manual",         "Manual",                ManualLayerSource::new),
-		PASSTHROUGH   ("passthrough", "Passthrough",         PassthroughLayerSource::new),
+		PASSTHROUGH   ("passthrough",    "Passthrough",      PassthroughLayerSource::new),
 		ALPHA         ("alpha",          "Alpha Blend",            AlphaLayerSource::new),
 		ADD           ("add",            "Addition",                 AddLayerSource::new),
 		AVERAGE       ("avg",            "Average",              AverageLayerSource::new),
@@ -99,6 +103,7 @@ public abstract class LayerSource {
 		CLIFF_CURVE   ("cliff",          "Cliff Curve",       CliffCurveLayerSource::new),
 		CONVOLVE      ("convolve",       "Convolve",            ConvolveLayerSource::new),
 		K_MEANS       ("kmeans",         "K-Means",               KMeansLayerSource::new),
+		DENOISE       ("denoise",        "De-noise",             DeNoiseLayerSource::new),
 		TILE          ("tile",           "Tile",                    TileLayerSource::new),
 		WFC           ("wfc",            "Wave Function Collapse",   WFCLayerSource::new),
 		DERIVED       ("derived",        "Derived",              DerivedLayerSource::new);

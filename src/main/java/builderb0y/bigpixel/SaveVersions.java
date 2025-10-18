@@ -6,7 +6,7 @@ import builderb0y.bigpixel.json.*;
 
 public class SaveVersions {
 
-	public static final int CURRENT = 4;
+	public static final int CURRENT = 5;
 
 	@SuppressWarnings({ "fallthrough", "DefaultNotLastCaseInSwitch" })
 	public static void process(JsonMap map) {
@@ -17,7 +17,8 @@ public class SaveVersions {
 			case 1: process1(map);
 			case 2: process2(map);
 			case 3: process3(map);
-			case 4:
+			case 4: process4(map);
+			case 5:
 		}
 	}
 
@@ -68,6 +69,15 @@ public class SaveVersions {
 					}
 				}
 				default -> {}
+			}
+		}
+	}
+
+	public static void process4(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap tab = layer.asMap().getMap("sources").getMap("tab");
+			if (tab.getString("type").equals("convolve")) {
+				tab.put("linear", false);
 			}
 		}
 	}

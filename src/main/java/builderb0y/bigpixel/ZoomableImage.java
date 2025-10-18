@@ -176,6 +176,7 @@ public class ZoomableImage {
 			projector.beforeRedraw(canvas, layer);
 			projector.center();
 		}
+		this.redraw();
 		return true;
 	}
 
@@ -230,7 +231,8 @@ public class ZoomableImage {
 			0xFF7F7F3F,
 			0xFFFFFFBF
 		);
-		if (this.openImage.layerGraph.selectedLayer.get().sources.getCurrentSource() instanceof ManualLayerSource manual) {
+		LayerNode selectedLayer = this.openImage.layerGraph.selectedLayer.get();
+		if (selectedLayer != null && selectedLayer.sources.getCurrentSource() instanceof ManualLayerSource manual) {
 			Selection selection = new Selection();
 			Tool<?> tool = manual.toolWithoutColorPicker.get();
 			if (tool != null && tool.getSelection(selection)) {

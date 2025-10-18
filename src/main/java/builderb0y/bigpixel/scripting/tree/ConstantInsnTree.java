@@ -138,16 +138,4 @@ public class ConstantInsnTree extends InsnTree {
 			}
 		}
 	}
-
-	@Override
-	public @Nullable InsnTree cast(VectorType... types) {
-		if (Arrays.equals(this.types, types)) return this;
-		if (types.length != 1) return null;
-		if (this.types[0].componentType.isFloatingPoint() == types[0].componentType.isFloatingPoint()) {
-			return new ConstantInsnTree(types[0], this.value);
-		}
-		else {
-			return null;
-		}
-	}
 }

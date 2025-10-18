@@ -2,6 +2,7 @@ package builderb0y.bigpixel.sources;
 
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.stream.IntStream;
 
 import javafx.beans.binding.When;
 import javafx.beans.value.ChangeListener;
@@ -27,6 +28,7 @@ import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
 public class ConvolveLayerSource extends MainMaskLayerSource {
 
 	public BorderPane borderPane = new BorderPane();
+	public CheckBox linear = this.parameters.addCheckbox("linear", "Linear", false);
 	public ChoiceBox<ConvolveShape> shape = this.parameters.addEnumChoiceBox("shape", ConvolveShape.class, ConvolveShape.SQUARE);
 	public ChoiceBox<BlurWeight> weight = this.parameters.addEnumChoiceBox("weight_type", BlurWeight.class, BlurWeight.CUSTOM);
 	public Spinner<Integer> radius = this.parameters.addIntSpinner("radius", 1, 3, 1, 1, 64.0D);
@@ -71,7 +73,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	public ConvolveLayerSource(LayerSources sources) {
 		super(Type.CONVOLVE, sources);
 		this.layout();
-		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius));
+		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius, this.linear));
 		this.borderPane.setCenter(this.customWeights);
 		this.configPane.setOrientation(Orientation.VERTICAL);
 		((IntegerSpinnerValueFactory)(this.radius.getValueFactory())).maxProperty().bind(
@@ -215,59 +217,68 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		return this.separableScratch;
 	}
 
+	public static FloatVector maybeSquare(FloatVector color, boolean linear) {
+		return linear ? color.mul(color, Util.RGB_MASK) : color;
+	}
+
+	public static FloatVector maybeSqrt(FloatVector color, boolean linear) {
+		return linear ? color.lanewise(VectorOperators.SQRT, Util.RGB_MASK) : color;
+	}
+
 	@Override
 	public void doRedraw(LayerSourceInput main, LayerSourceInput mask, HDRImage destination) throws RedrawException {
 		int radius = this.radius.getValue();
+		boolean linear = this.linear.isSelected();
 		float[] weights = this.weight.getValue().getWeights(this);
 		switch (this.shape.getValue()) {
 			case HORIZONTAL -> {
-				for (int y = 0; y < destination.height; y++) {
+				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					for (int x = 0; x < destination.width; x++) {
 						FloatVector mainColor = main.getColor(x, y);
 						FloatVector maskColor = mask.getColor(x, y);
 						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
 							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-								sum = sum.add(main.getColor(Math.floorMod(x + offset, destination.width), y).mul(weights[index]));
+								sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offset, destination.width), y), linear).mul(weights[index]));
 							}
-							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
+							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
 						else {
 							destination.setColor(x, y, mainColor);
 						}
 					}
-				}
+				});
 			}
 			case VERTICAL -> {
-				for (int y = 0; y < destination.height; y++) {
+				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					for (int x = 0; x < destination.width; x++) {
 						FloatVector mainColor = main.getColor(x, y);
 						FloatVector maskColor = mask.getColor(x, y);
 						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
 							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-								sum = sum.add(main.getColor(x, Math.floorMod(y + offset, destination.height)).mul(weights[index]));
+								sum = sum.add(maybeSquare(main.getColor(x, Math.floorMod(y + offset, destination.height)), linear).mul(weights[index]));
 							}
-							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
+							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
 						else {
 							destination.setColor(x, y, mainColor);
 						}
 					}
-				}
+				});
 			}
 			case SEPARABLE -> {
 				HDRImage scratch = this.getSeparableScratch();
-				for (int y = 0; y < destination.height; y++) {
+				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					for (int x = 0; x < destination.width; x++) {
 						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-							sum = sum.add(main.getColor(Math.floorMod(x + offset, destination.width), y).mul(weights[index]));
+							sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offset, destination.width), y), linear).mul(weights[index]));
 						}
 						scratch.setColor(x, y, sum);
 					}
-				}
-				for (int y = 0; y < scratch.height; y++) {
+				});
+				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					for (int x = 0; x < scratch.width; x++) {
 						FloatVector mainColor = main.getColor(x, y);
 						FloatVector maskColor = mask.getColor(x, y);
@@ -276,19 +287,19 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
 								sum = sum.add(scratch.getColor(x, Math.floorMod(y + offset, scratch.height)).mul(weights[index]));
 							}
-							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
+							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
 						else {
 							destination.setColor(x, y, mainColor);
 						}
 					}
-				}
+				});
 			}
 			case CONCENTRIC -> {
 				int minSize = Math.min(destination.width, destination.height);
 				//int maxSize = Math.max(destination.width, destination.height);
 				int imageR = (minSize + 1) >> 1;
-				for (int ring = 0; ring < imageR; ring++) {
+				IntStream.range(0, imageR).parallel().forEach((int ring) -> {
 					int pixelsInRing = Math.max(pixelsInRing(destination.width, destination.height, ring), 1);
 					for (int start = 0; start < pixelsInRing; start++) {
 						int packedPos = concentricPos(destination.width, destination.height, ring, start);
@@ -300,18 +311,18 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
 								packedPos = concentricPos(destination.width, destination.height, ring, Math.floorMod(start + offset, pixelsInRing));
-								sum = sum.add(main.getColor(unpackX(packedPos), unpackY(packedPos)).mul(weights[index]));
+								sum = sum.add(maybeSquare(main.getColor(unpackX(packedPos), unpackY(packedPos)), linear).mul(weights[index]));
 							}
-							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
+							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
 						else {
 							destination.setColor(x, y, mainColor);
 						}
 					}
-				}
+				});
 			}
 			case SQUARE -> {
-				for (int y = 0; y < destination.height; y++) {
+				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					for (int x = 0; x < destination.width; x++) {
 						FloatVector mainColor = main.getColor(x, y);
 						FloatVector maskColor = mask.getColor(x, y);
@@ -320,16 +331,16 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 							int index = 0;
 							for (int offsetY = -radius; offsetY <= radius; offsetY++) {
 								for (int offsetX = -radius; offsetX <= radius; offsetX++) {
-									sum = sum.add(main.getColor(Math.floorMod(x + offsetX, destination.width), Math.floorMod(y + offsetY, destination.height)).mul(weights[index++]));
+									sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offsetX, destination.width), Math.floorMod(y + offsetY, destination.height)), linear).mul(weights[index++]));
 								}
 							}
-							destination.setColor(x, y, carefulMix(mainColor, sum, maskColor));
+							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
 						else {
 							destination.setColor(x, y, mainColor);
 						}
 					}
-				}
+				});
 			}
 		}
 	}

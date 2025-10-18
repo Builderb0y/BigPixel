@@ -11,12 +11,14 @@ import javafx.beans.value.ObservableBooleanValue;
 import javafx.beans.value.ObservableDoubleValue;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
+import javafx.geometry.Point2D;
 import javafx.geometry.Side;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.input.DataFormat;
 import javafx.scene.input.DragEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -85,6 +87,8 @@ public class LayerGraph {
 		visibleLayer = new ToggleGroup();
 	public ObservableValue<LayerNode>
 		visibleLayerProperty = this.visibleLayer.selectedToggleProperty().map((Toggle toggle) -> (LayerNode)(toggle.getUserData()));
+	public SimpleObjectProperty<Point2D>
+		lastMouseLocation = new SimpleObjectProperty<>(this, "lastMouseLocation");
 	public boolean
 		redrawRequested;
 	public Runnable
@@ -175,13 +179,16 @@ public class LayerGraph {
 				newLayer.getColorNode().pseudoClassStateChanged(LayerNode.SELECTED, true);
 			}
 		}));
+		this.mainGrid.setOnMouseEntered((MouseEvent event) -> this.lastMouseLocation.set(new Point2D(event.getX(), event.getY())));
+		this.mainGrid.setOnMouseMoved((MouseEvent event) -> this.lastMouseLocation.set(new Point2D(event.getX(), event.getY())));
+		this.mainGrid.setOnMouseExited((MouseEvent _) -> this.lastMouseLocation.set(null));
 		this.mainScroll.setOnDragOver((DragEvent event) -> {
 			if (event.getDragboard().hasContent(DataFormat.FILES)) {
 				event.acceptTransferModes(TransferMode.COPY);
 			}
 		});
 		this.mainScroll.setOnDragDropped((DragEvent event) -> {
-			this.openImage.mainWindow.pasteFromClipboardToNewLayer(event.getDragboard());
+			this.openImage.mainWindow.pasteFromClipboardToNewLayer(event.getDragboard(), event);
 			event.consume();
 		});
 	}
@@ -451,7 +458,7 @@ public class LayerGraph {
 		int x = selected.getGridX();
 		int y = selected.getGridY() + 1;
 		LayerNode newLayer = new LayerNode(this, x, y, selected.image.width, selected.image.height, selected.getDisplayName() + " (duplicate)");
-		newLayer.sources.manualSource().toollessImage.copyFrom(selected.image);
+		newLayer.load(selected.save());
 		if (this.hasLayerAt(x, y)) {
 			this.shiftDown(x, y);
 		}
@@ -481,9 +488,7 @@ public class LayerGraph {
 	}
 
 	public void centerLayer(ActionEvent ignored) {
-		if (this.openImage.imageDisplay.center()) {
-			this.openImage.imageDisplay.redraw();
-		}
+		this.openImage.imageDisplay.center();
 	}
 
 	public Parent getRootNode() {

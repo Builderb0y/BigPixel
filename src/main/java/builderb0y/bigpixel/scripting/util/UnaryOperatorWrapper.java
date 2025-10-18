@@ -19,7 +19,8 @@ public enum UnaryOperatorWrapper {
 	LOG,
 	FLOOR,
 	CEIL,
-	FRACT;
+	FRACT,
+	SIGN;
 
 	public static final UnaryOperatorWrapper[] VALUES = values();
 }

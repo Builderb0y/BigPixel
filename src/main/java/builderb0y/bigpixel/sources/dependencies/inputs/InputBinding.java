@@ -34,6 +34,7 @@ public class InputBinding {
 	public ChoiceBox<LayerSourceInput> selection;
 	public ObservableValue<LayerSourceInput> delegate;
 	public CurveHelper curve;
+	public boolean changing;
 
 	public JsonMap save() {
 		return switch (this.selection.getValue()) {
@@ -83,7 +84,9 @@ public class InputBinding {
 		this.thumbnail.fitWidthProperty().bind(thumbnailCopying.flatMap(ImageView::fitWidthProperty));
 		this.thumbnail.fitHeightProperty().bind(thumbnailCopying.flatMap(ImageView::fitHeightProperty));
 		this.thumbnail.setPreserveRatio(true);
-		ChangeListener<Object> listener = Util.change(source::requestRedraw);
+		ChangeListener<Object> listener = Util.change(() -> {
+			if (!this.changing) source.requestRedraw();
+		});
 		this.selection.valueProperty().addListener(listener);
 		this.colorBox.color.addListener(listener);
 		this.curve = new CurveHelper(this.source.sources.layer);
@@ -102,13 +105,23 @@ public class InputBinding {
 		inputs.sort(Comparator.comparing(LayerNode::getDisplayName, String.CASE_INSENSITIVE_ORDER));
 		inputs.addFirst(this.colorBox);
 		LayerSourceInput selected = this.selection.getValue();
-		this.selection.getItems().setAll(inputs);
-		this.selection.setValue(
-			selected instanceof VaryingLayerSourceInput varying
-			&& layers.contains(varying.getBackingLayer())
-			? selected
-			: this.colorBox
-		);
+		boolean oldChanging = this.changing;
+		this.changing = true;
+		try {
+			this.selection.getItems().setAll(inputs);
+			this.selection.setValue(
+				selected instanceof VaryingLayerSourceInput varying
+				&& layers.contains(varying.getBackingLayer())
+				? selected
+				: this.colorBox
+			);
+		}
+		finally {
+			this.changing = oldChanging;
+		}
+		if (this.selection.getValue() != selected) {
+			this.source.requestRedraw();
+		}
 	}
 
 	public LayerSourceInput getCurrent() {

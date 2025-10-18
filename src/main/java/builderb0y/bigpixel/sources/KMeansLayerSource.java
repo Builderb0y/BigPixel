@@ -17,7 +17,7 @@ public class KMeansLayerSource extends PerPixelLayerSource {
 
 	public Spinner<Integer>
 		seed = this.parameters.addIntSpinner("seed", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80.0D),
-		colors = this.parameters.addIntSpinner("colors",  1, 1 << 24, 2, 1, 80.0D),
+		colors = this.parameters.addIntSpinner("colors", 1, 1 << 24, 2, 1, 80.0D),
 		iterations = this.parameters.addIntSpinner("iterations",  0, 256, 4, 1, 80.0D);
 	public CheckBox
 		linear = this.parameters.addCheckbox("linear", "Linear", false);

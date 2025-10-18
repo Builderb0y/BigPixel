@@ -12,6 +12,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener.Change;
 import javafx.event.ActionEvent;
 import javafx.geometry.Orientation;
+import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -206,7 +207,7 @@ public class MainWindow {
 		this.viewFlatTilingMenuItem.setUserData(ImageProjector.Type.FLAT_TILING);
 		this.viewCubeMenuItem.setUserData(ImageProjector.Type.CUBE);
 		this.openImages.getSelectionModel().selectedItemProperty().addListener(Util.change((Tab newTab) -> {
-			this.projectorToggleGroup.selectToggle(
+			if (newTab != null) this.projectorToggleGroup.selectToggle(
 				switch (((OpenImage)(newTab.getUserData())).imageDisplay.currentProjectorType.get()) {
 					case FLAT_CLAMPED -> this.viewFlatClampedMenuItem;
 					case FLAT_TILING -> this.viewFlatTilingMenuItem;
@@ -264,7 +265,7 @@ public class MainWindow {
 							this.openFromClipboard(Clipboard.getSystemClipboard());
 						}
 						else if (event.isAltDown()) {
-							this.pasteFromClipboardToNewLayer(Clipboard.getSystemClipboard());
+							this.pasteFromClipboardToNewLayer(Clipboard.getSystemClipboard(), null);
 						}
 						else {
 							this.pasteFromClipboardSameLayer(Clipboard.getSystemClipboard());
@@ -368,7 +369,7 @@ public class MainWindow {
 		return tab != null ? ((OpenImage)(tab.getUserData())) : null;
 	}
 
-	public void pasteFromClipboardToNewLayer(Clipboard clipboard) {
+	public void pasteFromClipboardToNewLayer(Clipboard clipboard, @Nullable DragEvent event) {
 		OpenImage openImage = this.getCurrentImage();
 		if (openImage == null) {
 			this.openFromClipboard(clipboard);
@@ -376,18 +377,38 @@ public class MainWindow {
 		}
 		NamedImage[] images = this.getClipboardImage(clipboard);
 		if (images != null) {
-			LayerNode selected = openImage.layerGraph.selectedLayer.get();
-			int x = selected.getGridX();
-			int y = selected.getGridY();
+			Point2D point;
+			if (event != null) {
+				point = openImage.layerGraph.mainGrid.sceneToLocal(event.getSceneX(), event.getSceneY());
+			}
+			else {
+				point = openImage.layerGraph.lastMouseLocation.get();
+			}
+			int gridX, gridY;
+			if (point != null) {
+				gridX = (int)(Math.floor((point.getX() - (LayerNode.GRID_WIDTH  - LayerNode.PREVIEW_WIDTH ) * 0.5D) / LayerNode.GRID_WIDTH ));
+				gridY = (int)(Math.floor((point.getY() - (LayerNode.GRID_HEIGHT - LayerNode.PREVIEW_HEIGHT) * 0.5D) / LayerNode.GRID_HEIGHT));
+			}
+			else {
+				LayerNode selected = openImage.layerGraph.selectedLayer.get();
+				if (selected != null) {
+					gridX = selected.getGridX();
+					gridY = selected.getGridY() + 1;
+				}
+				else {
+					gridX = 0;
+					gridY = 0;
+				}
+			}
 			for (NamedImage image : images) {
-				y++;
-				LayerNode layer = new LayerNode(openImage.layerGraph, x, y, image.image.width, image.image.height, image.name);
+				LayerNode layer = new LayerNode(openImage.layerGraph, gridX, gridY, image.image.width, image.image.height, image.name);
 				layer.sources.manualSource().toollessImage.doCopyFrom(image.image);
-				if (openImage.layerGraph.hasLayerAt(x, y)) {
-					openImage.layerGraph.shiftDown(x, y);
+				if (openImage.layerGraph.hasLayerAt(gridX, gridY)) {
+					openImage.layerGraph.shiftDown(gridX, gridY);
 				}
 				openImage.layerGraph.addLayer(layer, true);
 				layer.requestRedraw();
+				gridY++;
 			}
 		}
 	}
@@ -438,7 +459,8 @@ public class MainWindow {
 	public static record NamedImage(@Nullable File source, String name, HDRImage image) {}
 
 	public NamedImage @Nullable [] getClipboardImage(Clipboard clipboard) {
-		if (clipboard.getContent(HDRImage.HDR_DATA_FORMAT) instanceof HDRImage hdr) {
+		HDRImage hdr = HDRImage.fromClipboard(clipboard);
+		if (hdr != null) {
 			return new NamedImage[] { new NamedImage(null, "Pasted image", hdr) };
 		}
 		Image image = clipboard.getImage();
@@ -515,10 +537,22 @@ public class MainWindow {
 	}
 
 	public void openFromClipboard(Clipboard clipboard) {
-		List<File> files = clipboard.getFiles();
-		if (files != null && !files.isEmpty()) {
-			for (File file : files) {
-				this.doOpen(file);
+		HDRImage image = HDRImage.fromClipboard(clipboard);
+		if (image != null) {
+			OpenImage openImage = new OpenImage(this);
+			LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, image.width, image.height, "Pasted Image");
+			layer.sources.manualSource().toollessImage.copyFrom(image);
+			layer.requestRedraw();
+			openImage.layerGraph.addLayer(layer, false);
+			openImage.layerGraph.visibleLayer.selectToggle(layer.showing);
+			this.addOpenImage("Pasted Image", openImage);
+		}
+		else {
+			List<File> files = clipboard.getFiles();
+			if (files != null && !files.isEmpty()) {
+				for (File file : files) {
+					this.doOpen(file);
+				}
 			}
 		}
 	}
