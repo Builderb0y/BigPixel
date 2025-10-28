@@ -34,11 +34,11 @@
 .popout-borders {
 	-fx-border-color: #FFFFFF #CFD3D7 #CFD3D7 #FFFFFF;
 	-fx-border-insets: 4;
-	-fx-border-width: 2;
+	-fx-border-width: 3;
 }
 
 .popin-borders {
 	-fx-border-color: #CFD3D7 #FFFFFF #FFFFFF #CFD3D7;
 	-fx-border-insets: 4;
-	-fx-border-width: 2;
+	-fx-border-width: 3;
 }

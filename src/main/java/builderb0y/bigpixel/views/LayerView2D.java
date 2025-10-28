@@ -1,4 +1,4 @@
-package builderb0y.bigpixel.projectors;
+package builderb0y.bigpixel.views;
 
 import java.util.Arrays;
 
@@ -7,12 +7,14 @@ import javafx.beans.value.ObservableValue;
 import javafx.scene.canvas.Canvas;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.bigpixel.F3Menu;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.ZoomableImage;
+import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
+import builderb0y.bigpixel.sources.dependencies.NoDependencies;
 
-public abstract class ImageProjector2D extends ImageProjector {
+public abstract class LayerView2D extends LayerView {
 
 	public static final double[] ZOOMS = {
 		0.015625D,
@@ -44,21 +46,26 @@ public abstract class ImageProjector2D extends ImageProjector {
 	public double offsetX, offsetY;
 	public SimpleIntegerProperty zoomIndex = new SimpleIntegerProperty(12); //1.0
 	public ObservableValue<Double> zoom = this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]);
+	public NoDependencies dependencies = new NoDependencies();
 
-	public ImageProjector2D(Type type, ZoomableImage zoomableImage) {
-		super(type, zoomableImage);
-		this.zoom.addListener(Util.change(zoomableImage.f3::updateZoom));
+	public LayerView2D(Type type, LayerViews views) {
+		super(type, views);
 	}
 
 	@Override
-	public @Nullable Texcoord project(double x, double y) {
+	public LayerDependencies getDependencies() {
+		return this.dependencies;
+	}
+
+	@Override
+	public @Nullable ProjectionResult project(double x, double y) {
 		double zoom = this.zoom.getValue();
 		int projectedX = (int)(Math.floor((x - this.offsetX) / zoom));
 		int projectedY = (int)(Math.floor((y - this.offsetY) / zoom));
 		return this.handleEdge(projectedX, projectedY);
 	}
 
-	public abstract @Nullable Texcoord handleEdge(int projectedX, int projectedY);
+	public abstract @Nullable ProjectionResult handleEdge(int projectedX, int projectedY);
 
 	@Override
 	public void zoom(double x, double y, boolean zoomIn) {
@@ -82,18 +89,19 @@ public abstract class ImageProjector2D extends ImageProjector {
 	}
 
 	public void setPosition(double posX, double posY) {
-		LayerNode layer = this.zoomableImage.openImage.layerGraph.visibleLayerProperty.getValue();
+		LayerNode layer = this.views.layer;
 		if (layer == null) return;
 		HDRImage image = layer.image;
 		double zoom = this.zoom.getValue();
-		Canvas canvas = this.zoomableImage.display.display;
+		ZoomableImage display = this.views.layer.graph.openImage.imageDisplay;
+		Canvas canvas = display.display.display;
 		if (posX + image.width  * zoom < 0) posX = image.width  * -zoom;
 		if (posY + image.height * zoom < 0) posY = image.height * -zoom;
 		if (posX > canvas.getWidth ()) posX = canvas.getWidth ();
 		if (posY > canvas.getHeight()) posY = canvas.getHeight();
 		this.offsetX = posX;
 		this.offsetY = posY;
-		this.zoomableImage.redraw();
+		display.redrawLater();
 	}
 
 	@Override
@@ -118,7 +126,29 @@ public abstract class ImageProjector2D extends ImageProjector {
 	}
 
 	@Override
-	public void drawOutline(
+	public void drawLayerOutline(
+		byte[] pixels,
+		int layerWidth,
+		int layerHeight,
+		int canvasWidth,
+		int canvasHeight
+	) {
+		this.drawOutline(
+			pixels,
+			0,
+			0,
+			layerWidth,
+			layerHeight,
+			canvasWidth,
+			canvasHeight,
+			LAYER_OUTLINE_DARK,
+			LAYER_OUTLINE_LIGHT
+		);
+	}
+
+	@Override
+	public void drawSelectionOutline(
+		LayerNode layer,
 		byte[] pixels,
 		int x1,
 		int y1,
@@ -126,6 +156,28 @@ public abstract class ImageProjector2D extends ImageProjector {
 		int y2,
 		int layerWidth,
 		int layerHeight,
+		int canvasWidth,
+		int canvasHeight
+	) {
+		this.drawOutline(
+			pixels,
+			x1,
+			y1,
+			x2,
+			y2,
+			canvasWidth,
+			canvasHeight,
+			SELECTION_OUTLINE_DARK,
+			SELECTION_OUTLINE_LIGHT
+		);
+	}
+
+	public void drawOutline(
+		byte[] pixels,
+		int x1,
+		int y1,
+		int x2,
+		int y2,
 		int canvasWidth,
 		int canvasHeight,
 		int dark,
@@ -144,5 +196,10 @@ public abstract class ImageProjector2D extends ImageProjector {
 			setColorSafe(pixels, x1, y, canvasWidth, canvasHeight, ((x1 ^ y) & 8) == 0 ? dark : light);
 			setColorSafe(pixels, x2, y, canvasWidth, canvasHeight, ((x2 ^ y) & 8) == 0 ? dark : light);
 		}
+	}
+
+	@Override
+	public void updateF3(F3Menu f3) {
+		f3.add("Zoom: " + this.zoom.getValue());
 	}
 }

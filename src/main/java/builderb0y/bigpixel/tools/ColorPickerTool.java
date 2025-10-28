@@ -21,12 +21,11 @@ public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 	}
 
 	@Override
-	public void mouseDown(int x, int y, MouseButton button) {
+	public void mouseDown(int x, int y, LayerNode layer, MouseButton button) {
 		if (this.work == null) {
 			this.escape();
 			return;
 		}
-		LayerNode layer = this.openImage.layerGraph.visibleLayerProperty.getValue();
 		if (x >= 0 && x < layer.image.width && y >= 0 && y < layer.image.height) {
 			int baseIndex = layer.image.baseIndex(x, y);
 			this.work.onColorPicked(
@@ -39,7 +38,7 @@ public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 	}
 
 	@Override
-	public void mouseDragged(int x, int y, MouseButton button) {
+	public void mouseDragged(int x, int y, LayerNode layer, MouseButton button) {
 		//no-op.
 	}
 

@@ -83,7 +83,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		);
 		ChangeListener<Object> listener = Util.change(() -> {
 			this.layout();
-			this.requestRedraw();
+			this.redrawLater();
 		});
 		this.shape .valueProperty().addListener(listener);
 		this.weight.valueProperty().addListener(listener);
@@ -202,7 +202,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		});
 		textField.getTextFormatter().valueProperty().addListener(Util.change(() -> {
 			if (textField.isEditable()) {
-				this.requestRedraw();
+				this.redrawLater();
 			}
 		}));
 		return textField;

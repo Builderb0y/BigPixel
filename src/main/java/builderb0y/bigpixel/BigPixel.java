@@ -6,7 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Timer;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -16,7 +17,11 @@ import org.jetbrains.annotations.NotNull;
 public class BigPixel extends Application {
 
 	public static final String openQueueProperty = "builderb0y.bigpixel.openQueue";
-	public static final Timer TIMER = new Timer(true);
+	public static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor((Runnable task) -> {
+		Thread thread = new Thread(task, "Scheduler Thread");
+		thread.setDaemon(true);
+		return thread;
+	});
 
 	@Override
 	public void start(Stage stage) {

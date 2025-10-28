@@ -29,19 +29,19 @@ public class OpenImage {
 		file = new SimpleObjectProperty<>();
 	public LayerGraph
 		layerGraph = new LayerGraph(this);
-	public BorderPane
-		layerConfigPane = new BorderPane();
 	public SplitPane
 		imageAndLayerConfig = new SplitPane();
 	public ZoomableImage
 		imageDisplay = new ZoomableImage(this);
+	public BorderPane
+		layerConfigPane = new BorderPane();
 	public AnimationSource
 		animationSource = new AnimationSource(this);
 	public ColorPickerTool
 		colorPickerTool = new ColorPickerTool(this);
 	public SimpleBooleanProperty
 		usingColorPickerByControl = new SimpleBooleanProperty(),
-		usingColorPickerByButton = new SimpleBooleanProperty();
+		usingColorPickerByButton  = new SimpleBooleanProperty();
 	public BooleanBinding
 		usingColorPicker = this.usingColorPickerByButton.or(this.usingColorPickerByControl);
 	public ObjectBinding<@Nullable Tool<?>>
@@ -53,12 +53,14 @@ public class OpenImage {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public ObservableObjectValue<@Nullable SourcelessTool<?>>
 		toolWithColorPicker = (
-		new When(this.usingColorPicker)
-		.<SourcelessTool<?>>then(this.colorPickerTool)
-		.otherwise((ObjectBinding)(this.toolWithoutColorPicker))
-	);
+			new When(this.usingColorPicker)
+			.<SourcelessTool<?>>then(this.colorPickerTool)
+			.otherwise((ObjectBinding)(this.toolWithoutColorPicker))
+		);
 	public ObservableValue<Cursor>
-		cursorProperty = this.toolWithColorPicker.map((SourcelessTool<?> tool) -> tool.type.cursor());
+		cursorProperty = this.toolWithColorPicker.map(
+			(SourcelessTool<?> tool) -> tool.type.cursor()
+		);
 	public ObservableValue<String>
 		title = this.file.map(File::getName);
 
@@ -79,11 +81,21 @@ public class OpenImage {
 		this.mainWindow = mainWindow;
 		this.layerConfigPane.centerProperty().bind(this.layerGraph.selectedLayer.map(LayerNode::getConfigPane));
 		this.imageAndLayerConfig.getItems().addAll(this.imageDisplay.displayWithF3, this.layerConfigPane);
-		this.imageAndLayerConfig.setDividerPosition(0, 2.0D / 3.0D);
+		this.imageAndLayerConfig.setDividerPosition(0, 0.625D);
 	}
 
 	public void init() {
 		this.imageDisplay.init();
+	}
+
+	public void updateF3() {
+		F3Menu f3 = this.imageDisplay.f3;
+		long total = Runtime.getRuntime().totalMemory();
+		long free = Runtime.getRuntime().freeMemory();
+		long used = total - free;
+		f3.add("Memory: " + F3Menu.formatBytes(used) + " / " + F3Menu.formatBytes(total));
+		this.imageDisplay.updateF3(f3);
+		f3.commit();
 	}
 
 	public Parent getMainNode() {

@@ -198,6 +198,11 @@ public class JsonMap extends LinkedHashMap<@NotNull String, @NotNull JsonValue> 
 		return this.put(key, new JsonString(value));
 	}
 
+	public JsonMap rename(String from, String to) {
+		this.put(to, this.evict(from));
+		return this;
+	}
+
 	@Override
 	public String toString() {
 		if (this.isEmpty()) return "{}";

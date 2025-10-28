@@ -9,6 +9,7 @@ import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.UtilityOperations;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
+import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
@@ -18,10 +19,10 @@ public class GradientRemapLayerSource extends PerPixelLayerSource {
 	public static class Dependencies extends MainMaskDependencies {
 
 		public UnmovableInputBinding
-			fromStart = this.addBinding("from_start", "From Start: "),
-			fromEnd   = this.addBinding("from_end",   "From End: "  ),
-			toStart   = this.addBinding("to_start",   "To Start: "  ),
-			toEnd     = this.addBinding("to_end",     "To End: "    );
+			fromStart = this.addBinding("from_start", "From Start: ", CurveHelper.PARAM),
+			fromEnd   = this.addBinding("from_end",   "From End: ",   CurveHelper.PARAM),
+			toStart   = this.addBinding("to_start",   "To Start: ",   CurveHelper.PARAM),
+			toEnd     = this.addBinding("to_end",     "To End: ",     CurveHelper.PARAM);
 
 		public Dependencies(LayerSource source) {
 			super(source);

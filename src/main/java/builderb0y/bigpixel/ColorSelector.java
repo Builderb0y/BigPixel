@@ -3,7 +3,9 @@ package builderb0y.bigpixel;
 import javafx.beans.Observable;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
+import javafx.geometry.VPos;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
@@ -64,13 +66,13 @@ public class ColorSelector {
 		dark  = this.new ColorSlider(ColorComponent.DARK),
 		light = this.new ColorSlider(ColorComponent.LIGHT),
 		alpha = this.new ColorSlider(ColorComponent.ALPHA);
-	public SavedColor[] savedColors = new SavedColor[10];
+	public SavedColor[] savedColors = new SavedColor[9];
 	public VBox savedColorBox = new VBox();
 
 	public ColorSelector(MainWindow mainWindow) {
 		this.mainWindow = mainWindow;
 		super();
-		for (int index = 0; index < 10; index++) {
+		for (int index = 0, colorCount = this.savedColors.length; index < colorCount; index++) {
 			this.savedColors[index] = new SavedColor(index);
 			this.savedColorBox.getChildren().add(this.savedColors[index].box.getRootPane());
 		}
@@ -274,16 +276,12 @@ public class ColorSelector {
 		}
 
 		public void addToGrid(GridPane pane, int row) {
-			BorderPane labelPane = new BorderPane();
-			labelPane.setLeft(this.label);
-			labelPane.setBorder(INSET_BORDER);
-			pane.add(labelPane, 0, row);
+			pane.add(this.label, 0, row);
+			GridPane.setHalignment(this.label, HPos.CENTER);
+			GridPane.setValignment(this.label, VPos.CENTER);
 
 			pane.add(this.getRootPane(), 1, row);
-
-			BorderPane numberBoxPane = new BorderPane(this.numberBox);
-			numberBoxPane.setBorder(INSET_BORDER);
-			pane.add(numberBoxPane, 2, row);
+			pane.add(this.numberBox, 2, row);
 		}
 
 		@Override

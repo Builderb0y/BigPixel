@@ -1,14 +1,11 @@
 package builderb0y.bigpixel.sources;
 
-import java.util.function.UnaryOperator;
-
 import javafx.beans.binding.ObjectBinding;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.layout.Pane;
-import javafx.scene.paint.Color;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 

@@ -85,7 +85,7 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	public void cancelToolAction() {
-		this.requestRedraw();
+		this.redrawLater();
 	}
 
 	@Override

@@ -1,4 +1,4 @@
-package builderb0y.bigpixel.sources;
+package builderb0y.bigpixel;
 
 import java.util.stream.Collectors;
 
@@ -13,14 +13,15 @@ import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.json.JsonString;
 import builderb0y.bigpixel.json.JsonValue;
+import builderb0y.bigpixel.sources.ColorBox;
 
-public abstract class SourceParameter<T_Value, T_Holder> {
+public abstract class ConfigParameter<T_Value, T_Holder> {
 
 	public final T_Holder holder;
 	public final String name;
 	public final Class<T_Value> valueClass;
 
-	public SourceParameter(T_Holder holder, String name, Class<T_Value> aClass) {
+	public ConfigParameter(T_Holder holder, String name, Class<T_Value> aClass) {
 		this.holder = holder;
 		this.name = name;
 		this.valueClass = aClass;
@@ -40,8 +41,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 
 	public abstract void load(JsonMap map);
 
-	public static SourceParameter<Boolean, CheckBox> checkbox(CheckBox checkBox, String name) {
-		return new SourceParameter<>(checkBox, name, Boolean.class) {
+	public static ConfigParameter<Boolean, CheckBox> checkbox(CheckBox checkBox, String name) {
+		return new ConfigParameter<>(checkBox, name, Boolean.class) {
 
 			@Override
 			public Property<Boolean> value() {
@@ -60,8 +61,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 		};
 	}
 
-	public static SourceParameter<Integer, Spinner<Integer>> intSpinner(Spinner<Integer> spinner, String name) {
-		return new SourceParameter<>(spinner, name, Integer.class) {
+	public static ConfigParameter<Integer, Spinner<Integer>> intSpinner(Spinner<Integer> spinner, String name) {
+		return new ConfigParameter<>(spinner, name, Integer.class) {
 
 			@Override
 			public Property<Integer> value() {
@@ -80,8 +81,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 		};
 	}
 
-	public static SourceParameter<Float, Spinner<Float>> floatSpinner(Spinner<Float> spinner, String name) {
-		return new SourceParameter<>(spinner, name, Float.class) {
+	public static ConfigParameter<Float, Spinner<Float>> floatSpinner(Spinner<Float> spinner, String name) {
+		return new ConfigParameter<>(spinner, name, Float.class) {
 
 			@Override
 			public Property<Float> value() {
@@ -100,8 +101,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 		};
 	}
 
-	public static SourceParameter<Double, Spinner<Double>> doubleSpinner(Spinner<Double> spinner, String name) {
-		return new SourceParameter<>(spinner, name, Double.class) {
+	public static ConfigParameter<Double, Spinner<Double>> doubleSpinner(Spinner<Double> spinner, String name) {
+		return new ConfigParameter<>(spinner, name, Double.class) {
 
 			@Override
 			public Property<Double> value() {
@@ -120,8 +121,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 		};
 	}
 
-	public static <E extends Enum<E>> SourceParameter<E, ChoiceBox<E>> enumChoiceBox(ChoiceBox<E> box, Class<E> enumClass, String name) {
-		return new SourceParameter<>(box, name, enumClass) {
+	public static <E extends Enum<E>> ConfigParameter<E, ChoiceBox<E>> enumChoiceBox(ChoiceBox<E> box, Class<E> enumClass, String name) {
+		return new ConfigParameter<>(box, name, enumClass) {
 
 			@Override
 			public Property<E> value() {
@@ -140,8 +141,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 		};
 	}
 
-	public static SourceParameter<String, ChoiceBox<String>> stringChoiceBox(ChoiceBox<String> box, String name) {
-		return new SourceParameter<>(box, name, String.class) {
+	public static ConfigParameter<String, ChoiceBox<String>> stringChoiceBox(ChoiceBox<String> box, String name) {
+		return new ConfigParameter<>(box, name, String.class) {
 
 			@Override
 			public Property<String> value() {
@@ -163,8 +164,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 		};
 	}
 
-	public static SourceParameter<FloatVector, ColorBox> colorBox(ColorBox box, String name) {
-		return new SourceParameter<>(box, name, FloatVector.class) {
+	public static ConfigParameter<FloatVector, ColorBox> colorBox(ColorBox box, String name) {
+		return new ConfigParameter<>(box, name, FloatVector.class) {
 
 			@Override
 			public Property<FloatVector> value() {
@@ -208,8 +209,8 @@ public abstract class SourceParameter<T_Value, T_Holder> {
 		);
 	}
 
-	public static SourceParameter<String, TextArea> code(TextArea area, String name) {
-		return new SourceParameter<>(area, name, String.class) {
+	public static ConfigParameter<String, TextArea> code(TextArea area, String name) {
+		return new ConfigParameter<>(area, name, String.class) {
 
 			@Override
 			public Property<String> value() {

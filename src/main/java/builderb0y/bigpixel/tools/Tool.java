@@ -5,6 +5,7 @@ import javafx.scene.Cursor;
 import javafx.scene.ImageCursor;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
+import javafx.scene.input.MouseButton;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.LayerNode;
@@ -20,6 +21,24 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 		this.source = source;
 		this.labelText = new SimpleStringProperty();
 		this.updateLabelText();
+	}
+
+	public abstract void mouseDown(int x, int y, MouseButton button);
+
+	public abstract void mouseDragged(int x, int y, MouseButton button);
+
+	@Override
+	public void mouseDown(int x, int y, LayerNode layer, MouseButton button) {
+		if (this.layer() == layer) {
+			this.mouseDown(x, y, button);
+		}
+	}
+
+	@Override
+	public void mouseDragged(int x, int y, LayerNode layer, MouseButton button) {
+		if (this.layer() == layer) {
+			this.mouseDragged(x, y, button);
+		}
 	}
 
 	public LayerNode layer() {

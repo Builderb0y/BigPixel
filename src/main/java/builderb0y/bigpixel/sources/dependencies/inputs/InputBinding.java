@@ -3,42 +3,35 @@ package builderb0y.bigpixel.sources.dependencies.inputs;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.UnaryOperator;
 
-import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
 import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.ComboBox;
 import javafx.scene.image.ImageView;
-import jdk.incubator.vector.FloatVector;
+import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.SaveException;
-import builderb0y.bigpixel.Util;
+import builderb0y.bigpixel.*;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBox;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
-import builderb0y.bigpixel.sources.LayerSource;
-import builderb0y.bigpixel.sources.SourceParameter;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
 
 public class InputBinding {
 
-	public LayerSource source;
+	public OrganizedSelection.Value<?> owner;
 	public ColorBox colorBox;
 	public ImageView thumbnail;
 	public ChoiceBox<LayerSourceInput> selection;
-	public ObservableValue<LayerSourceInput> delegate;
 	public CurveHelper curve;
 	public boolean changing;
 
 	public JsonMap save() {
 		return switch (this.selection.getValue()) {
-			case UniformLayerSourceInput uniform -> new JsonMap().with("type", "color").with("color", SourceParameter.colorToJson(uniform.getColor()));
+			case UniformLayerSourceInput uniform -> new JsonMap().with("type", "color").with("color", ConfigParameter.colorToJson(uniform.getColor()));
 			case VaryingLayerSourceInput varying -> new JsonMap().with("type", "layer").with("layer", varying.getBackingLayer().getDisplayName());
 		};
 	}
@@ -47,19 +40,15 @@ public class InputBinding {
 		String type = map.getString("type");
 		switch (type) {
 			case "color" -> {
-				this.colorBox.color.set(SourceParameter.colorFromJson(map.getArray("color")));
+				this.colorBox.color.set(ConfigParameter.colorFromJson(map.getArray("color")));
 				this.selection.setValue(this.colorBox);
 			}
 			case "layer" -> {
 				String layerName = map.getString("layer");
-				LayerNode self = this.source.sources.layer;
+				LayerNode self = this.owner.getLayer();
 				LayerNode layer = self.graph.getLayerByName(layerName);
 				if (layer == null) {
 					throw new SaveException("Unknown layer dependency: " + layerName + " for dependent layer " + self.getDisplayName());
-				}
-				if (layer.getGridX() >= self.getGridX()) {
-					layer = null;
-					//throw new SaveException("Invalid position for layer dependency " + self.getDisplayName() + " for dependent layer " + layer.getDisplayName());
 				}
 				this.selection.setValue(layer);
 			}
@@ -69,12 +58,15 @@ public class InputBinding {
 		}
 	}
 
-	public InputBinding(LayerSource source, ColorBoxGroup group) {
-		this.source    = source;
+	public InputBinding(OrganizedSelection.Value<?> owner, ColorBoxGroup group, Color curveColor) {
+		this.owner = owner;
 		this.colorBox  = group.addBox(new ColorBox(Util.WHITE));
 		this.thumbnail = new ImageView();
-		this.selection = new ChoiceBox<>();
-		this.delegate  = this.selection.valueProperty();
+		this.selection = new ChoiceBox<>(FXCollections.observableArrayList(this.colorBox));
+		this.selection.setValue(this.colorBox);
+		this.selection.valueProperty().addListener(Util.change((LayerSourceInput input) -> {
+			if (input == null && !this.changing) new Throwable("stack trace").printStackTrace();
+		}));
 		this.colorBox.getDisplayPane().visibleProperty().bind(this.selection.valueProperty().isEqualTo(this.colorBox));
 		this.thumbnail.visibleProperty().bind(this.selection.valueProperty().map(VaryingLayerSourceInput.class::isInstance));
 		ObservableValue<ImageView> thumbnailCopying = this.selection.valueProperty().map((LayerSourceInput input) -> {
@@ -85,11 +77,11 @@ public class InputBinding {
 		this.thumbnail.fitHeightProperty().bind(thumbnailCopying.flatMap(ImageView::fitHeightProperty));
 		this.thumbnail.setPreserveRatio(true);
 		ChangeListener<Object> listener = Util.change(() -> {
-			if (!this.changing) source.requestRedraw();
+			if (!this.changing) owner.redrawLater();
 		});
 		this.selection.valueProperty().addListener(listener);
 		this.colorBox.color.addListener(listener);
-		this.curve = new CurveHelper(this.source.sources.layer);
+		this.curve = new CurveHelper(owner.getLayer(), curveColor);
 		this.selection.valueProperty().addListener(Util.change(this.curve::setOtherEnd));
 		this.selection.setPrefWidth(128.0D);
 	}
@@ -120,11 +112,11 @@ public class InputBinding {
 			this.changing = oldChanging;
 		}
 		if (this.selection.getValue() != selected) {
-			this.source.requestRedraw();
+			this.owner.redrawLater();
 		}
 	}
 
 	public LayerSourceInput getCurrent() {
-		return this.delegate.getValue();
+		return this.selection.getValue();
 	}
 }

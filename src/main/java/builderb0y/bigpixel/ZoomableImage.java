@@ -1,9 +1,8 @@
 package builderb0y.bigpixel;
 
-import java.util.EnumMap;
 import java.util.stream.IntStream;
 
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
@@ -14,14 +13,16 @@ import javafx.scene.input.*;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import jdk.incubator.vector.FloatVector;
+import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.projectors.ImageProjector;
-import builderb0y.bigpixel.projectors.ImageProjector.Texcoord;
-import builderb0y.bigpixel.RateLimiter.PeriodicRateLimiter;
 import builderb0y.bigpixel.sources.ManualLayerSource;
+import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
 import builderb0y.bigpixel.tools.SourcelessTool;
 import builderb0y.bigpixel.tools.Tool;
 import builderb0y.bigpixel.tools.Tool.Selection;
+import builderb0y.bigpixel.views.LayerView;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
+import builderb0y.bigpixel.views.LayerViews;
 
 import static builderb0y.bigpixel.HDRImage.*;
 
@@ -31,43 +32,34 @@ public class ZoomableImage {
 	public CanvasHelper display;
 	public F3Menu f3;
 	public StackPane displayWithF3;
-	public SimpleObjectProperty<ImageProjector.Type> currentProjectorType;
-	public EnumMap<ImageProjector.Type, ImageProjector> projectors;
-	public double lastMouseX, lastMouseY;
+	public @Nullable ProjectionResult previousProjectionResult;
+	public Selection previousSelection;
 	public ChangeListener<Number> centerer;
-	public RateLimiter redrawer;
+	public Runnable redrawer = this::redrawImmediately;
+	public boolean redrawRequested;
 
 	public ZoomableImage(OpenImage openImage) {
 		this.openImage = openImage;
-		this.display = new CanvasHelper().checkerboard().resizeable((CanvasHelper _) -> this.redraw());
+		this.display = new CanvasHelper().checkerboard().resizeable((CanvasHelper _) -> this.redrawLater());
 		this.f3 = new F3Menu();
 		this.displayWithF3 = new StackPane(this.display.getRootPane(), this.f3.rootNode());
 		this.centerer = Util.change(this::centerOnce);
-		this.redrawer = new PeriodicRateLimiter(20L, this::doRedraw);
-		this.currentProjectorType = new SimpleObjectProperty<>(
-			this,
-			"currentProjectorType",
-			ImageProjector.Type.FLAT_CLAMPED
-		);
-		this.projectors = new EnumMap<>(ImageProjector.Type.class);
-		for (ImageProjector.Type type : ImageProjector.Type.VALUES) {
-			this.projectors.put(type, type.constructor.apply(this));
-		}
 	}
 
 	public void init() {
 		this.display.display. widthProperty().addListener(this.centerer);
 		this.display.display.heightProperty().addListener(this.centerer);
 		Canvas canvas = this.display.display;
-		ChangeListener<Object> redrawer = Util.change(this::redraw);
-		this.currentProjectorType.addListener(redrawer);
-		this.openImage.layerGraph.visibleLayerProperty.addListener(redrawer);
+		this.openImage.layerGraph.visibleLayerProperty.addListener(Util.change(this::redrawLater));
 		canvas.setOnScroll((ScrollEvent event) -> {
-			if (event.getDeltaY() > 0.0D) {
-				this.getProjector().zoom(event.getX(), event.getY(), true);
-			}
-			else if (event.getDeltaY() < 0.0D) {
-				this.getProjector().zoom(event.getX(), event.getY(), false);
+			LayerView projector = this.getProjector();
+			if (projector != null) {
+				if (event.getDeltaY() > 0.0D) {
+					projector.zoom(event.getX(), event.getY(), true);
+				}
+				else if (event.getDeltaY() < 0.0D) {
+					projector.zoom(event.getX(), event.getY(), false);
+				}
 			}
 		});
 		this.display.getRootPane().cursorProperty().bind(this.openImage.cursorProperty);
@@ -87,7 +79,8 @@ public class ZoomableImage {
 						canvas.setCursor(Cursor.CROSSHAIR);
 					}
 					else if (event.getEventType() == MouseEvent.MOUSE_DRAGGED) {
-						ZoomableImage.this.getProjector().drag(
+						LayerView projector = ZoomableImage.this.getProjector();
+						if (projector != null) projector.drag(
 							event.getX() - this.pressX,
 							event.getY() - this.pressY
 						);
@@ -95,27 +88,30 @@ public class ZoomableImage {
 						this.pressY = event.getY();
 					}
 					else if (event.getEventType() == MouseEvent.MOUSE_RELEASED) {
-						ZoomableImage.this.redraw();
+						ZoomableImage.this.redrawLater();
 						canvas.setCursor(null);
 					}
 				}
 				else if (event.getButton() == MouseButton.PRIMARY || event.getButton() == MouseButton.SECONDARY) {
 					SourcelessTool<?> tool = ZoomableImage.this.openImage.toolWithColorPicker.get();
 					if (tool != null) {
-						Texcoord projected = ZoomableImage.this.getProjector().project(event.getX(), event.getY());
-						if (projected != null) {
-							int x = projected.x;
-							int y = projected.y;
-							if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
-								this.toolX = x;
-								this.toolY = y;
-								tool.mouseDown(x, y, event.getButton());
-							}
-							else if (event.getEventType() == MouseEvent.MOUSE_DRAGGED) {
-								if (this.toolX != x || this.toolY != y) {
+						LayerView projector = ZoomableImage.this.getProjector();
+						if (projector != null) {
+							ProjectionResult projected = projector.project(event.getX(), event.getY());
+							if (projected != null && projected.layer instanceof VaryingLayerSourceInput varying) {
+								int x = projected.x;
+								int y = projected.y;
+								if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
 									this.toolX = x;
 									this.toolY = y;
-									tool.mouseDragged(x, y, event.getButton());
+									tool.mouseDown(x, y, varying.getBackingLayer(), event.getButton());
+								}
+								else if (event.getEventType() == MouseEvent.MOUSE_DRAGGED) {
+									if (this.toolX != x || this.toolY != y) {
+										this.toolX = x;
+										this.toolY = y;
+										tool.mouseDragged(x, y, varying.getBackingLayer(), event.getButton());
+									}
 								}
 							}
 						}
@@ -127,16 +123,10 @@ public class ZoomableImage {
 		canvas.setOnMouseDragged(handler);
 		canvas.setOnMouseReleased(handler);
 		canvas.setOnMouseMoved((MouseEvent event) -> {
-			Texcoord projected = this.getProjector().project(
-				this.lastMouseX = event.getX(),
-				this.lastMouseY = event.getY()
+			LayerView projector = this.getProjector();
+			this.previousProjectionResult = (
+				projector != null ? projector.project(event.getX(), event.getY()) : null
 			);
-			if (projected != null) {
-				this.f3.updatePos(projected.x, projected.y);
-			}
-			else {
-				this.f3.clearHoverPos();
-			}
 		});
 		canvas.setOnKeyPressed((KeyEvent event) -> {
 			if (event.getCode() == KeyCode.F3) {
@@ -146,8 +136,9 @@ public class ZoomableImage {
 		});
 	}
 
-	public ImageProjector getProjector() {
-		return this.projectors.get(this.currentProjectorType.get());
+	public @Nullable LayerView getProjector() {
+		LayerNode visibleLayer = this.openImage.layerGraph.visibleLayerProperty.getValue();
+		return visibleLayer != null ? visibleLayer.views.selectedValue.get() : null;
 	}
 
 	public void centerOnce() {
@@ -165,26 +156,32 @@ public class ZoomableImage {
 		LayerNode layer = this.openImage.layerGraph.visibleLayerProperty.getValue();
 		if (layer == null) return false;
 		if (this.centerer != null) {
-			for (ImageProjector.Type type : ImageProjector.Type.VALUES) {
-				ImageProjector projector = this.projectors.get(type);
+			LayerViews views = layer.views;
+			for (LayerView.Type type : LayerView.Type.VALUES) {
+				LayerView projector = views.getOrCreateValue(type);
 				projector.beforeRedraw(canvas, layer);
 				projector.center();
 			}
 		}
 		else {
-			ImageProjector projector = this.getProjector();
-			projector.beforeRedraw(canvas, layer);
-			projector.center();
+			LayerView projector = this.getProjector();
+			if (projector != null) {
+				projector.beforeRedraw(canvas, layer);
+				projector.center();
+			}
 		}
-		this.redraw();
+		this.redrawLater();
 		return true;
 	}
 
-	public void redraw() {
-		this.redrawer.run();
+	public void redrawLater() {
+		if (!this.redrawRequested) {
+			this.redrawRequested = true;
+			Platform.runLater(this.redrawer);
+		}
 	}
 
-	public void doRedraw() {
+	public void redrawImmediately() {
 		Canvas canvas = this.display.display;
 		int width = (int)(canvas.getWidth());
 		int height = (int)(canvas.getHeight());
@@ -199,62 +196,70 @@ public class ZoomableImage {
 			return;
 		}
 		HDRImage image = visibleLayer.image;
-		ImageProjector projector = this.getProjector();
-		projector.beforeRedraw(canvas, visibleLayer);
 		byte[] pixels = this.display.pixels;
-		IntStream.range(0, height).parallel().forEach((int y) -> {
-			for (int x = 0; x < width; x++) {
-				FloatVector color = Util.INVISIBLACK;
-				Texcoord mapped = projector.project(x, y);
-				if (mapped != null) {
-					color = mapped.sample(image);
+		LayerView projector = this.getProjector();
+		if (projector != null) {
+			projector.beforeRedraw(canvas, visibleLayer);
+			IntStream.range(0, height).parallel().forEach((int y) -> {
+				for (int x = 0; x < width; x++) {
+					FloatVector color = Util.INVISIBLACK;
+					ProjectionResult mapped = projector.project(x, y);
+					if (mapped != null) {
+						color = mapped.sample();
+					}
+					int baseIndex = (y * width + x) << 2;
+					float clampedAlpha = Util.clampF(color.lane(ALPHA_OFFSET));
+					FloatVector premultiplied = color.mul(clampedAlpha);
+					pixels[baseIndex] = Util.clampB(premultiplied.lane(BLUE_OFFSET));
+					pixels[baseIndex | 1] = Util.clampB(premultiplied.lane(GREEN_OFFSET));
+					pixels[baseIndex | 2] = Util.clampB(premultiplied.lane(RED_OFFSET));
+					pixels[baseIndex | 3] = Util.clampB(color.lane(ALPHA_OFFSET));
 				}
-				int baseIndex = (y * width + x) << 2;
-				float clampedAlpha = Util.clampF(color.lane(ALPHA_OFFSET));
-				FloatVector premultiplied = color.mul(clampedAlpha);
-				pixels[baseIndex    ] = Util.clampB(premultiplied.lane( BLUE_OFFSET));
-				pixels[baseIndex | 1] = Util.clampB(premultiplied.lane(GREEN_OFFSET));
-				pixels[baseIndex | 2] = Util.clampB(premultiplied.lane(  RED_OFFSET));
-				pixels[baseIndex | 3] = Util.clampB(        color.lane(ALPHA_OFFSET));
-			}
-		});
-		projector.drawOutline(
-			pixels,
-			0,
-			0,
-			image.width,
-			image.height,
-			image.width,
-			image.height,
-			width,
-			height,
-			0xFF7F7F3F,
-			0xFFFFFFBF
-		);
-		LayerNode selectedLayer = this.openImage.layerGraph.selectedLayer.get();
-		if (selectedLayer != null && selectedLayer.sources.getCurrentSource() instanceof ManualLayerSource manual) {
-			Selection selection = new Selection();
-			Tool<?> tool = manual.toolWithoutColorPicker.get();
-			if (tool != null && tool.getSelection(selection)) {
-				this.f3.updateSelection(selection);
-				projector.drawOutline(
+			});
+			if (projector.drawOutline.isSelected()) {
+				projector.drawLayerOutline(
 					pixels,
-					selection.minX,
-					selection.minY,
-					selection.maxX + 1,
-					selection.maxY + 1,
 					image.width,
 					image.height,
 					width,
-					height,
-					0xFF000000,
-					0xFFFFFFFF
+					height
 				);
 			}
+			LayerNode selectedLayer = this.openImage.layerGraph.selectedLayer.get();
+			if (selectedLayer != null && selectedLayer.sources.selectedValue.get() instanceof ManualLayerSource manual) {
+				Selection selection = new Selection();
+				Tool<?> tool = manual.toolWithoutColorPicker.get();
+				if (tool != null && tool.getSelection(selection)) {
+					this.previousSelection = selection;
+					projector.drawSelectionOutline(
+						visibleLayer,
+						pixels,
+						selection.minX,
+						selection.minY,
+						selection.maxX + 1,
+						selection.maxY + 1,
+						image.width,
+						image.height,
+						width,
+						height
+					);
+				}
+				else {
+					this.previousSelection = null;
+				}
+			}
 			else {
-				this.f3.updateSelection(null);
+				this.previousSelection = null;
 			}
 		}
 		writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);
+		this.redrawRequested = false;
+	}
+
+	public void updateF3(F3Menu f3) {
+		f3.add("Hover: " + this.previousProjectionResult);
+		f3.add("Selection: " + this.previousSelection);
+		LayerView projector = this.getProjector();
+		if (projector != null) projector.updateF3(f3);
 	}
 }

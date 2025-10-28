@@ -3,6 +3,7 @@ package builderb0y.bigpixel.sources;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.HDRImage;
+import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
@@ -12,9 +13,9 @@ public class ColorMatrixLayerSource extends PerPixelLayerSource {
 	public static class Dependencies extends MainMaskDependencies {
 
 		public UnmovableInputBinding
-			toRed   = this.addBinding("to_red",   "Red -> "),
-			toGreen = this.addBinding("to_green", "Green -> "),
-			toBlue  = this.addBinding("to_blue",  "Blue -> ");
+			toRed   = this.addBinding("to_red",   "Red -> ",   CurveHelper.PARAM),
+			toGreen = this.addBinding("to_green", "Green -> ", CurveHelper.PARAM),
+			toBlue  = this.addBinding("to_blue",  "Blue -> ",  CurveHelper.PARAM);
 
 		public Dependencies(LayerSource source) {
 			super(source);

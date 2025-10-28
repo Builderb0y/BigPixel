@@ -187,7 +187,7 @@ public class History implements Comparable<History> {
 			else {
 				System.arraycopy(this.uncompressedPixels, 0, destination.pixels, 0, this.uncompressedPixels.length);
 			}
-			source.requestRedraw();
+			source.redrawLater();
 		}
 
 		@Override

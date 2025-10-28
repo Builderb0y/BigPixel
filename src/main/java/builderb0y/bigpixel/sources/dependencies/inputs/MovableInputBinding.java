@@ -8,6 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
 
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
@@ -35,8 +36,8 @@ public class MovableInputBinding extends InputBinding {
 		this.enabled.setSelected(map.getBoolean("enabled"));
 	}
 
-	public MovableInputBinding(MultiLayerDependencies dependencies, ColorBoxGroup group) {
-		super(dependencies.source, group);
+	public MovableInputBinding(MultiLayerDependencies dependencies, ColorBoxGroup group, Color color) {
+		super(dependencies.owner, group, color);
 		this.enabled.setSelected(true);
 		this.up.getStyleClass().remove("button");
 		this.down.getStyleClass().remove("button");

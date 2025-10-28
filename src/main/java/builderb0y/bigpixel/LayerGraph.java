@@ -71,6 +71,14 @@ public class LayerGraph {
 		removeLayerButton = new Button("🗑"),
 		resizeLayerButton = new Button("◰"),
 		centerLayerButton = new Button("⊡");
+	{
+		this.addLayerButton.setTooltip(new Tooltip("Add layer..."));
+		this.addFirstLayerButton.setTooltip(new Tooltip("Add layer..."));
+		this.duplicateLayerButton.setTooltip(new Tooltip("Duplicate selected layer"));
+		this.removeLayerButton.setTooltip(new Tooltip("Remove selected layer"));
+		this.resizeLayerButton.setTooltip(new Tooltip("Resize selected layer"));
+		this.centerLayerButton.setTooltip(new Tooltip("Reset view"));
+	}
 	public VBox
 		buttons = new VBox(
 			this.addLayerButton,
@@ -272,6 +280,7 @@ public class LayerGraph {
 				endX = gridX;
 			}
 			layer.sources.setPotentialInputs(layers.subList(0, endIndex));
+			layer.views.setPotentialInputs(layers);
 		}
 	}
 
@@ -300,7 +309,7 @@ public class LayerGraph {
 			}
 		}
 		if (updateView) {
-			this.openImage.imageDisplay.redraw();
+			this.openImage.imageDisplay.redrawLater();
 			if (this.openImage.mainWindow.getCurrentImage() == this.openImage) {
 				LayerNode visibleLayer = this.visibleLayerProperty.getValue();
 				if (visibleLayer != null) {

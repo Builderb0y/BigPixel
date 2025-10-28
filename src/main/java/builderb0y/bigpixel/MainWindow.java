@@ -4,9 +4,15 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
+import javafx.application.Platform;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener.Change;
@@ -19,7 +25,6 @@ import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.control.TabPane.TabDragPolicy;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -31,16 +36,17 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.ColorSelector.SavedColor;
 import builderb0y.bigpixel.HDRImage.SaveProgress;
-import builderb0y.bigpixel.projectors.ImageProjector;
-import builderb0y.bigpixel.projectors.ImageProjector.Texcoord;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.json.JsonReader;
 import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.ManualLayerSource;
+import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
 import builderb0y.bigpixel.tools.MoveTool.Work;
 import builderb0y.bigpixel.tools.SourcelessTool;
 import builderb0y.bigpixel.tools.Tool;
 import builderb0y.bigpixel.tools.Tool.Selection;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public class MainWindow {
 
@@ -49,33 +55,29 @@ public class MainWindow {
 	public SplitPane
 		bottomSplit = new SplitPane();
 	public BorderPane
-		leftPane   = new BorderPane(),
+		leftPane = new BorderPane(),
 		bottomHalf = new BorderPane(),
-		topHalf    = new BorderPane();
+		topHalf = new BorderPane();
 	public MenuBar
-		menuBar  = new MenuBar();
+		menuBar = new MenuBar();
 	public Menu
 		fileMenu = new Menu("File"),
 		editMenu = new Menu("Edit"),
 		viewMenu = new Menu("View");
 	public ToggleGroup
-		themeToggleGroup = new ToggleGroup(),
-		projectorToggleGroup = new ToggleGroup();
+		themeToggleGroup = new ToggleGroup();
 	public MenuItem
-		fileNewMenuItem        = new MenuItem("New..."),
-		fileOpenMenuItem       = new MenuItem("Open..."),
-		fileSaveMenuItem       = new MenuItem("Save all layers"),
-		fileSaveAsMenuItem     = new MenuItem("Save all layers as..."),
-		fileExportMenuItem     = new MenuItem("Export visible layer"),
-		fileExportAsMenuItem   = new MenuItem("Export visible layer as..."),
-		editUndoMenuItem       = new MenuItem(),
-		editRedoMenuItem       = new MenuItem();
+		fileNewMenuItem = new MenuItem("New..."),
+		fileOpenMenuItem = new MenuItem("Open..."),
+		fileSaveMenuItem = new MenuItem("Save all layers"),
+		fileSaveAsMenuItem = new MenuItem("Save all layers as..."),
+		fileExportMenuItem = new MenuItem("Export visible layer"),
+		fileExportAsMenuItem = new MenuItem("Export visible layer as..."),
+		editUndoMenuItem = new MenuItem(),
+		editRedoMenuItem = new MenuItem();
 	public RadioMenuItem
 		viewLightThemeMenuItem = new RadioMenuItem("Light theme"),
-		viewDarkThemeMenuItem  = new RadioMenuItem("Dark theme"),
-		viewFlatClampedMenuItem = new RadioMenuItem("Flat"),
-		viewFlatTilingMenuItem = new RadioMenuItem("Flat (tiling)"),
-		viewCubeMenuItem = new RadioMenuItem("Cube");
+		viewDarkThemeMenuItem = new RadioMenuItem("Dark theme");
 	public TabPane
 		openImages = new TabPane();
 	public ObservableValue<OpenImage>
@@ -88,6 +90,8 @@ public class MainWindow {
 		histogramAndAnimation = new TabPane();
 	public File
 		lastOpenedDirectory = new File(System.getProperty("user.dir"));
+	public ScheduledFuture<?>
+		f3UpdateTask = null;
 
 	public MainWindow(Stage stage) {
 		this.stage = stage;
@@ -104,10 +108,6 @@ public class MainWindow {
 			this.editRedoMenuItem
 		);
 		this.viewMenu.getItems().addAll(
-			this.viewFlatClampedMenuItem,
-			this.viewFlatTilingMenuItem,
-			this.viewCubeMenuItem,
-			new SeparatorMenuItem(),
 			this.viewLightThemeMenuItem,
 			this.viewDarkThemeMenuItem
 		);
@@ -174,7 +174,7 @@ public class MainWindow {
 			.map(Tab::getUserData)
 			.map(OpenImage.class::cast)
 			.flatMap((OpenImage image) -> image.layerGraph.selectedLayer)
-			.flatMap((LayerNode layer) -> layer.sources.currentSourceProperty)
+			.flatMap((LayerNode layer) -> layer.sources.selectedValue)
 			.flatMap((LayerSource source) -> source instanceof ManualLayerSource manual ? manual.history.currentEntry : null)
 		);
 		ObservableValue<String> undoText = currentAction.map((History.Entry entry) -> entry.prev).map((History.Entry entry) -> entry.next.name).map("Undo "::concat);
@@ -183,8 +183,8 @@ public class MainWindow {
 		this.editRedoMenuItem.textProperty().bind(redoText.orElse("Nothing to redo"));
 		this.editUndoMenuItem.disableProperty().bind(undoText.map((String _) -> Boolean.FALSE).orElse(Boolean.TRUE));
 		this.editRedoMenuItem.disableProperty().bind(redoText.map((String _) -> Boolean.FALSE).orElse(Boolean.TRUE));
-		this.editUndoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.getCurrentSource())).history.undo());
-		this.editRedoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.getCurrentSource())).history.redo());
+		this.editUndoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.selectedValue.get())).history.undo());
+		this.editRedoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.selectedValue.get())).history.redo());
 
 		this.viewLightThemeMenuItem.setUserData("assets/themes/light.css");
 		this.viewDarkThemeMenuItem.setUserData("assets/themes/dark.css");
@@ -197,30 +197,6 @@ public class MainWindow {
 		}));
 		this.themeToggleGroup.selectToggle(this.viewDarkThemeMenuItem);
 		this.bottomSplit.getStylesheets().add("assets/themes/dark.css"); //why is this necessary?
-		this.viewFlatClampedMenuItem.setToggleGroup(this.projectorToggleGroup);
-		this.viewFlatTilingMenuItem.setToggleGroup(this.projectorToggleGroup);
-		this.viewCubeMenuItem.setToggleGroup(this.projectorToggleGroup);
-		this.viewFlatClampedMenuItem.disableProperty().bind(noOpenFile);
-		this.viewFlatTilingMenuItem.disableProperty().bind(noOpenFile);
-		this.viewCubeMenuItem.disableProperty().bind(noOpenFile);
-		this.viewFlatClampedMenuItem.setUserData(ImageProjector.Type.FLAT_CLAMPED);
-		this.viewFlatTilingMenuItem.setUserData(ImageProjector.Type.FLAT_TILING);
-		this.viewCubeMenuItem.setUserData(ImageProjector.Type.CUBE);
-		this.openImages.getSelectionModel().selectedItemProperty().addListener(Util.change((Tab newTab) -> {
-			if (newTab != null) this.projectorToggleGroup.selectToggle(
-				switch (((OpenImage)(newTab.getUserData())).imageDisplay.currentProjectorType.get()) {
-					case FLAT_CLAMPED -> this.viewFlatClampedMenuItem;
-					case FLAT_TILING -> this.viewFlatTilingMenuItem;
-					case CUBE -> this.viewCubeMenuItem;
-				}
-			);
-		}));
-		this.projectorToggleGroup.selectedToggleProperty().addListener(Util.change((Toggle toggle) -> {
-			OpenImage image = this.getCurrentImage();
-			if (image != null) {
-				image.imageDisplay.currentProjectorType.set((ImageProjector.Type)(toggle.getUserData()));
-			}
-		}));
 		this.colorPicker.init();
 		this.openImages.getTabs().addListener((Change<? extends Tab> change) -> {
 			while (change.next()) {
@@ -230,13 +206,20 @@ public class MainWindow {
 			}
 		});
 		this.openImages.setOnScroll((ScrollEvent event) -> {
-			Node header = this.openImages.lookup(".tab-header-area");
-			if (header != null && header.contains(event.getX(), event.getY())) {
+			if (event.getTarget() instanceof Node target && isChildOf(target, "tab-header-area")) {
 				if      (event.getDeltaY() < 0.0D) this.openImages.getSelectionModel().selectNext();
 				else if (event.getDeltaY() > 0.0D) this.openImages.getSelectionModel().selectPrevious();
 			}
 		});
 		this.stage.titleProperty().bind(this.openImages.getSelectionModel().selectedItemProperty().map(Tab::getText).orElse("Big Pixel"));
+	}
+
+	public static boolean isChildOf(Node child, String style) {
+		while (child != null) {
+			if (child.getStyleClass().contains(style)) return true;
+			else child = child.getParent();
+		}
+		return false;
 	}
 
 	public void show() {
@@ -247,7 +230,7 @@ public class MainWindow {
 			if (event.isControlDown()) {
 				switch (event.getCode()) {
 					case Z -> {
-						if (openImage != null && openImage.layerGraph.selectedLayer.get().sources.getCurrentSource() instanceof ManualLayerSource manual) {
+						if (openImage != null && openImage.layerGraph.selectedLayer.get().sources.selectedValue.get() instanceof ManualLayerSource manual) {
 							if (shift) manual.history.redo();
 							else manual.history.undo();
 						}
@@ -312,14 +295,6 @@ public class MainWindow {
 				}
 			}
 		});
-		scene.focusOwnerProperty().addListener(Util.change((Node node) -> {
-			if (!(node instanceof TextInputControl) && !(node instanceof MenuButton) && !(node instanceof Spinner<?>)) {
-				OpenImage image = this.getCurrentImage();
-				if (image != null) {
-					image.imageDisplay.display.display.requestFocus();
-				}
-			}
-		}));
 		scene.setOnDragOver((DragEvent event) -> {
 			if (event.getDragboard().hasContent(DataFormat.FILES)) {
 				event.acceptTransferModes(TransferMode.COPY);
@@ -328,14 +303,45 @@ public class MainWindow {
 		scene.setOnDragDropped((DragEvent event) -> {
 			this.openFromClipboard(event.getDragboard());
 		});
+		this.currentOpenImage.flatMap((OpenImage image) -> image.imageDisplay.f3.rootNode().visibleProperty()).addListener(Util.change((Boolean visible) -> {
+			if (visible != null && visible.booleanValue()) this.startUpdatingF3();
+			else this.stopUpdatingF3();
+		}));
 		this.stage.setScene(scene);
 		this.stage.getIcons().add(Assets.ICON);
 		this.stage.show();
 	}
 
+	public void updateF3() {
+		Platform.runLater(() -> {
+			try {
+				OpenImage image = this.getCurrentImage();
+				if (image != null) {
+					image.updateF3();
+				}
+			}
+			catch (Throwable throwable) {
+				throwable.printStackTrace();
+			}
+		});
+	}
+
+	public void startUpdatingF3() {
+		if (this.f3UpdateTask == null) {
+			this.f3UpdateTask = BigPixel.SCHEDULER.scheduleAtFixedRate(this::updateF3, 0L, 100L, TimeUnit.MILLISECONDS);
+		}
+	}
+
+	public void stopUpdatingF3() {
+		if (this.f3UpdateTask != null) {
+			this.f3UpdateTask.cancel(false);
+			this.f3UpdateTask = null;
+		}
+	}
+
 	public void copyToClipboard(LayerNode layer) {
 		HDRImage image = layer.image;
-		if (layer.sources.getCurrentSource() instanceof ManualLayerSource source) {
+		if (layer.sources.selectedValue.get() instanceof ManualLayerSource source) {
 			Selection selection = new Selection();
 			Tool<?> tool = source.toolWithoutColorPicker.get();
 			if (tool != null && tool.getSelection(selection)) {
@@ -422,8 +428,14 @@ public class MainWindow {
 		NamedImage[] images = this.getClipboardImage(clipboard);
 		if (images != null) {
 			if (images.length == 1) {
-				LayerNode layer = openImage.layerGraph.selectedLayer.get();
-				if (layer.sources.getCurrentSource() instanceof ManualLayerSource manual) {
+				LayerNode selected = openImage.layerGraph.selectedLayer.get();
+				if (selected.sources.selectedValue.get() instanceof ManualLayerSource manual) {
+					ProjectionResult hovered = openImage.imageDisplay.previousProjectionResult;
+					HDRImage selectedImage = selected.image;
+					if (!this.isValidPasteLocation(hovered, selectedImage)) {
+						hovered = new ProjectionResult(selected, selectedImage.width >> 1, selectedImage.height >> 1);
+					}
+
 					Tool<?> tool = manual.toolWithoutColorPicker.get();
 					if (tool != null) {
 						tool.enter();
@@ -436,15 +448,10 @@ public class MainWindow {
 					manual.moveTool.work.x2 = width - 1;
 					manual.moveTool.work.y2 = height - 1;
 
-					Texcoord hovered = openImage.imageDisplay.getProjector().project(openImage.imageDisplay.lastMouseX, openImage.imageDisplay.lastMouseY);
-					if (hovered == null) {
-						HDRImage image = openImage.layerGraph.visibleLayerProperty.getValue().image;
-						hovered = new Texcoord(image.width >> 1, image.height >> 1);
-					}
 					manual.moveTool.work.offsetX = hovered.x - (width >> 1);
 					manual.moveTool.work.offsetY = hovered.y - (height >> 1);
 
-					layer.requestRedraw();
+					selected.requestRedraw();
 				}
 				else {
 					System.out.println("Selected layer is not manual.");
@@ -454,6 +461,17 @@ public class MainWindow {
 				System.out.println("Pasting requires exactly one image on clipboard, but there were " + images.length);
 			}
 		}
+	}
+
+	public boolean isValidPasteLocation(ProjectionResult hovered, HDRImage selected) {
+		return switch (hovered.layer) {
+			case UniformLayerSourceInput _ -> false;
+			case null -> false;
+			case VaryingLayerSourceInput varying -> {
+				HDRImage backingImage = varying.getBackingLayer().image;
+				yield backingImage.width == selected.width && backingImage.height == selected.height;
+			}
+		};
 	}
 
 	public static record NamedImage(@Nullable File source, String name, HDRImage image) {}
@@ -723,7 +741,7 @@ public class MainWindow {
 	public void addOpenImage(String name, OpenImage openImage) {
 		Tab tab = new Tab(name, openImage.getMainNode());
 		tab.setUserData(openImage);
-		ImageView thumbnail = new ImageView();
+		javafx.scene.image.ImageView thumbnail = new javafx.scene.image.ImageView();
 		thumbnail.imageProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.imageProperty()));
 		thumbnail.fitWidthProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitWidthProperty()));
 		thumbnail.fitHeightProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitHeightProperty()));

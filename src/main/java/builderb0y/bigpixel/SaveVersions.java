@@ -6,7 +6,7 @@ import builderb0y.bigpixel.json.*;
 
 public class SaveVersions {
 
-	public static final int CURRENT = 5;
+	public static final int CURRENT = 7;
 
 	@SuppressWarnings({ "fallthrough", "DefaultNotLastCaseInSwitch" })
 	public static void process(JsonMap map) {
@@ -18,7 +18,9 @@ public class SaveVersions {
 			case 2: process2(map);
 			case 3: process3(map);
 			case 4: process4(map);
-			case 5:
+			case 5: process5(map);
+			case 6: process6(map);
+			case 7:
 		}
 	}
 
@@ -78,6 +80,43 @@ public class SaveVersions {
 			JsonMap tab = layer.asMap().getMap("sources").getMap("tab");
 			if (tab.getString("type").equals("convolve")) {
 				tab.put("linear", false);
+			}
+		}
+	}
+
+	public static void process5(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			layer.asMap().put("sources", layer.asMap().removeMap("sources").removeMap("tab"));
+			layer.asMap().add(
+				"views",
+				new JsonMap()
+				.with("type", "flat_clamped")
+				.with("draw_outline", true)
+				.with("dependencies", new JsonMap(0))
+			);
+		}
+	}
+
+	public static void process6(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap views = layer.asMap().getMap("views");
+			if (views.getString("type").equals("cube")) {
+				views
+				.getMap("dependencies")
+				.rename("top",    "up"   )
+				.rename("back",   "north")
+				.rename("right",  "east" )
+				.rename("front",  "south")
+				.rename("left",   "west" )
+				.rename("bottom", "down" )
+				.getMap("dimensions")
+				.with("minX", 0.0D)
+				.with("minY", 0.0D)
+				.with("minZ", 0.0D)
+				.with("maxX", 0.0D)
+				.with("maxY", 0.0D)
+				.with("maxZ", 0.0D)
+				;
 			}
 		}
 	}

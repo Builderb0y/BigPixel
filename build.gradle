@@ -15,10 +15,7 @@ ext() {
 	junitVersion = '5.10.2'
 }
 
-sourceCompatibility = '24'
-targetCompatibility = '24'
-
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach() {
 	options.encoding = 'UTF-8'
 	options.compilerArgs.addAll([
 		'-parameters',
@@ -30,37 +27,45 @@ tasks.withType(JavaCompile) {
 }
 
 configurations() {
-	implementation {
+	copyImplementation() {
 		canBeResolved = true
 	}
 }
 
 dependencies() {
-	implementation('org.controlsfx:controlsfx:11.2.1')
 	implementation('net.synedra:validatorfx:0.5.0') {
+		exclude(group: 'org.openjfx')
+	}
+	copyImplementation('net.synedra:validatorfx:0.5.0') {
 		exclude(group: 'org.openjfx')
 	}
 
 	int jfxVersion = 21
-	implementation("org.openjfx:javafx-base:${jfxVersion}")
-	implementation("org.openjfx:javafx-controls:${jfxVersion}")
-	implementation("org.openjfx:javafx-graphics:${jfxVersion}")
-	implementation("org.openjfx:javafx-base:${jfxVersion}:linux")
-	implementation("org.openjfx:javafx-controls:${jfxVersion}:linux")
-	implementation("org.openjfx:javafx-graphics:${jfxVersion}:linux")
+	for (String spec : [
+		'org.controlsfx:controlsfx:11.2.1',
+		"org.openjfx:javafx-base:${jfxVersion}",
+		"org.openjfx:javafx-controls:${jfxVersion}",
+		"org.openjfx:javafx-graphics:${jfxVersion}",
+		"org.openjfx:javafx-base:${jfxVersion}:linux",
+		"org.openjfx:javafx-controls:${jfxVersion}:linux",
+		"org.openjfx:javafx-graphics:${jfxVersion}:linux",
+		'org.jetbrains:annotations:25.0.0'
+	]) {
+		implementation(spec)
+		copyImplementation(spec)
+	}
 
 	testImplementation("org.junit.jupiter:junit-jupiter-api:${ junitVersion }")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${ junitVersion }")
 
-	implementation('org.jetbrains:annotations:25.0.0')
-}
-
-File dependencies = file('dependencies')
-dependencies.mkdir()
-for (File from in getConfigurations().getByName('implementation').getResolvedConfiguration().getResolvedArtifacts().file) {
-	String fileName = from.getName()
-	File to = new File(dependencies, fileName)
-	if (!to.exists()) Files.copy(from.toPath(), to.toPath())
+	File dependencies = file('dependencies')
+	dependencies.deleteDir()
+	dependencies.mkdir()
+	for (File from in getConfigurations().getByName('copyImplementation').getResolvedConfiguration().getResolvedArtifacts().file) {
+		String fileName = from.getName()
+		File to = new File(dependencies, fileName)
+		if (!to.exists()) Files.copy(from.toPath(), to.toPath())
+	}
 }
 
 test() {

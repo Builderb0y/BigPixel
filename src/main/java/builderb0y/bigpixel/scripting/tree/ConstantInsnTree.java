@@ -1,9 +1,5 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.util.Arrays;
-
-import org.jetbrains.annotations.Nullable;
-
 import builderb0y.bigpixel.scripting.types.VectorType;
 
 public class ConstantInsnTree extends InsnTree {

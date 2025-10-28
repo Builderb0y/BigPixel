@@ -41,7 +41,7 @@ public class DerivedLayerDependencies extends LayerDependencies {
 				curve = this.curves.get(index);
 			}
 			else {
-				curve = new CurveHelper(this.source.sources.layer);
+				curve = new CurveHelper(this.source.sources.layer, CurveHelper.NORMAL);
 				this.curves.add(curve);
 				curve.selfSourceIsSelected.set(true);
 				curve.otherBindingIsVarying.set(true);

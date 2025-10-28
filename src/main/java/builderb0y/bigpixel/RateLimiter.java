@@ -1,6 +1,7 @@
 package builderb0y.bigpixel;
 
-import java.util.TimerTask;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import javafx.application.Platform;
 
@@ -14,6 +15,10 @@ public abstract class RateLimiter implements Runnable {
 		this.action = action;
 	}
 
+	/**
+	if this action is run faster than its delay,
+	it will run once each delay.
+	*/
 	public static class PeriodicRateLimiter extends RateLimiter {
 
 		public boolean canRun = true, runQueued;
@@ -30,28 +35,27 @@ public abstract class RateLimiter implements Runnable {
 			}
 			this.action.run();
 			this.canRun = false;
-			BigPixel.TIMER.schedule(
-				new TimerTask() {
-
-					@Override
-					public void run() {
-						Platform.runLater(() -> {
-							PeriodicRateLimiter.this.canRun = true;
-							if (PeriodicRateLimiter.this.runQueued) {
-								PeriodicRateLimiter.this.runQueued = false;
-								PeriodicRateLimiter.this.action.run();
-							}
-						});
+			BigPixel.SCHEDULER.schedule(
+				() -> Platform.runLater(() -> {
+					this.canRun = true;
+					if (this.runQueued) {
+						this.runQueued = false;
+						this.action.run();
 					}
-				},
-				this.millisecondDelay
+				}),
+				this.millisecondDelay,
+				TimeUnit.MILLISECONDS
 			);
 		}
 	}
 
+	/**
+	if this action is run faster than its delay,
+	it will wait for the runs to finish before actually running.
+	*/
 	public static class NonPeriodicRateLimiter extends RateLimiter {
 
-		public TimerTask waitingFor;
+		public ScheduledFuture<?> waitingFor;
 
 		public NonPeriodicRateLimiter(long millisecondDelay, Runnable action) {
 			super(millisecondDelay, action);
@@ -60,19 +64,16 @@ public abstract class RateLimiter implements Runnable {
 		@Override
 		public void run() {
 			if (this.waitingFor != null) {
-				this.waitingFor.cancel();
+				this.waitingFor.cancel(false);
 			}
-			this.waitingFor = new TimerTask() {
-
-				@Override
-				public void run() {
-					Platform.runLater(() -> {
-						NonPeriodicRateLimiter.this.waitingFor = null;
-						NonPeriodicRateLimiter.this.action.run();
-					});
-				}
-			};
-			BigPixel.TIMER.schedule(this.waitingFor, this.millisecondDelay);
+			this.waitingFor = BigPixel.SCHEDULER.schedule(
+				() -> Platform.runLater(() -> {
+					this.waitingFor = null;
+					this.action.run();
+				}),
+				this.millisecondDelay,
+				TimeUnit.MILLISECONDS
+			);
 		}
 	}
 }

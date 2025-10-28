@@ -9,6 +9,7 @@ import jdk.incubator.vector.VectorOperators;
 import builderb0y.bigpixel.Gradient;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.Util;
+import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
@@ -19,8 +20,8 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 	public static class Dependencies extends MainMaskDependencies {
 
 		public UnmovableInputBinding
-			strength = this.addBinding("strength", "Strength: "),
-			midpoint = this.addBinding("midpoint", "Midpoint: ");
+			strength = this.addBinding("strength", "Strength: ", CurveHelper.PARAM),
+			midpoint = this.addBinding("midpoint", "Midpoint: ", CurveHelper.PARAM);
 
 		public Dependencies(LayerSource source) {
 			super(source);

@@ -9,10 +9,8 @@ import javafx.event.ActionEvent;
 import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
-import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
+import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
@@ -32,6 +30,8 @@ import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.LayerSources;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.views.LayerView;
+import builderb0y.bigpixel.views.LayerViews;
 
 import static builderb0y.bigpixel.HDRImage.*;
 
@@ -53,6 +53,16 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		dragHandler = new LayerDragHandler(this);
 	public LayerSources
 		sources = new LayerSources(this);
+	public LayerViews
+		views = new LayerViews(this);
+	public BorderPane
+		sourceConfigPane = new BorderPane(),
+		viewConfigPane   = new BorderPane();
+	public TabPane
+		configPane = new TabPane(
+		new Tab("Source", this.sourceConfigPane),
+		new Tab("View", this.viewConfigPane)
+	);
 	public RadioButton
 		showing = new RadioButton();
 	public ImageView
@@ -66,9 +76,7 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 	public TextField
 		nameEditor = new TextField();
 	public HBox
-		sourceAndNameEditor = new HBox(this.sources.sourceTypeBox, this.nameEditor);
-	public BorderPane
-		configPane = new BorderPane();
+		sourceAndNameEditor = new HBox(this.sources.rootButton, this.nameEditor);
 	public boolean
 		redrawRequested = true;
 	public SimpleObjectProperty<Throwable>
@@ -83,11 +91,13 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 			.with("width", this.image.width)
 			.with("height", this.image.height)
 			.with("sources", this.sources.save())
+			.with("views", this.views.save())
 		);
 	}
 
 	public void load(JsonMap saveData) {
 		this.sources.load(saveData.getMap("sources"));
+		this.views.load(saveData.getMap("views"));
 	}
 
 	public LayerNode(LayerGraph graph, JsonMap saveData) {
@@ -105,7 +115,10 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		this.graph = graph;
 		this.image = new HDRImage(width, height);
 		super();
+		this.sources.init();
+		this.views.init();
 		this.dragHandler.init();
+		this.configPane.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
 		this.displayName.setText(name);
 		this.nameEditor.setText(name);
 		this.showing.setFont(new Font(16));
@@ -149,8 +162,10 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 				this.nameEditor.setText(this.getDisplayName());
 			}
 		});
-		this.configPane.setTop(this.sourceAndNameEditor);
-		this.configPane.centerProperty().bind(this.sources.currentSourceProperty.map(LayerSource::getConfigNode));
+		this.sourceConfigPane.setTop(this.sourceAndNameEditor);
+		this.sourceConfigPane.centerProperty().bind(this.sources.selectedValue.map(LayerSource::getConfigNode));
+		this.viewConfigPane.setTop(this.views.rootButton);
+		this.viewConfigPane.centerProperty().bind(this.views.selectedValue.map(LayerView::getRootConfigPane));
 	}
 
 	public FloatVector getPixelWrapped(IntVector coord) {
@@ -176,7 +191,7 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 
 	public void redrawImmediately() {
 		try {
-			this.sources.getCurrentSource().redrawImmediately();
+			this.sources.selectedValue.get().redrawImmediately();
 			this.redrawThumbnail();
 			this.redrawException.set(null);
 		}
@@ -189,7 +204,7 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 	}
 
 	public LayerDependencies getDependencies() {
-		return this.sources.getCurrentSource().getDependencies();
+		return this.sources.selectedValue.get().getDependencies();
 	}
 
 	public String getDisplayName() {
@@ -266,7 +281,7 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		return this.innerPreview;
 	}
 
-	public Pane getConfigPane() {
+	public TabPane getConfigPane() {
 		return this.configPane;
 	}
 

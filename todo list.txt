@@ -8,6 +8,10 @@ scripting:
 make animation not draw canvas when open image tab is not selected.
 better compression for history/tool actions.
 probably need to separate save file from export file.
+cullface.
+tintIndex.
+export model to minecraft-formatted json file.
+use UI component builders for everything?
 
 layer sources:
 	no inputs:

@@ -36,11 +36,13 @@ public class Util {
 
 	public static <T> Spinner<T> setupSpinner(Spinner<T> spinner, double width) {
 		spinner.setEditable(true);
-		spinner.setPrefWidth(width);
+		spinner.setMinWidth(width);
+		spinner.setMaxWidth(width);
 		spinner.setOnScroll((ScrollEvent event) -> {
 			if (spinner.isEditable()) {
 				if (event.getDeltaY() > 0.0D) spinner.increment();
 				else if (event.getDeltaY() < 0.0D) spinner.decrement();
+				event.consume();
 			}
 		});
 		return spinner;
@@ -123,7 +125,15 @@ public class Util {
 		return (b - a) * f + a;
 	}
 
+	public static double mix(double a, double b, double f) {
+		return (b - a) * f + a;
+	}
+
 	public static float unmix(float a, float b, float f) {
+		return (f - a) / (b - a);
+	}
+
+	public static double unmix(double a, double b, double f) {
 		return (f - a) / (b - a);
 	}
 

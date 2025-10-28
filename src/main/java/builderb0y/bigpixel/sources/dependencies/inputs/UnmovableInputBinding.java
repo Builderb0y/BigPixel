@@ -3,16 +3,17 @@ package builderb0y.bigpixel.sources.dependencies.inputs;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
+import javafx.scene.paint.Color;
 
+import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
-import builderb0y.bigpixel.sources.LayerSource;
 
 public class UnmovableInputBinding extends InputBinding {
 
 	public Label displayName;
 
-	public UnmovableInputBinding(LayerSource source, String displayName, ColorBoxGroup group) {
-		super(source, group);
+	public UnmovableInputBinding(OrganizedSelection.Value<?> owner, String displayName, ColorBoxGroup group, Color color) {
+		super(owner, group, color);
 		this.displayName = new Label(displayName);
 	}
 

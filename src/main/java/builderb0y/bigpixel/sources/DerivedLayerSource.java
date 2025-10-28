@@ -121,7 +121,7 @@ public class DerivedLayerSource extends LayerSource {
 			);
 			this.dependencies.setActualDependencies(parser.usedLayers.keySet().stream().map(layerMap::get).collect(Collectors.toSet()));
 			this.dependencies.animated = animationTracer.used;
-			if (redraw) this.requestRedraw();
+			if (redraw) this.redrawLater();
 			this.sources.layer.redrawException.set(null);
 		}
 		catch (Throwable throwable) {

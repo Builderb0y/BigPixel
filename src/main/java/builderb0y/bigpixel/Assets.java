@@ -15,7 +15,8 @@ public class Assets {
 			FREEHAND     = of("/assets/tools/freehand.png"),
 			LINE         = of("/assets/tools/line.png"),
 			MOVE         = of("/assets/tools/move.png"),
-			RECTANGLE    = of("/assets/tools/rectangle.png");
+			RECTANGLE    = of("/assets/tools/rectangle.png"),
+			AUTO_UV      = of("/assets/tools/auto_uv.png");
 
 		public static class Move {
 

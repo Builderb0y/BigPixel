@@ -19,17 +19,17 @@ import javafx.scene.layout.Pane;
 
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
-import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.MovableInputBinding;
 
 public class MultiLayerDependencies extends LayerDependencies {
 
-	public LayerSource source;
+	public OrganizedSelection.Value<?> owner;
 	public ColorBoxGroup colorBoxGroup;
 	public ListView<MovableInputBinding> listView = new ListView<>();
 	public Button addButton = new Button("+");
@@ -58,10 +58,10 @@ public class MultiLayerDependencies extends LayerDependencies {
 		while (inputs.size() > index) inputs.removeLast();
 	}
 
-	public MultiLayerDependencies(LayerSource source) {
-		this.source = source;
+	public MultiLayerDependencies(OrganizedSelection.Value<?> owner) {
+		this.owner = owner;
 		super();
-		ColorHelper colorHelper = source.sources.layer.graph.openImage.mainWindow.colorPicker.currentColor;
+		ColorHelper colorHelper = owner.getLayer().graph.openImage.mainWindow.colorPicker.currentColor;
 		this.colorBoxGroup = new ColorBoxGroup(colorHelper, this.listView);
 		this.listView.setSelectionModel(new NoSelection<>());
 		this.listView.setCellFactory((ListView<MovableInputBinding> _) -> new ListCell<>() {
@@ -83,7 +83,7 @@ public class MultiLayerDependencies extends LayerDependencies {
 					binding.down.setDisable(index == list.size() - 1);
 				}
 			}
-			source.requestRedraw();
+			owner.redrawLater();
 		});
 		this.configView.setCenter(this.listView);
 		this.configView.setBottom(this.bottomPane);
@@ -91,12 +91,12 @@ public class MultiLayerDependencies extends LayerDependencies {
 	}
 
 	public void addInput() {
-		MovableInputBinding binding = new MovableInputBinding(this, this.colorBoxGroup);
-		LayerNode layer = this.source.sources.layer;
+		MovableInputBinding binding = new MovableInputBinding(this, this.colorBoxGroup, CurveHelper.NORMAL);
+		LayerNode layer = this.owner.getLayer();
 		binding.retainAll(layer.graph.getPossibleDependencies(layer));
 		this.listView.getItems().add(binding);
 		binding.curve.selfSourceIsSelected.set(true);
-		binding.enabled.selectedProperty().addListener(Util.change(this.source::requestRedraw));
+		binding.enabled.selectedProperty().addListener(Util.change(this.owner::redrawLater));
 	}
 
 	public void removeInput(MovableInputBinding binding) {
