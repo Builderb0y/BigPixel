@@ -1,5 +1,10 @@
 package builderb0y.bigpixel.sources;
 
+import java.util.function.Function;
+
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
+import javafx.beans.value.ObservableValue;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
@@ -11,8 +16,9 @@ import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
-import builderb0y.bigpixel.util.CanvasHelper;
 import builderb0y.bigpixel.util.Util;
 
 public class GradientRemapLayerSource extends PerPixelLayerSource {
@@ -175,24 +181,31 @@ public class GradientRemapLayerSource extends PerPixelLayerSource {
 	public static class GradientRow extends Gradient {
 
 		public UnmovableInputBinding start, end;
-		public FloatVector startColor, endColor;
+		public ObservableValue<FloatVector> startColor, endColor;
 
 		public GradientRow(GradientRemapLayerSource source, boolean to) {
 			this.fixedSize(129.0D, 16.0D).checkerboard().popOut();
 			this.start = to ? source.dependencies().toStart : source.dependencies().fromStart;
 			this.end   = to ? source.dependencies().toEnd   : source.dependencies().fromEnd;
-		}
-
-		@Override
-		public void redraw(CanvasHelper canvas) {
-			this.startColor = this.start.colorBox.getColor();
-			this.endColor = this.end.colorBox.getColor();
-			super.redraw(canvas);
+			Function<SamplerProvider, ObservableValue<FloatVector>> mapper = (SamplerProvider provider) -> provider instanceof UniformSamplerProvider uniform ? uniform.colorProperty() : null;
+			this.startColor = this.start.selection.valueProperty().flatMap(mapper);
+			this.endColor   = this.end.selection.valueProperty().flatMap(mapper);
+			InvalidationListener redrawer = (Observable _) -> this.redraw();
+			this.startColor.addListener(redrawer);
+			this.endColor.addListener(redrawer);
+			this.redraw();
 		}
 
 		@Override
 		public FloatVector computeColor(int pixelPos, float fraction) {
-			return VectorOperations.mix_float4_float4_float(this.startColor, this.endColor, fraction);
+			FloatVector start = this.startColor.getValue();
+			FloatVector end = this.endColor.getValue();
+			if (start != null && end != null) {
+				return VectorOperations.mix_float4_float4_float(start, end, fraction);
+			}
+			else {
+				return Util.INVISIBLACK;
+			}
 		}
 	}
 }

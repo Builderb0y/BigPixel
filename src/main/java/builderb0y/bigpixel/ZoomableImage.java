@@ -53,7 +53,15 @@ public class ZoomableImage extends AnimationView {
 	public ZoomableImage(OpenImage openImage) {
 		super(openImage.animationSource);
 		this.openImage = openImage;
-		this.display = new BaseCanvasHelper().checkerboard().resizeable((BaseCanvasHelper _) -> this.redrawLater());
+		this.display = new BaseCanvasHelper() {
+
+			@Override
+			public void redraw() {
+				ZoomableImage.this.redrawLater();
+			}
+		}
+		.checkerboard()
+		.resizeable();
 		this.f3 = new F3Menu();
 		this.displayWithF3 = new StackPane(this.display.getRootPane(), this.f3.rootNode());
 		this.centerer = Util.change(this::centerOnce);

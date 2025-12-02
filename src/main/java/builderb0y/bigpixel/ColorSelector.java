@@ -54,7 +54,16 @@ public class ColorSelector {
 
 	public MainWindow mainWindow;
 	public GridPane mainPane = new GridPane();
-	public CanvasHelper gradient = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 257.0D, (BaseCanvasHelper canvas) -> this.redrawGradient((CanvasHelper)(canvas)));
+	public CanvasHelper gradient = new CanvasHelper() {
+
+		@Override
+		public void redraw() {
+			ColorSelector.this.redrawGradient();
+		}
+	}
+	.checkerboard()
+	.popIn()
+	.fixedSize(257.0D, 257.0D);
 	public ColorHelper currentColor = new ColorHelper();
 	public RectangleHelper rectangle = new RectangleHelper().checkerboard().popIn().fixedSize(96, 96);
 	public CheckBox fractionalDisplay = new CheckBox("/256");
@@ -87,7 +96,7 @@ public class ColorSelector {
 		AnchorPane.setRightAnchor(this.colorPickerButton, 4.0D);
 		AnchorPane.setBottomAnchor(this.colorPickerButton, 4.0D);
 		this.mainPane.add(colorPickerButtonPane, 2, 1);
-		this.currentColor.any.addListener((Observable _) -> this.redrawGradient(this.gradient));
+		this.currentColor.any.addListener((Observable _) -> this.redrawGradient());
 	}
 
 	public static int snap(double pos) {
@@ -125,15 +134,15 @@ public class ColorSelector {
 		this.dark.init();
 		this.light.init();
 		this.alpha.init();
-		this.redrawGradient(this.gradient);
+		this.redrawGradient();
 	}
 
-	public void redrawGradient(CanvasHelper canvas) {
+	public void redrawGradient() {
 		//gradient
-		PixelWriter writer = canvas.getImage().getPixelWriter();
+		PixelWriter writer = this.gradient.getImage().getPixelWriter();
 		ColorHelper helper = new ColorHelper(this.currentColor);
 		ColorComponent primaryComponent = ColorComponent.HUE;
-		byte[] pixels = canvas.pixels.get();
+		byte[] pixels = this.gradient.pixels.get();
 		for (int y = 0; y <= 256; y++) {
 			helper.setComponent(primaryComponent.vertical(), (256 - y) / 256.0F);
 			for (int x = 0; x <= 256; x++) {
@@ -169,7 +178,7 @@ public class ColorSelector {
 			}
 		}
 		writer.setPixels(0, 0, 257, 257, PixelFormat.getByteBgraPreInstance(), pixels, 0, 257 << 2);
-		canvas.blit();
+		this.gradient.blit();
 
 		//rectangle
 		this.rectangle.setColor(
@@ -273,8 +282,8 @@ public class ColorSelector {
 			};
 			this.display.setOnScroll(eventHandler);
 			this.numberBox.setOnScroll(eventHandler);
-			ColorSelector.this.currentColor.any.addListener((Observable _) -> this.redraw(this));
-			this.redraw(this);
+			ColorSelector.this.currentColor.any.addListener((Observable _) -> this.redraw());
+			this.redraw();
 		}
 
 		public void addToGrid(GridPane pane, int row) {
@@ -298,9 +307,9 @@ public class ColorSelector {
 		}
 
 		@Override
-		public void redraw(CanvasHelper image) {
+		public void redraw() {
 			this.scratchColor.setFrom(ColorSelector.this.currentColor);
-			super.redraw(image);
+			super.redraw();
 		}
 	}
 

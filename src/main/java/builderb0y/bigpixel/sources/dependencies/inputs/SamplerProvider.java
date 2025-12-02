@@ -1,5 +1,6 @@
 package builderb0y.bigpixel.sources.dependencies.inputs;
 
+import javafx.beans.value.ObservableValue;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.LayerNode;
@@ -17,7 +18,11 @@ public sealed interface SamplerProvider {
 
 	public static non-sealed interface UniformSamplerProvider extends SamplerProvider {
 
-		public abstract FloatVector getColor();
+		public abstract ObservableValue<FloatVector> colorProperty();
+
+		public default FloatVector getColor() {
+			return this.colorProperty().getValue();
+		}
 
 		@Override
 		public default UniformSampler createSamplerForCurrentFrame() {

@@ -61,12 +61,12 @@ public class CanvasHelper extends BaseCanvasHelper {
 	}
 
 	@Override
-	public CanvasHelper fixedSize(double width, double height, Consumer<BaseCanvasHelper> redrawer) {
-		return (CanvasHelper)(super.fixedSize(width, height, redrawer));
+	public CanvasHelper fixedSize(double width, double height) {
+		return (CanvasHelper)(super.fixedSize(width, height));
 	}
 
 	@Override
-	public CanvasHelper resizeable(Consumer<BaseCanvasHelper> redrawer) {
-		return (CanvasHelper)(super.resizeable(redrawer));
+	public CanvasHelper resizeable() {
+		return (CanvasHelper)(super.resizeable());
 	}
 }

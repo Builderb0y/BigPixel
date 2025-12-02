@@ -1,21 +1,18 @@
 package builderb0y.bigpixel.util;
 
-import java.util.function.Consumer;
-
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.WritableImage;
-import org.jetbrains.annotations.Nullable;
 
 public class BaseCanvasHelper extends BorderHelper<Canvas> {
-
-	public @Nullable Consumer<BaseCanvasHelper> redrawer;
 
 	public BaseCanvasHelper() {
 		super(new Canvas());
 	}
+
+	public void redraw() {}
 
 	@Override
 	public BaseCanvasHelper checkerboard() {
@@ -38,22 +35,15 @@ public class BaseCanvasHelper extends BorderHelper<Canvas> {
 	}
 
 	@Override
-	@Deprecated
-	public BorderHelper<Canvas> fixedSize(double width, double height) {
+	public BaseCanvasHelper fixedSize(double width, double height) {
 		this.display.setWidth(width);
 		this.display.setHeight(height);
-		return super.fixedSize(width, height);
-	}
-
-	public BaseCanvasHelper fixedSize(double width, double height, Consumer<BaseCanvasHelper> redrawer) {
-		this.redrawer = redrawer;
-		this.fixedSize(width, height);
+		super.fixedSize(width, height);
 		this.bindRedrawListener();
 		return this;
 	}
 
-	public BaseCanvasHelper resizeable(Consumer<BaseCanvasHelper> redrawer) {
-		this.redrawer = redrawer;
+	public BaseCanvasHelper resizeable() {
 		this.innerPane.setMinWidth(0.0D);
 		this.innerPane.setMinHeight(0.0D);
 		this.display.widthProperty().bind(this.innerPane.widthProperty());
@@ -64,8 +54,8 @@ public class BaseCanvasHelper extends BorderHelper<Canvas> {
 
 	public void bindRedrawListener() {
 		ChangeListener<Object> listener = Util.change(() -> {
-			if (this.redrawer != null && this.display.getWidth() > 0.0D && this.display.getHeight() > 0.0D) {
-				this.redrawer.accept(this);
+			if (this.display.getWidth() > 0.0D && this.display.getHeight() > 0.0D) {
+				this.redraw();
 			}
 		});
 		this.display.widthProperty().addListener(listener);

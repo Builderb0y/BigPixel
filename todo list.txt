@@ -15,8 +15,6 @@ use UI component builders for everything?
 	maybe use manifold extensions?
 lwjgl for some complex layer sources?
 
-re-write CanvasHelper/BaseCanvasHelper to have redraw method instead of passing in a lambda.
-
 layer sources:
 	no inputs:
 		blue noise pixels.

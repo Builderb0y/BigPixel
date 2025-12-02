@@ -15,7 +15,7 @@ public abstract class GradientSlider extends Gradient {
 		EventHandler<MouseEvent> mouseHandler = new RateLimitedMouseEventHandler(
 			(MouseEvent event) -> {
 				this.clickedPosition.set(this.castPosition(event.getX()));
-				this.redraw(this); //we ARE the handler that gets bound to... ourself.
+				this.redraw();
 			}
 		);
 		this.display.setOnMousePressed(mouseHandler);

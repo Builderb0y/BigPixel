@@ -17,7 +17,15 @@ import builderb0y.bigpixel.util.Util;
 public class Histogram {
 
 	public MainWindow window;
-	public CanvasHelper canvas = new CanvasHelper().resizeable((BaseCanvasHelper canvas) -> this.redrawCanvas((CanvasHelper)(canvas))).popIn();
+	public CanvasHelper canvas = new CanvasHelper() {
+
+		@Override
+		public void redraw() {
+			Histogram.this.redrawCanvas(this);
+		}
+	}
+	.resizeable()
+	.popIn();
 	public CheckBox log = new CheckBox("Log Scale");
 	public CheckBox alpha = new CheckBox("Alpha");
 	public HBox settings = new HBox(this.log, this.alpha);

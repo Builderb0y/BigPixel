@@ -55,8 +55,8 @@ public class ColorBox implements UniformSamplerProvider {
 	}
 
 	@Override
-	public FloatVector getColor() {
-		return this.color.get();
+	public ObservableValue<FloatVector> colorProperty() {
+		return this.color;
 	}
 
 	public Pane getDisplayPane() {
