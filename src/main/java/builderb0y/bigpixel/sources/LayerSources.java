@@ -6,19 +6,21 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
+import builderb0y.bigpixel.sources.LayerSource.LayerSourceCategory;
+import builderb0y.bigpixel.sources.LayerSource.LayerSourceType;
 import builderb0y.bigpixel.tools.Tool;
 
-public class LayerSources extends OrganizedSelection<LayerSource, LayerSource.Type, LayerSource.Category> {
+public class LayerSources extends OrganizedSelection<LayerSource, LayerSourceType, LayerSourceCategory> {
 
 	public ObservableObjectValue<@Nullable Tool<?>> toolWithoutColorPicker;
 
 	public LayerSources(LayerNode layer) {
-		super(layer, LayerSource.Type.class, LayerSource.Category.class);
+		super(layer, LayerSourceType.class, LayerSourceCategory.class);
 	}
 
 	public void init() {
 		this.toolWithoutColorPicker = (
-			new When(this.selectedType.isEqualTo(LayerSource.Type.MANUAL))
+			new When(this.selectedType.isEqualTo(LayerSourceType.MANUAL))
 			.then(this.manualSource().toolWithoutColorPicker)
 			.otherwise((Tool<?>)(null))
 		);
@@ -31,13 +33,17 @@ public class LayerSources extends OrganizedSelection<LayerSource, LayerSource.Ty
 	}
 
 	@Override
-	public LayerSource createValue(LayerSource.Type type) {
+	public LayerSource createValue(LayerSourceType type) {
 		LayerSource source = super.createValue(type);
 		source.setPossibleDependencies(this.layer.graph.getPossibleDependencies(this.layer));
 		return source;
 	}
 
+	public LayerSource currentSource() {
+		return this.selectedValue.get();
+	}
+
 	public ManualLayerSource manualSource() {
-		return (ManualLayerSource)(this.getOrCreateValue(LayerSource.Type.MANUAL));
+		return (ManualLayerSource)(this.getOrCreateValue(LayerSourceType.MANUAL));
 	}
 }

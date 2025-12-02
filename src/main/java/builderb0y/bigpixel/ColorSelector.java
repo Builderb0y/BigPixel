@@ -20,6 +20,7 @@ import jdk.incubator.vector.FloatVector;
 import builderb0y.bigpixel.ColorHelper.ColorComponent;
 import builderb0y.bigpixel.tools.ColorPickerTool;
 import builderb0y.bigpixel.tools.Tool;
+import builderb0y.bigpixel.util.*;
 
 public class ColorSelector {
 
@@ -53,7 +54,7 @@ public class ColorSelector {
 
 	public MainWindow mainWindow;
 	public GridPane mainPane = new GridPane();
-	public CanvasHelper gradient = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 257.0D);
+	public CanvasHelper gradient = new CanvasHelper().checkerboard().popIn().fixedSize(257.0D, 257.0D, (BaseCanvasHelper canvas) -> this.redrawGradient((CanvasHelper)(canvas)));
 	public ColorHelper currentColor = new ColorHelper();
 	public RectangleHelper rectangle = new RectangleHelper().checkerboard().popIn().fixedSize(96, 96);
 	public CheckBox fractionalDisplay = new CheckBox("/256");
@@ -86,7 +87,7 @@ public class ColorSelector {
 		AnchorPane.setRightAnchor(this.colorPickerButton, 4.0D);
 		AnchorPane.setBottomAnchor(this.colorPickerButton, 4.0D);
 		this.mainPane.add(colorPickerButtonPane, 2, 1);
-		this.currentColor.any.addListener((Observable _) -> this.redrawGradient());
+		this.currentColor.any.addListener((Observable _) -> this.redrawGradient(this.gradient));
 	}
 
 	public static int snap(double pos) {
@@ -124,15 +125,15 @@ public class ColorSelector {
 		this.dark.init();
 		this.light.init();
 		this.alpha.init();
-		this.redrawGradient();
+		this.redrawGradient(this.gradient);
 	}
 
-	public void redrawGradient() {
+	public void redrawGradient(CanvasHelper canvas) {
 		//gradient
-		PixelWriter writer = this.gradient.display.getGraphicsContext2D().getPixelWriter();
+		PixelWriter writer = canvas.getImage().getPixelWriter();
 		ColorHelper helper = new ColorHelper(this.currentColor);
 		ColorComponent primaryComponent = ColorComponent.HUE;
-		byte[] pixels = new byte[257 * 257 * 4];
+		byte[] pixels = canvas.pixels.get();
 		for (int y = 0; y <= 256; y++) {
 			helper.setComponent(primaryComponent.vertical(), (256 - y) / 256.0F);
 			for (int x = 0; x <= 256; x++) {
@@ -168,6 +169,7 @@ public class ColorSelector {
 			}
 		}
 		writer.setPixels(0, 0, 257, 257, PixelFormat.getByteBgraPreInstance(), pixels, 0, 257 << 2);
+		canvas.blit();
 
 		//rectangle
 		this.rectangle.setColor(
@@ -271,8 +273,8 @@ public class ColorSelector {
 			};
 			this.display.setOnScroll(eventHandler);
 			this.numberBox.setOnScroll(eventHandler);
-			ColorSelector.this.currentColor.any.addListener((Observable _) -> this.redraw());
-			this.redraw();
+			ColorSelector.this.currentColor.any.addListener((Observable _) -> this.redraw(this));
+			this.redraw(this);
 		}
 
 		public void addToGrid(GridPane pane, int row) {
@@ -296,9 +298,9 @@ public class ColorSelector {
 		}
 
 		@Override
-		public void redraw() {
+		public void redraw(CanvasHelper image) {
 			this.scratchColor.setFrom(ColorSelector.this.currentColor);
-			super.redraw();
+			super.redraw(image);
 		}
 	}
 

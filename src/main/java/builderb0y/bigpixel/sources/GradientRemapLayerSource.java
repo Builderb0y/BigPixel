@@ -6,13 +6,14 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.Gradient;
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.UtilityOperations;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
+import builderb0y.bigpixel.util.CanvasHelper;
+import builderb0y.bigpixel.util.Util;
 
 public class GradientRemapLayerSource extends PerPixelLayerSource {
 
@@ -50,49 +51,49 @@ public class GradientRemapLayerSource extends PerPixelLayerSource {
 		toggles = new HBox(this.perChannel, this.preserveAlpha);
 
 	public GradientRemapLayerSource(LayerSources sources) {
-		super(Type.GRADIENT_REMAP, sources);
+		super(LayerSourceType.GRADIENT_REMAP, sources);
 		this.dependencies.addExtraNodeRow(this.fromGradient.getRootPane());
 		this.dependencies.addExtraNodeRow(this.toGradient.getRootPane());
 		this.dependencies.addExtraNodeRow(this.toggles);
 	}
 
 	@Override
-	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
+	public PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException {
 		if (this.perChannel.isSelected()) {
 			if (this.preserveAlpha.isSelected()) {
-				return new PerChannelRGBApplicator(this);
+				return new PerChannelRGBApplicator(this, frame);
 			}
 			else {
-				return new PerChannelAlphaApplicator(this);
+				return new PerChannelAlphaApplicator(this, frame);
 			}
 		}
 		else {
 			if (this.preserveAlpha.isSelected()) {
-				return new UniformRGBApplicator(this);
+				return new UniformRGBApplicator(this, frame);
 			}
 			else {
-				return new UniformAlphaApplicator(this);
+				return new UniformAlphaApplicator(this, frame);
 			}
 		}
 	}
 
 	public static abstract class Applicator extends PerPixelApplicator {
 
-		public final LayerSourceInput fromStart, fromEnd, toStart, toEnd;
+		public final Sampler fromStart, fromEnd, toStart, toEnd;
 
-		public Applicator(GradientRemapLayerSource source) {
+		public Applicator(GradientRemapLayerSource source, int frame) {
 			Dependencies dependencies = source.dependencies();
-			this.fromStart = dependencies.fromStart.getCurrent();
-			this.fromEnd   = dependencies.fromEnd  .getCurrent();
-			this.toStart   = dependencies.toStart  .getCurrent();
-			this.toEnd     = dependencies.toEnd    .getCurrent();
+			this.fromStart = dependencies.fromStart.getCurrent().createSamplerForFrame(frame);
+			this.fromEnd   = dependencies.fromEnd  .getCurrent().createSamplerForFrame(frame);
+			this.toStart   = dependencies.toStart  .getCurrent().createSamplerForFrame(frame);
+			this.toEnd     = dependencies.toEnd    .getCurrent().createSamplerForFrame(frame);
 		}
 	}
 
 	public static class UniformAlphaApplicator extends Applicator {
 
-		public UniformAlphaApplicator(GradientRemapLayerSource source) {
-			super(source);
+		public UniformAlphaApplicator(GradientRemapLayerSource source, int frame) {
+			super(source, frame);
 		}
 
 		@Override
@@ -111,8 +112,8 @@ public class GradientRemapLayerSource extends PerPixelLayerSource {
 
 	public static class UniformRGBApplicator extends Applicator {
 
-		public UniformRGBApplicator(GradientRemapLayerSource source) {
-			super(source);
+		public UniformRGBApplicator(GradientRemapLayerSource source, int frame) {
+			super(source, frame);
 		}
 
 		@Override
@@ -132,8 +133,8 @@ public class GradientRemapLayerSource extends PerPixelLayerSource {
 
 	public static class PerChannelAlphaApplicator extends Applicator {
 
-		public PerChannelAlphaApplicator(GradientRemapLayerSource source) {
-			super(source);
+		public PerChannelAlphaApplicator(GradientRemapLayerSource source, int frame) {
+			super(source, frame);
 		}
 
 		@Override
@@ -152,8 +153,8 @@ public class GradientRemapLayerSource extends PerPixelLayerSource {
 
 	public static class PerChannelRGBApplicator extends Applicator {
 
-		public PerChannelRGBApplicator(GradientRemapLayerSource source) {
-			super(source);
+		public PerChannelRGBApplicator(GradientRemapLayerSource source, int frame) {
+			super(source, frame);
 		}
 
 		@Override
@@ -177,16 +178,16 @@ public class GradientRemapLayerSource extends PerPixelLayerSource {
 		public FloatVector startColor, endColor;
 
 		public GradientRow(GradientRemapLayerSource source, boolean to) {
-			this.checkerboard().popOut().fixedSize(129.0D, 16.0D);
+			this.fixedSize(129.0D, 16.0D).checkerboard().popOut();
 			this.start = to ? source.dependencies().toStart : source.dependencies().fromStart;
 			this.end   = to ? source.dependencies().toEnd   : source.dependencies().fromEnd;
 		}
 
 		@Override
-		public void redraw() {
+		public void redraw(CanvasHelper canvas) {
 			this.startColor = this.start.colorBox.getColor();
 			this.endColor = this.end.colorBox.getColor();
-			super.redraw();
+			super.redraw(canvas);
 		}
 
 		@Override

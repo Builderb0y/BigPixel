@@ -31,12 +31,12 @@ public class OpenImage {
 		layerGraph = new LayerGraph(this);
 	public SplitPane
 		imageAndLayerConfig = new SplitPane();
+	public AnimationSource
+		animationSource = new AnimationSource(this);
 	public ZoomableImage
 		imageDisplay = new ZoomableImage(this);
 	public BorderPane
 		layerConfigPane = new BorderPane();
-	public AnimationSource
-		animationSource = new AnimationSource(this);
 	public ColorPickerTool
 		colorPickerTool = new ColorPickerTool(this);
 	public SimpleBooleanProperty

@@ -14,10 +14,10 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.CubicCurve;
 
 import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
+import builderb0y.bigpixel.util.Util;
 
 public class CurveHelper {
 
@@ -82,17 +82,17 @@ public class CurveHelper {
 		}));
 	}
 
-	public void setOtherEnd(LayerSourceInput input) {
+	public void setOtherEnd(SamplerProvider input) {
 		this.curve.startXProperty().unbind();
 		this.curve.startYProperty().unbind();
 		switch (input) {
 			case null -> {
 				this.otherBindingIsVarying.set(false);
 			}
-			case UniformLayerSourceInput _ -> {
+			case UniformSamplerProvider _ -> {
 				this.otherBindingIsVarying.set(false);
 			}
-			case VaryingLayerSourceInput varying -> {
+			case VaryingSamplerProvider varying -> {
 				LayerNode layer = varying.getBackingLayer();
 				Pane pane = layer.getPreviewNode();
 				if (layer.getGridX() < this.ourLayer.getGridX()) {

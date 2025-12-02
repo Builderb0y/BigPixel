@@ -6,9 +6,10 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.ColorHelper;
+import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.ManualLayerSource;
+import builderb0y.bigpixel.util.Util;
 
 public class RectangleTool extends Tool<RectangleTool.Work> {
 
@@ -91,8 +92,8 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 		LayerNode layer = this.layer();
 		int
 			thickness = this.thickness.getValue(),
-			width = layer.image.width,
-			height = layer.image.height,
+			width = layer.imageWidth(),
+			height = layer.imageHeight(),
 			rectMinX = work.minX(),
 			rectMinY = work.minY(),
 			rectMaxX = work.maxX(),
@@ -106,10 +107,11 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 			drawMaxX = Math.min(rectMaxX, width - 1),
 			drawMaxY = Math.min(rectMaxY, height - 1);
 		ColorHelper color = layer.graph.openImage.mainWindow.colorPicker.currentColor;
+		HDRImage image = layer.getOnlyFrame();
 		if (thickness == 0 || Math.min(rectMaxX - rectMinX + 1, rectMaxY - rectMinY + 1) < thickness << 1) {
 			for (int y = drawMinY; y <= drawMaxY; y++) {
 				for (int x = drawMinX; x <= drawMaxX; x++) {
-					layer.image.setColor(x, y, color);
+					image.setColor(x, y, color);
 				}
 			}
 		}
@@ -117,7 +119,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 			for (int y = drawMinY; y <= drawMaxY; y++) {
 				for (int x = drawMinX; x <= drawMaxX; x++) {
 					if (x < innerMinX || x > innerMaxX || y < innerMinY || y > innerMaxY) {
-						layer.image.setColor(x, y, color);
+						image.setColor(x, y, color);
 					}
 				}
 			}

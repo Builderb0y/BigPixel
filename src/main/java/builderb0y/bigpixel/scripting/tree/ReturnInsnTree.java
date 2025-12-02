@@ -1,5 +1,7 @@
 package builderb0y.bigpixel.scripting.tree;
 
+import static org.objectweb.asm.Opcodes.*;
+
 public class ReturnInsnTree extends InsnTree {
 
 	public final InsnTree value;
@@ -13,14 +15,16 @@ public class ReturnInsnTree extends InsnTree {
 	@Override
 	public void emitBytecode(Context context) {
 		this.value.emitBytecode(context);
-		switch (this.value.type()) {
-			case INT, BOOLEAN -> context.codeBuilder.ireturn();
-			case LONG -> context.codeBuilder.lreturn();
-			case FLOAT -> context.codeBuilder.freturn();
-			case DOUBLE -> context.codeBuilder.dreturn();
-			case VOID -> context.codeBuilder.return_();
-			default -> context.codeBuilder.areturn();
-		}
+		context.codeBuilder.visitInsn(
+			switch (this.value.type()) {
+				case INT, BOOLEAN -> IRETURN;
+				case LONG -> LRETURN;
+				case FLOAT -> FRETURN;
+				case DOUBLE -> DRETURN;
+				case VOID -> RETURN;
+				default -> ARETURN;
+			}
+		);
 	}
 
 	@Override

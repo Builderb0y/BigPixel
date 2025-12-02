@@ -1,11 +1,13 @@
 package builderb0y.bigpixel.scripting.tree.condition;
 
-import java.lang.classfile.Label;
 import java.util.Locale;
 
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.CodeEmitter;
+
+import static org.objectweb.asm.Opcodes.*;
 
 public enum CompareMode {
 	GT(">"),
@@ -35,23 +37,23 @@ public enum CompareMode {
 
 	public void ifNonZero(CodeEmitter.Context context, Label label) {
 		switch (this) {
-			case GT -> context.codeBuilder.if_icmpgt(label);
-			case GE -> context.codeBuilder.if_icmpge(label);
-			case LT -> context.codeBuilder.if_icmplt(label);
-			case LE -> context.codeBuilder.if_icmple(label);
-			case EQ -> context.codeBuilder.if_icmpeq(label);
-			case NE -> context.codeBuilder.if_icmpne(label);
+			case GT -> context.codeBuilder.ifICmp(IF_ICMPGT, label);
+			case GE -> context.codeBuilder.ifICmp(IF_ICMPGE, label);
+			case LT -> context.codeBuilder.ifICmp(IF_ICMPLT, label);
+			case LE -> context.codeBuilder.ifICmp(IF_ICMPLE, label);
+			case EQ -> context.codeBuilder.ifICmp(IF_ICMPEQ, label);
+			case NE -> context.codeBuilder.ifICmp(IF_ICMPNE, label);
 		}
 	}
 
 	public void ifZero(CodeEmitter.Context context, Label label) {
 		switch (this) {
-			case GT -> context.codeBuilder.ifgt(label);
-			case GE -> context.codeBuilder.ifge(label);
-			case LT -> context.codeBuilder.iflt(label);
-			case LE -> context.codeBuilder.ifle(label);
-			case EQ -> context.codeBuilder.ifeq(label);
-			case NE -> context.codeBuilder.ifne(label);
+			case GT -> context.codeBuilder.ifZCmp(IFGT, label);
+			case GE -> context.codeBuilder.ifZCmp(IFGE, label);
+			case LT -> context.codeBuilder.ifZCmp(IFLT, label);
+			case LE -> context.codeBuilder.ifZCmp(IFLE, label);
+			case EQ -> context.codeBuilder.ifZCmp(IFEQ, label);
+			case NE -> context.codeBuilder.ifZCmp(IFNE, label);
 		}
 	}
 
@@ -59,7 +61,7 @@ public enum CompareMode {
 		if (ifTrue != null) {
 			this.ifNonZero(context, ifTrue);
 			if (ifFalse != null) {
-				context.codeBuilder.goto_(ifFalse);
+				context.codeBuilder.goTo(ifFalse);
 			}
 		}
 		else {
@@ -71,7 +73,7 @@ public enum CompareMode {
 		if (ifTrue != null) {
 			this.ifZero(context, ifTrue);
 			if (ifFalse != null) {
-				context.codeBuilder.goto_(ifFalse);
+				context.codeBuilder.goTo(ifFalse);
 			}
 		}
 		else {
@@ -80,19 +82,17 @@ public enum CompareMode {
 	}
 
 	public void emitLong(CodeEmitter.Context context, @Nullable Label ifTrue, @Nullable Label ifFalse) {
-		context.codeBuilder.lcmp();
+		context.codeBuilder.visitInsn(LCMP);
 		this.emitIntZero(context, ifTrue, ifFalse);
 	}
 
 	public void emitFloat(CodeEmitter.Context context, @Nullable Label ifTrue, @Nullable Label ifFalse) {
-		if (this == LT || this == LE) context.codeBuilder.fcmpg();
-		else context.codeBuilder.fcmpl();
+		context.codeBuilder.visitInsn(this == LT || this == LE ? FCMPG : FCMPL);
 		this.emitIntZero(context, ifTrue, ifFalse);
 	}
 
 	public void emitDouble(CodeEmitter.Context context, @Nullable Label ifTrue, @Nullable Label ifFalse) {
-		if (this == LT || this == LE) context.codeBuilder.dcmpg();
-		else context.codeBuilder.dcmpl();
+		context.codeBuilder.visitInsn(this == LT || this == LE ? DCMPG : DCMPL);
 		this.emitIntZero(context, ifTrue, ifFalse);
 	}
 }

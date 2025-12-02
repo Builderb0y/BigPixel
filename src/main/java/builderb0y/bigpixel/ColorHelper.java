@@ -6,6 +6,7 @@ import javafx.beans.value.ObservableValueBase;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.tools.ColorPickerTool.ColorPickerCallback;
+import builderb0y.bigpixel.util.Util;
 
 public class ColorHelper implements ColorPickerCallback {
 

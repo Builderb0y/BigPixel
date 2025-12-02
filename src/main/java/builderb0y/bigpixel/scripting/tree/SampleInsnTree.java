@@ -1,9 +1,10 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
+import org.objectweb.asm.Type;
+
 import builderb0y.bigpixel.scripting.types.VectorType;
 import builderb0y.bigpixel.scripting.util.MethodInfo;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 
 public class SampleInsnTree extends InsnTree {
 
@@ -20,10 +21,8 @@ public class SampleInsnTree extends InsnTree {
 
 	@Override
 	public void emitBytecode(Context context) {
-		context
-		.codeBuilder
-		.aload(context.codeBuilder.receiverSlot())
-		.getfield(context.self, this.layerName, Util.desc(LayerNode.class));
+		context.codeBuilder.loadThis();
+		context.codeBuilder.getField(context.self, this.layerName, Type.getType(Sampler.class));
 		for (InsnTree argument : this.arguments) {
 			argument.emitBytecode(context);
 		}

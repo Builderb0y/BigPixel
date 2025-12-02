@@ -1,9 +1,11 @@
-package builderb0y.bigpixel;
+package builderb0y.bigpixel.util;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import javafx.application.Platform;
+
+import builderb0y.bigpixel.BigPixel;
 
 public abstract class RateLimiter implements Runnable {
 

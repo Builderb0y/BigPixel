@@ -7,15 +7,15 @@ import javafx.scene.control.CheckBox;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
+import builderb0y.bigpixel.util.Util;
 
 public class ScreenLayerSource extends MultiInputLayerSource {
 
 	public CheckBox alphaWeighting = this.parameters.addCheckbox("alpha_weighting", "Alpha Weighting", false);
 
 	public ScreenLayerSource(LayerSources sources) {
-		super(Type.SCREEN, sources);
+		super(LayerSourceType.SCREEN, sources);
 		this.dependencies.getBottomPane().getChildren().add(this.alphaWeighting);
 	}
 

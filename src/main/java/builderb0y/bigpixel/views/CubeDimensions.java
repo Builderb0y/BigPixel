@@ -1,5 +1,7 @@
 package builderb0y.bigpixel.views;
 
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.ObjectBinding;
 import javafx.geometry.HPos;
 import javafx.geometry.VPos;
 import javafx.scene.control.*;
@@ -8,8 +10,8 @@ import javafx.scene.layout.GridPane;
 
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.OrganizedSelection;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.util.Util;
 
 public class CubeDimensions {
 
@@ -42,6 +44,15 @@ public class CubeDimensions {
 		radiusX   = 0.5D,
 		radiusY   = 0.5D,
 		radiusZ   = 0.5D;
+	public ObjectBinding<Params> drawParams;
+	public static record Params(
+		double minX,
+		double minY,
+		double minZ,
+		double maxX,
+		double maxY,
+		double maxZ
+	) {}
 
 	public CubeDimensions(OrganizedSelection.Value<?> view) {
 		this.autoUVButton.setTooltip(new Tooltip("Set UVs of all faces automatically"));
@@ -57,6 +68,7 @@ public class CubeDimensions {
 		this.gridPane.add(this.maxXSpinner, 2, 1);
 		this.gridPane.add(this.maxYSpinner, 2, 2);
 		this.gridPane.add(this.maxZSpinner, 2, 3);
+		this.titledPane.setAnimated(false);
 		this.minXSpinner.valueProperty().addListener(Util.change((Double value) -> {
 			this.minX      = value * 0.0625D;
 			this.midX      = (this.maxX + this.minX) * 0.5D;
@@ -99,6 +111,22 @@ public class CubeDimensions {
 			this.radiusZ   =  this.diameterZ * 0.5D;
 			view.redrawLater();
 		}));
+		this.drawParams = Bindings.createObjectBinding(
+			() -> new Params(
+				this.minXSpinner.getValue(),
+				this.minYSpinner.getValue(),
+				this.minZSpinner.getValue(),
+				this.maxXSpinner.getValue(),
+				this.maxYSpinner.getValue(),
+				this.maxZSpinner.getValue()
+			),
+			this.minXSpinner.valueProperty(),
+			this.minYSpinner.valueProperty(),
+			this.minZSpinner.valueProperty(),
+			this.maxXSpinner.valueProperty(),
+			this.maxYSpinner.valueProperty(),
+			this.maxZSpinner.valueProperty()
+		);
 	}
 
 	public void addLabel(String text, int x, int y) {

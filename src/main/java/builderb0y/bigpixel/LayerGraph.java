@@ -1,11 +1,10 @@
 package builderb0y.bigpixel;
 
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import javafx.animation.Interpolator;
 import javafx.animation.Transition;
-import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableBooleanValue;
 import javafx.beans.value.ObservableDoubleValue;
@@ -32,7 +31,7 @@ import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.json.JsonString;
 import builderb0y.bigpixel.json.JsonValue;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
-import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
+import builderb0y.bigpixel.util.Util;
 
 public class LayerGraph {
 
@@ -97,10 +96,8 @@ public class LayerGraph {
 		visibleLayerProperty = this.visibleLayer.selectedToggleProperty().map((Toggle toggle) -> (LayerNode)(toggle.getUserData()));
 	public SimpleObjectProperty<Point2D>
 		lastMouseLocation = new SimpleObjectProperty<>(this, "lastMouseLocation");
-	public boolean
-		redrawRequested;
-	public Runnable
-		redrawer = () -> this.redrawAllImmediately(true);
+	public RedrawThread
+		redrawThread = new RedrawThread(this);
 
 	public JsonMap save() {
 		JsonMap saveData = new JsonMap(4);
@@ -290,34 +287,12 @@ public class LayerGraph {
 		return this.layerList.subList(0, index);
 	}
 
-	public void requestRedraw() {
-		if (!this.redrawRequested) {
-			this.redrawRequested = true;
-			Platform.runLater(this.redrawer);
-		}
-	}
-
-	public void redrawAllImmediately(boolean updateView) {
-		Set<LayerNode> changed = new HashSet<>(this.layerList.size());
-		Predicate<LayerNode> predicate = changed::contains;
-		for (LayerNode layer : this.layerList) {
-			LayerDependencies dependencies = layer.getDependencies();
-			if (layer.redrawRequested || dependencies.isAnimated() || dependencies.containsAny(predicate)) {
-				layer.redrawImmediately();
-				layer.redrawRequested = false;
-				changed.add(layer);
-			}
-		}
-		if (updateView) {
-			this.openImage.imageDisplay.redrawLater();
-			if (this.openImage.mainWindow.getCurrentImage() == this.openImage) {
-				LayerNode visibleLayer = this.visibleLayerProperty.getValue();
-				if (visibleLayer != null) {
-					this.openImage.mainWindow.histogram.redrawLayer(visibleLayer);
-				}
-			}
-		}
-		this.redrawRequested = false;
+	public Stream<LayerNode> getDependants(LayerNode layer) {
+		int index = this.indexOfPosition(layer.getGridX() + 1, 0);
+		if (index < 0) index = ~index;
+		return this.layerList.subList(index, this.layerList.size()).stream().filter((LayerNode other) -> {
+			return other.getDependencies().dependsOn(layer);
+		});
 	}
 
 	public void addLayer(LayerNode layer, boolean fadeIn) {
@@ -382,7 +357,7 @@ public class LayerGraph {
 		LayerNode selected = this.selectedLayer.get();
 		int x = selected.getGridX();
 		int y = Math.max(selected.getGridY() - 1, 0);
-		LayerNode layer = this.promptForLayer(x, y, selected.image.width, selected.image.height);
+		LayerNode layer = this.promptForLayer(x, y, selected.imageWidth(), selected.imageHeight());
 		if (layer != null) {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftDown(x, y);
@@ -395,7 +370,7 @@ public class LayerGraph {
 		LayerNode selected = this.selectedLayer.get();
 		int x = selected.getGridX();
 		int y = selected.getGridY() + 1;
-		LayerNode layer = this.promptForLayer(x, y, selected.image.width, selected.image.height);
+		LayerNode layer = this.promptForLayer(x, y, selected.imageWidth(), selected.imageHeight());
 		if (layer != null) {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftDown(x, y);
@@ -408,7 +383,7 @@ public class LayerGraph {
 		LayerNode selected = this.selectedLayer.get();
 		int x = Math.max(selected.getGridX() - 1, 0);
 		int y = selected.getGridY();
-		LayerNode layer = this.promptForLayer(x, y, selected.image.width, selected.image.height);
+		LayerNode layer = this.promptForLayer(x, y, selected.imageWidth(), selected.imageHeight());
 		if (layer != null) {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftRight(x);
@@ -421,7 +396,7 @@ public class LayerGraph {
 		LayerNode selected = this.selectedLayer.get();
 		int x = selected.getGridX() + 1;
 		int y = selected.getGridY();
-		LayerNode layer = this.promptForLayer(x, y, selected.image.width, selected.image.height);
+		LayerNode layer = this.promptForLayer(x, y, selected.imageWidth(), selected.imageHeight());
 		if (layer != null) {
 			if (this.hasLayerAt(x, y)) {
 				this.shiftRight(x);
@@ -466,7 +441,7 @@ public class LayerGraph {
 		LayerNode selected = this.selectedLayer.get();
 		int x = selected.getGridX();
 		int y = selected.getGridY() + 1;
-		LayerNode newLayer = new LayerNode(this, x, y, selected.image.width, selected.image.height, selected.getDisplayName() + " (duplicate)");
+		LayerNode newLayer = new LayerNode(this, x, y, selected.imageWidth(), selected.imageHeight(), selected.getDisplayName() + " (duplicate)");
 		newLayer.load(selected.save());
 		if (this.hasLayerAt(x, y)) {
 			this.shiftDown(x, y);
@@ -480,8 +455,8 @@ public class LayerGraph {
 		Dialog<ButtonType> dialog = new Dialog<>();
 		dialog.initOwner(this.openImage.mainWindow.stage);
 		dialog.setTitle("Resize " + toResize.getDisplayName());
-		Spinner<Integer> width = Util.setupSpinner(new Spinner<>(1, 32768, toResize.image.width), 80);
-		Spinner<Integer> height = Util.setupSpinner(new Spinner<>(1, 32768, toResize.image.height), 80);
+		Spinner<Integer> width = Util.setupSpinner(new Spinner<>(1, 32768, toResize.imageWidth()), 80);
+		Spinner<Integer> height = Util.setupSpinner(new Spinner<>(1, 32768, toResize.imageHeight()), 80);
 		GridPane gridPane = new GridPane();
 		gridPane.add(new Label("Width: "), 0, 0);
 		gridPane.add(width, 1, 0);
@@ -490,7 +465,7 @@ public class LayerGraph {
 		dialog.getDialogPane().setContent(gridPane);
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 		if (dialog.showAndWait().orElse(null) == ButtonType.OK) {
-			toResize.image.checkSize(width.getValue(), height.getValue(), true);
+			toResize.animation.checkSize(width.getValue(), height.getValue(), true, true);
 			this.openImage.imageDisplay.center();
 			toResize.requestRedraw();
 		}
@@ -502,5 +477,13 @@ public class LayerGraph {
 
 	public Parent getRootNode() {
 		return this.withButtons;
+	}
+
+	public LayerNode getVisibleLayer() {
+		return this.visibleLayerProperty.getValue();
+	}
+
+	public LayerNode getSelectedLayer() {
+		return this.selectedLayer.get();
 	}
 }

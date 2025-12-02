@@ -6,9 +6,10 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.ColorHelper;
+import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.ManualLayerSource;
+import builderb0y.bigpixel.util.Util;
 
 public class LineTool extends Tool<LineTool.Work> {
 
@@ -92,13 +93,14 @@ public class LineTool extends Tool<LineTool.Work> {
 		if (work == null) return;
 		LayerNode layer = this.layer();
 		double radius = this.radius.getValue();
-		int width = layer.image.width;
-		int height = layer.image.height;
+		int width = layer.imageWidth();
+		int height = layer.imageHeight();
+		HDRImage image = layer.getOnlyFrame();
 		ColorHelper color = layer.graph.openImage.mainWindow.colorPicker.currentColor;
 		if (radius == 0.0D) {
 			if (work.x1 == work.x2 && work.y1 == work.y2) {
 				if (work.x1 >= 0 && work.x1 < width && work.y1 >= 0 && work.y1 < height) {
-					layer.image.setColor(work.x1, work.y1, color);
+					image.setColor(work.x1, work.y1, color);
 				}
 			}
 			else {
@@ -114,7 +116,7 @@ public class LineTool extends Tool<LineTool.Work> {
 						x = (int)(Math.floor((x2 - x1) * frac + x1)),
 						y = (int)(Math.floor((y2 - y1) * frac + y1));
 					if (x >= 0 && x < width && y >= 0 && y < height) {
-						layer.image.setColor(x, y, color);
+						image.setColor(x, y, color);
 					}
 				}
 			}
@@ -132,7 +134,7 @@ public class LineTool extends Tool<LineTool.Work> {
 						double offsetX = x - work.x1;
 						double offsetY = y - work.y1;
 						if (offsetX * offsetX + offsetY * offsetY < radius * radius) {
-							layer.image.setColor(x, y, color);
+							image.setColor(x, y, color);
 						}
 					}
 				}
@@ -157,7 +159,7 @@ public class LineTool extends Tool<LineTool.Work> {
 							projectionX = offsetX - closestX,
 							projectionY = offsetY - closestY;
 						if (projectionX * projectionX + projectionY * projectionY < radius * radius) {
-							layer.image.setColor(x, y, color);
+							image.setColor(x, y, color);
 						}
 					}
 				}

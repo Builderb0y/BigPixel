@@ -124,7 +124,7 @@ public class JsonReader extends CommonReader<JsonSyntaxException> {
 	public JsonValue readValue() {
 		return switch (this.peek()) {
 			case '"' -> new JsonString(this.readString());
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> this.readNumber();
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-' -> this.readNumber();
 			case 't', 'f' -> {
 				if (this.has("true")) yield JsonBoolean.TRUE;
 				if (this.has("false")) yield JsonBoolean.FALSE;

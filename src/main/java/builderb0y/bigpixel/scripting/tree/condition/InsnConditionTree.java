@@ -1,11 +1,12 @@
 package builderb0y.bigpixel.scripting.tree.condition;
 
-import java.lang.classfile.Label;
-
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.CodeEmitter;
 import builderb0y.bigpixel.scripting.tree.InsnTree;
+
+import static org.objectweb.asm.Opcodes.*;
 
 public class InsnConditionTree extends ConditionTree {
 
@@ -20,13 +21,13 @@ public class InsnConditionTree extends ConditionTree {
 		ConditionTree.checkLabels(ifTrue, ifFalse);
 		this.condition.emitBytecode(context);
 		if (ifTrue != null) {
-			context.codeBuilder.ifne(ifTrue);
+			context.codeBuilder.ifZCmp(IFNE, ifTrue);
 			if (ifFalse != null) {
-				context.codeBuilder.goto_(ifFalse);
+				context.codeBuilder.goTo(ifFalse);
 			}
 		}
 		else {
-			context.codeBuilder.ifeq(ifFalse);
+			context.codeBuilder.ifZCmp(IFEQ, ifFalse);
 		}
 	}
 

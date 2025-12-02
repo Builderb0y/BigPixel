@@ -3,11 +3,9 @@ package builderb0y.bigpixel;
 import javafx.animation.Animation;
 import javafx.animation.Interpolator;
 import javafx.animation.Transition;
-import javafx.beans.binding.FloatBinding;
-import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.Observable;
 import javafx.beans.property.SimpleIntegerProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import javafx.beans.value.ObservableIntegerValue;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -20,6 +18,7 @@ import javafx.util.Duration;
 import javafx.util.StringConverter;
 
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.util.Util;
 
 public class AnimationSource {
 
@@ -75,41 +74,14 @@ public class AnimationSource {
 		stop  = new Button("⏹");
 	public HBox hbox = new HBox();
 
-	public ReadOnlyObjectProperty<Integer> frames = this.spinner.valueProperty();
-	public SimpleIntegerProperty frame  = new SimpleIntegerProperty();
-	public FloatBinding seconds = this.frame.divide(20.0F);
-	public FloatBinding fraction = new FloatBinding() {
-
-		{
-			this.bind(AnimationSource.this.frame, AnimationSource.this.frames);
-		}
-
-		@Override
-		public float computeValue() {
-			return AnimationSource.this.frame.floatValue() / AnimationSource.this.frames.get().floatValue();
-		}
-
-		@Override
-		public void dispose() {
-			this.unbind(AnimationSource.this.frame, AnimationSource.this.frames);
-		}
-
-		@Override
-		public ObservableList<?> getDependencies() {
-			return FXCollections.unmodifiableObservableList(
-				FXCollections.observableArrayList(
-					AnimationSource.this.frame,
-					AnimationSource.this.frames
-				)
-			);
-		}
-	};
+	public ObservableIntegerValue frameCount = Util.toInt(this.spinner.valueProperty(), 1);
+	public SimpleIntegerProperty frame = new SimpleIntegerProperty();
 	public Transition timer = new Transition(20.0D) {
 
 		{
 			this.setInterpolator(Interpolator.LINEAR);
 			this.setCycleCount(Animation.INDEFINITE);
-			AnimationSource.this.frames.addListener(Util.change((Integer frames) -> {
+			AnimationSource.this.frameCount.addListener(Util.change((Number frames) -> {
 				this.setCycleDuration(new Duration(frames.doubleValue() * 50.0D));
 			}));
 		}
@@ -117,9 +89,8 @@ public class AnimationSource {
 		@Override
 		public void interpolate(double frac) {
 			int nextFrame = AnimationSource.this.frame.get() + 1;
-			if (nextFrame >= AnimationSource.this.frames.get()) nextFrame = 0;
+			if (nextFrame >= AnimationSource.this.frameCount.get()) nextFrame = 0;
 			AnimationSource.this.frame.set(nextFrame);
-			AnimationSource.this.tickAnimation();
 		}
 	};
 
@@ -127,19 +98,25 @@ public class AnimationSource {
 		this.openImage = openImage;
 		this.label.setPadding(new Insets(4.0D));
 		this.hbox.getChildren().addAll(this.label, this.spinner, this.play, this.pause, this.stop);
-		this.play.setOnAction((ActionEvent event) -> this.timer.play());
-		this.pause.setOnAction((ActionEvent event) -> this.timer.pause());
-		this.stop.setOnAction((ActionEvent event) -> {
+		this.play.setOnAction((ActionEvent _) -> this.timer.play());
+		this.pause.setOnAction((ActionEvent _) -> this.timer.pause());
+		this.stop.setOnAction((ActionEvent _) -> {
 			this.timer.stop();
 			this.timer.jumpTo(Duration.ZERO);
 			this.frame.set(0);
-			this.tickAnimation();
+		});
+		this.frameCount.addListener((Observable frames) -> {
+			for (LayerNode layer : openImage.layerGraph.layerList) {
+				if (layer.sources.currentSource().getDependencies().animatedProperty().get()) {
+					layer.requestRedraw();
+				}
+			}
 		});
 	}
 
 	public JsonMap save() {
 		JsonMap map = new JsonMap();
-		map.add("frames", this.frames.get());
+		map.add("frames", this.frameCount.get());
 		return map;
 	}
 
@@ -147,17 +124,20 @@ public class AnimationSource {
 		this.spinner.getValueFactory().setValue(map.getInt("frames"));
 	}
 
-	public void tickAnimation() {
-		boolean changed = false;
-		for (LayerNode layer : this.openImage.layerGraph.layerList) {
-			if (layer.getDependencies().isAnimated()) {
-				layer.redrawRequested = true;
-				changed = true;
-			}
-		}
-		if (changed) {
-			this.openImage.layerGraph.requestRedraw();
-		}
+	public int getFrameIndex() {
+		return this.frame.get();
+	}
+
+	public int getFrameCount() {
+		return this.frameCount.get();
+	}
+
+	public float getSeconds(int frame) {
+		return frame / 20.0F;
+	}
+
+	public float getFraction(int frame) {
+		return frame / this.frameCount.floatValue();
 	}
 
 	public Node getRootNode() {

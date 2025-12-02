@@ -2,16 +2,16 @@ package builderb0y.bigpixel.sources;
 
 import jdk.incubator.vector.FloatVector;
 
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 
 public class ClampLayerSource extends PerPixelLayerSource {
 
 	public ClampLayerSource(LayerSources sources) {
-		super(Type.CLAMP, sources);
+		super(LayerSourceType.CLAMP, sources);
 	}
 
 	@Override
-	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
+	public PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException {
 		return Applicator.INSTANCE;
 	}
 

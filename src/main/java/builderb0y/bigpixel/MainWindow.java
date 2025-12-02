@@ -25,6 +25,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.control.TabPane.TabDragPolicy;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -40,12 +41,13 @@ import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.json.JsonReader;
 import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.ManualLayerSource;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.tools.MoveTool.Work;
 import builderb0y.bigpixel.tools.SourcelessTool;
 import builderb0y.bigpixel.tools.Tool;
 import builderb0y.bigpixel.tools.Tool.Selection;
+import builderb0y.bigpixel.util.Util;
 import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public class MainWindow {
@@ -133,6 +135,16 @@ public class MainWindow {
 		this.openImages.setTabDragPolicy(TabDragPolicy.REORDER);
 		this.openImages.setTabMinHeight(48.0D);
 		this.openImages.setTabMaxHeight(48.0D);
+		this.openImages.getTabs().addListener((Change<? extends Tab> change) -> {
+			while (change.next()) {
+				for (Tab tab : change.getRemoved()) {
+					((OpenImage)(tab.getUserData())).layerGraph.redrawThread.shutdown();
+				}
+				for (Tab tab : change.getAddedSubList()) {
+					((OpenImage)(tab.getUserData())).layerGraph.redrawThread.start();
+				}
+			}
+		});
 	}
 
 	public void init() {
@@ -295,6 +307,14 @@ public class MainWindow {
 				}
 			}
 		});
+		this.stage.focusedProperty().addListener(Util.change((Boolean focused) -> {
+			if (!focused) {
+				OpenImage openImage = this.getCurrentImage();
+				if (openImage != null) {
+					openImage.controlReleased();
+				}
+			}
+		}));
 		scene.setOnDragOver((DragEvent event) -> {
 			if (event.getDragboard().hasContent(DataFormat.FILES)) {
 				event.acceptTransferModes(TransferMode.COPY);
@@ -340,7 +360,7 @@ public class MainWindow {
 	}
 
 	public void copyToClipboard(LayerNode layer) {
-		HDRImage image = layer.image;
+		HDRImage image = layer.getFrame();
 		if (layer.sources.selectedValue.get() instanceof ManualLayerSource source) {
 			Selection selection = new Selection();
 			Tool<?> tool = source.toolWithoutColorPicker.get();
@@ -408,7 +428,7 @@ public class MainWindow {
 			}
 			for (NamedImage image : images) {
 				LayerNode layer = new LayerNode(openImage.layerGraph, gridX, gridY, image.image.width, image.image.height, image.name);
-				layer.sources.manualSource().toollessImage.doCopyFrom(image.image);
+				layer.sources.manualSource().getToollessImage().doCopyFrom(image.image);
 				if (openImage.layerGraph.hasLayerAt(gridX, gridY)) {
 					openImage.layerGraph.shiftDown(gridX, gridY);
 				}
@@ -431,7 +451,7 @@ public class MainWindow {
 				LayerNode selected = openImage.layerGraph.selectedLayer.get();
 				if (selected.sources.selectedValue.get() instanceof ManualLayerSource manual) {
 					ProjectionResult hovered = openImage.imageDisplay.previousProjectionResult;
-					HDRImage selectedImage = selected.image;
+					HDRImage selectedImage = selected.getFrame();
 					if (!this.isValidPasteLocation(hovered, selectedImage)) {
 						hovered = new ProjectionResult(selected, selectedImage.width >> 1, selectedImage.height >> 1);
 					}
@@ -442,14 +462,14 @@ public class MainWindow {
 					}
 					manual.toolWithoutColorPicker.set(manual.moveTool);
 					HDRImage copied = images[0].image;
-					int width = Math.min(copied.width, manual.toollessImage.width);
-					int height = Math.min(copied.height, manual.toollessImage.height);
+					int width = Math.min(copied.width, manual.getToollessImage().width);
+					int height = Math.min(copied.height, manual.getToollessImage().height);
 					manual.moveTool.work = new Work(copied);
 					manual.moveTool.work.x2 = width - 1;
 					manual.moveTool.work.y2 = height - 1;
 
-					manual.moveTool.work.offsetX = hovered.x - (width >> 1);
-					manual.moveTool.work.offsetY = hovered.y - (height >> 1);
+					manual.moveTool.work.offsetX = hovered.x() - (width >> 1);
+					manual.moveTool.work.offsetY = hovered.y() - (height >> 1);
 
 					selected.requestRedraw();
 				}
@@ -464,13 +484,13 @@ public class MainWindow {
 	}
 
 	public boolean isValidPasteLocation(ProjectionResult hovered, HDRImage selected) {
-		return switch (hovered.layer) {
-			case UniformLayerSourceInput _ -> false;
+		return switch (hovered.input()) {
+			case UniformSamplerProvider _ -> false;
 			case null -> false;
-			case VaryingLayerSourceInput varying -> {
-				HDRImage backingImage = varying.getBackingLayer().image;
-				yield backingImage.width == selected.width && backingImage.height == selected.height;
-			}
+			case VaryingSamplerProvider varying -> (
+				varying.getBackingLayer().imageWidth() == selected.width &&
+				varying.getBackingLayer().imageHeight() == selected.height
+			);
 		};
 	}
 
@@ -556,10 +576,11 @@ public class MainWindow {
 
 	public void openFromClipboard(Clipboard clipboard) {
 		HDRImage image = HDRImage.fromClipboard(clipboard);
+		System.out.println("opening " + image + " from clipboard");
 		if (image != null) {
 			OpenImage openImage = new OpenImage(this);
 			LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, image.width, image.height, "Pasted Image");
-			layer.sources.manualSource().toollessImage.copyFrom(image);
+			layer.sources.manualSource().getToollessImage().copyFrom(image);
 			layer.requestRedraw();
 			openImage.layerGraph.addLayer(layer, false);
 			openImage.layerGraph.visibleLayer.selectToggle(layer.showing);
@@ -628,7 +649,7 @@ public class MainWindow {
 				if (exception != null) throw exception;
 				openImage = new OpenImage(this);
 				LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, (int)(image.getWidth()), (int)(image.getHeight()), file.getName());
-				layer.sources.manualSource().toollessImage.copyFrom(image);
+				layer.sources.manualSource().getToollessImage().copyFrom(image);
 				layer.requestRedraw();
 				openImage.layerGraph.addLayer(layer, false);
 				openImage.layerGraph.visibleLayer.selectToggle(layer.showing);
@@ -682,6 +703,15 @@ public class MainWindow {
 		}
 	}
 
+	public BufferedImage toAwtImage(OpenImage openImage) {
+		HDRAnimation animation = openImage.layerGraph.visibleLayerProperty.getValue().animation;
+		BufferedImage bufferedImage = new BufferedImage(animation.width(), animation.height() * animation.getFrameCount(), BufferedImage.TYPE_INT_ARGB);
+		for (int frame = 0, frames = animation.getFrameCount(); frame < frames; frame++) {
+			animation.getFrame(frame).toAwtImage(bufferedImage, frame);
+		}
+		return bufferedImage;
+	}
+
 	public void fileExport(ActionEvent event) {
 		OpenImage openImage = this.getCurrentImage();
 		if (openImage == null) return;
@@ -689,9 +719,7 @@ public class MainWindow {
 		if (file != null) {
 			file = Util.changeExtension(file, "png");
 			try {
-				HDRImage hdrImage = openImage.layerGraph.visibleLayerProperty.getValue().image;
-				BufferedImage bufferedImage = hdrImage.toAwtImage(openImage.animationSource);
-				byte[] bytes = HDRImage.toPngByteArray(bufferedImage, new SaveProgress());
+				byte[] bytes = HDRImage.toPngByteArray(this.toAwtImage(openImage), new SaveProgress());
 				try (FileOutputStream stream = new FileOutputStream(file)) {
 					stream.write(bytes);
 				}
@@ -707,8 +735,7 @@ public class MainWindow {
 		Tab tab = this.openImages.getSelectionModel().getSelectedItem();
 		if (tab == null) return;
 		OpenImage openImage = ((OpenImage)(tab.getUserData()));
-		HDRImage image = openImage.layerGraph.visibleLayerProperty.getValue().image;
-		BufferedImage bufferedImage = image.toAwtImage(openImage.animationSource);
+		BufferedImage bufferedImage = this.toAwtImage(openImage);
 		SaveProgress progress = new SaveProgress();
 		CompletableFuture<byte[]> future = CompletableFuture.supplyAsync(() -> HDRImage.toPngByteArray(bufferedImage, progress));
 		FileChooser fileChooser = new FileChooser();
@@ -741,7 +768,7 @@ public class MainWindow {
 	public void addOpenImage(String name, OpenImage openImage) {
 		Tab tab = new Tab(name, openImage.getMainNode());
 		tab.setUserData(openImage);
-		javafx.scene.image.ImageView thumbnail = new javafx.scene.image.ImageView();
+		ImageView thumbnail = new ImageView();
 		thumbnail.imageProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.imageProperty()));
 		thumbnail.fitWidthProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitWidthProperty()));
 		thumbnail.fitHeightProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitHeightProperty()));

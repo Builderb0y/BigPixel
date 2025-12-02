@@ -1,5 +1,7 @@
 package builderb0y.bigpixel.views;
 
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.ObjectBinding;
 import javafx.event.ActionEvent;
 import javafx.scene.Parent;
 import javafx.scene.control.ScrollPane;
@@ -8,7 +10,7 @@ import javafx.scene.layout.VBox;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.dependencies.AbstractNamedDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.views.FaceInputBinding.Face;
 
 public class CubeDependencies extends AbstractNamedDependencies {
@@ -26,6 +28,17 @@ public class CubeDependencies extends AbstractNamedDependencies {
 		south = this.addBinding(Face.SOUTH),
 		west  = this.addBinding(Face.WEST),
 		down  = this.addBinding(Face.DOWN);
+	public ObjectBinding<Params>
+		drawParams;
+	public static record Params(
+		FaceInputBinding.Params up,
+		FaceInputBinding.Params down,
+		FaceInputBinding.Params north,
+		FaceInputBinding.Params south,
+		FaceInputBinding.Params east,
+		FaceInputBinding.Params west,
+		CubeDimensions.Params dimensions
+	) {}
 
 	@Override
 	public JsonMap save() {
@@ -50,6 +63,24 @@ public class CubeDependencies extends AbstractNamedDependencies {
 			this.west .autoUV(event);
 			this.down .autoUV(event);
 		});
+		this.drawParams = Bindings.createObjectBinding(
+			() -> new Params(
+				this.up.drawParams.get(),
+				this.down.drawParams.get(),
+				this.north.drawParams.get(),
+				this.south.drawParams.get(),
+				this.east.drawParams.get(),
+				this.west.drawParams.get(),
+				this.dimensions.drawParams.get()
+			),
+			this.up.drawParams,
+			this.down.drawParams,
+			this.north.drawParams,
+			this.south.drawParams,
+			this.east.drawParams,
+			this.west.drawParams,
+			this.dimensions.drawParams
+		);
 	}
 
 	public FaceInputBinding addBinding(Face face) {
@@ -58,10 +89,11 @@ public class CubeDependencies extends AbstractNamedDependencies {
 			throw new IllegalArgumentException("Duplicate input binding: " + face.saveName);
 		}
 		this.faces.getChildren().add(binding.titledPane);
+		this.onBindingAdded(binding);
 		return binding;
 	}
 
-	public void setAll(LayerSourceInput input) {
+	public void setAll(SamplerProvider input) {
 		for (InputBinding binding : this.allBindings.values()) {
 			binding.selection.setValue(input);
 		}

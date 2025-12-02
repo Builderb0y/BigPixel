@@ -26,15 +26,15 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import jdk.incubator.vector.FloatVector;
 
-import builderb0y.bigpixel.FastRandom;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MainDependencies;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 import builderb0y.bigpixel.tools.Symmetry;
+import builderb0y.bigpixel.util.FastRandom;
 
 public class WFCLayerSource extends LayerSource {
 
@@ -58,13 +58,9 @@ public class WFCLayerSource extends LayerSource {
 		symmetrySettings = new GridPane();
 	public VBox
 		mainPane = new VBox();
-	public WorkerThread
-		thread;
-	public boolean
-		redrawing;
 
 	public WFCLayerSource(LayerSources sources) {
-		super(Type.WFC, sources);
+		super(LayerSourceType.WFC, sources);
 		this.mainSettings.add(new Label("Seed: "), 0, 0);
 		this.mainSettings.add(this.seed, 1, 0);
 		this.mainSettings.add(new Label("Kernel: "), 0, 1);
@@ -100,18 +96,8 @@ public class WFCLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void doRedraw() throws RedrawException {
-		if (this.redrawing) return;
-		if (this.thread != null) {
-			this.thread.interrupt();
-			try {
-				this.thread.join();
-			}
-			catch (InterruptedException exception) {
-				throw new RedrawException("Interrupted");
-			}
-		}
-		(this.thread = new WorkerThread(this)).start();
+	public void doRedraw(int frame) throws RedrawException {
+		new WorkerThread(this, frame).run();
 	}
 
 	@Override
@@ -132,9 +118,11 @@ public class WFCLayerSource extends LayerSource {
 		public int seen;
 
 		public Tile(
-			HDRImage image,
+			Sampler input,
 			int baseX,
 			int baseY,
+			int imageWidth,
+			int imageHeight,
 			int kernel,
 			Symmetry symmetry
 		) {
@@ -142,9 +130,9 @@ public class WFCLayerSource extends LayerSource {
 			this.pixels = new float[kernel * kernel * 4];
 			for (int y = 0; y < kernel; y++) {
 				for (int x = 0; x < kernel; x++) {
-					int imageX = Math.floorMod(symmetry.getX(x, y) + baseX, image.width);
-					int imageY = Math.floorMod(symmetry.getY(x, y) + baseY, image.height);
-					System.arraycopy(image.pixels, image.baseIndex(imageX, imageY), this.pixels, (y * kernel + x) << 2, 4);
+					int imageX = Math.floorMod(symmetry.getX(x, y) + baseX, imageWidth);
+					int imageY = Math.floorMod(symmetry.getY(x, y) + baseY, imageHeight);
+					input.getColor(imageX, imageY).intoArray(this.pixels, (y * kernel + x) << 2);
 				}
 			}
 			this.hashCode = Arrays.hashCode(this.pixels);
@@ -160,33 +148,34 @@ public class WFCLayerSource extends LayerSource {
 			this.seen = 1;
 		}
 
-		public static Tile[] generate(LayerSourceInput source, int kernel, int symmetries) {
+		public static Tile[] generate(Sampler source, int kernel, int symmetries) {
 			return switch (source) {
-				case UniformLayerSourceInput uniform -> {
+				case UniformSampler uniform -> {
 					yield new Tile[] { new Tile(uniform.getColor(), kernel) };
 				}
-				case VaryingLayerSourceInput varying -> {
-					HDRImage image = varying.getBackingLayer().image;
-					ConcurrentHashMap<Tile, Integer> tiles = new ConcurrentHashMap<>(image.width * image.height * Symmetry.VALUES.length);
+				case VaryingSampler varying -> {
+					int width = varying.getBackingLayer().imageWidth();
+					int height = varying.getBackingLayer().imageHeight();
+					ConcurrentHashMap<Tile, Integer> tiles = new ConcurrentHashMap<>(width * height * Symmetry.VALUES.length);
 					LinkedList<CompletableFuture<?>> futures = new LinkedList<>();
-					for (int baseY = 0; baseY < image.height; baseY++) {
+					for (int baseY = 0; baseY < height; baseY++) {
 						int baseY_ = baseY;
-						for (int baseX = 0; baseX < image.width; baseX++) {
+						for (int baseX = 0; baseX < width; baseX++) {
 							int baseX_ = baseX;
 							for (Symmetry symmetry : Symmetry.VALUES) {
 								if ((symmetries & symmetry.flag()) != 0) {
 									futures.add(CompletableFuture.runAsync(() -> {
-										tiles.merge(new Tile(image, baseX_, baseY_, kernel, symmetry), 1, Integer::sum);
+										tiles.merge(new Tile(varying, baseX_, baseY_, width, height, kernel, symmetry), 1, Integer::sum);
 									}));
 								}
 							}
-						}
-						if (Thread.interrupted()) {
-							yield null;
+							if (varying.getBackingLayer().redrawRequested) {
+								yield null;
+							}
 						}
 					}
 					for (CompletableFuture<?> future; (future = futures.poll()) != null;) {
-						if (Thread.interrupted()) {
+						if (varying.getBackingLayer().redrawRequested) {
 							yield null;
 						}
 						else {
@@ -309,27 +298,28 @@ public class WFCLayerSource extends LayerSource {
 		}
 	}
 
-	public static class WorkerThread extends Thread {
+	public static class WorkerThread {
 
 		public final WFCLayerSource layerSource;
-		public final int kernel, symmetries;
-		public LayerSourceInput source;
-		public HDRImage intermediate, writing;
+		public final int kernel, symmetries, frame;
+		public Sampler source;
+		public final HDRImage intermediate, writing;
 		public boolean swapCalled;
 		public final RandomGenerator random;
 		public PresentationSwapper presentationSwapper;
 		public TileList[] tileLists;
 		public final BitSet filledPixels;
 
-		public WorkerThread(WFCLayerSource layerSource) throws RedrawException {
-			super("Wave Function Collapse Thread");
+		public WorkerThread(WFCLayerSource layerSource, int frame) {
 			this.layerSource = layerSource;
 			this.kernel = layerSource.kernel.getValue();
-			this.source = layerSource.dependencies.main.getCurrent();
-			HDRImage destination = layerSource.sources.layer.image;
-			this.intermediate = new HDRImage(destination.width, destination.height);
-			this.writing = new HDRImage(destination.width, destination.height);
-			this.filledPixels = new BitSet(destination.width * destination.height);
+			this.frame = frame;
+			this.source = layerSource.dependencies.main.getCurrent().createSamplerForFrame(frame);
+			int width = layerSource.sources.layer.imageWidth();
+			int height = layerSource.sources.layer.imageHeight();
+			this.intermediate = new HDRImage(width, height);
+			this.writing = new HDRImage(width, height);
+			this.filledPixels = new BitSet(width * height);
 			this.random = new FastRandom(layerSource.seed.getValue());
 			this.presentationSwapper = new PresentationSwapper();
 			this.symmetries = (
@@ -346,19 +336,13 @@ public class WFCLayerSource extends LayerSource {
 
 		public synchronized void swapPresentation() {
 			LayerNode layer = this.layerSource.sources.layer;
-			HDRImage presentation = layer.image;
-			layer.image = this.intermediate;
-			this.intermediate = presentation;
-
-			layer.graph.redrawRequested = true;
-			this.layerSource.redrawing = true;
-			try {
-				layer.graph.redrawAllImmediately(true);
-			}
-			finally {
-				this.layerSource.redrawing = false;
-			}
+			HDRImage presentation = layer.getFrame(this.frame);
+			float[] presentationPixels = presentation.pixels;
+			float[] intermediatePixels = this.intermediate.pixels;
+			this.intermediate.pixels = presentationPixels;
+			presentation.pixels = intermediatePixels;
 			this.swapCalled = true;
+			Platform.runLater(presentation::invalidate);
 		}
 
 		public synchronized void swapWriting(boolean force) {
@@ -368,15 +352,9 @@ public class WFCLayerSource extends LayerSource {
 			}
 		}
 
-		@Override
-		public void start() {
-			super.start();
-			Arrays.fill(this.layerSource.sources.layer.image.pixels, 0.0F);
-			this.presentationSwapper.play();
-		}
-
-		@Override
 		public void run() {
+			Arrays.fill(this.layerSource.sources.layer.getFrame(this.frame).pixels, 0.0F);
+			Platform.runLater(this.presentationSwapper::play);
 			try {
 				this.doRun();
 			}
@@ -396,7 +374,7 @@ public class WFCLayerSource extends LayerSource {
 					this.tileLists[index++] = new TileList(x, y, tiles);
 				}
 			}
-			if (Thread.interrupted()) return;
+			if (this.layerSource.sources.layer.redrawRequested) return;
 			this.processList(this.tileLists[this.random.nextInt(this.tileLists.length)]);
 			//this.processList(this.nextList());
 			//*
@@ -404,7 +382,7 @@ public class WFCLayerSource extends LayerSource {
 				TileList list = this.nextList();
 				if (list == null) break;
 				this.processList(list);
-				if (Thread.interrupted()) return;
+				if (this.layerSource.sources.layer.redrawRequested) return;
 			}
 			//*/
 			this.swapWriting(true);

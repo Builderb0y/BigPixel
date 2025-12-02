@@ -1,7 +1,5 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.lang.classfile.CodeBuilder.BlockCodeBuilder;
-
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.scripting.types.VectorType;
@@ -20,7 +18,7 @@ public class BlockInsnTree extends InsnTree {
 
 	@Override
 	public void emitBytecode(Context context) {
-		context.codeBuilder.block((BlockCodeBuilder block) -> this.wrapped.emitBytecode(context.fork(block)));
+		this.wrapped.emitBytecode(context.fork());
 	}
 
 	@Override

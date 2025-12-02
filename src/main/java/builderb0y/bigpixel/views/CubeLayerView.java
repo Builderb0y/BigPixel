@@ -1,5 +1,9 @@
 package builderb0y.bigpixel.views;
 
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.ObjectBinding;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.CheckBox;
@@ -8,12 +12,16 @@ import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.bigpixel.AnimationView.DrawParams;
 import builderb0y.bigpixel.F3Menu;
+import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.ZoomableImage;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
+import builderb0y.bigpixel.util.Util;
 
 public class CubeLayerView extends LayerView {
 
@@ -27,22 +35,66 @@ public class CubeLayerView extends LayerView {
 		dependencies = new CubeDependencies(this);
 	public BorderPane
 		rootConfigPane = new BorderPane();
+	public final SimpleDoubleProperty
+		yaw = new SimpleDoubleProperty(this, "yaw"),
+		pitch = new SimpleDoubleProperty(this, "pitch"),
+		fov = new SimpleDoubleProperty(this, "fov", 0.5D);
 	public double
-		yaw,
-		pitch,
 		cosYaw   = 1.0D,
 		sinYaw   = 0.0D,
 		cosPitch = 1.0D,
 		sinPitch = 0.0D,
-		fov      = 0.5D;
+		fovCache = this.fov.get();
 	public boolean
 		loaded;
+	public final ObjectBinding<DrawParams> drawParams;
 
 	public CubeLayerView(LayerViews views) {
-		super(Type.CUBE, views);
+		super(LayerViewType.CUBE, views);
 		this.dependencies.setAll(views.layer);
 		this.rootConfigPane.setTop(this.topConfigOptions);
 		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
+		this.yaw.addListener(Util.change((Number yaw) -> {
+			this.cosYaw = Math.cos(yaw.doubleValue());
+			this.sinYaw = Math.sin(yaw.doubleValue());
+		}));
+		this.pitch.addListener(Util.change((Number pitch) -> {
+			this.cosPitch = Math.cos(pitch.doubleValue());
+			this.sinPitch = Math.sin(pitch.doubleValue());
+		}));
+		this.fov.addListener(Util.change((Number fov) -> this.fovCache = fov.doubleValue()));
+		this.drawParams = Bindings.createObjectBinding(
+			() -> {
+				record Params(
+					double yaw,
+					double pitch,
+					double fov,
+					boolean shaded,
+					boolean outline,
+					CubeDependencies.Params deps
+				)
+				implements DrawParams {}
+				return new Params(
+					this.yaw.get(),
+					this.pitch.get(),
+					this.fov.get(),
+					this.shade.isSelected(),
+					this.drawOutline.isSelected(),
+					this.dependencies.drawParams.get()
+				);
+			},
+			this.yaw,
+			this.pitch,
+			this.fov,
+			this.shade.selectedProperty(),
+			this.drawOutline.selectedProperty(),
+			this.dependencies.drawParams
+		);
+	}
+
+	@Override
+	public ObservableValue<DrawParams> drawParamsProperty() {
+		return this.drawParams;
 	}
 
 	@Override
@@ -52,7 +104,7 @@ public class CubeLayerView extends LayerView {
 
 	@Override
 	public JsonMap save() {
-		return super.save().with("yaw", this.yaw).with("pitch", this.pitch).with("fov", this.fov);
+		return super.save().with("yaw", this.yaw.get()).with("pitch", this.pitch.get()).with("fov", this.fov.get());
 	}
 
 	@Override
@@ -60,20 +112,15 @@ public class CubeLayerView extends LayerView {
 		super.load(root);
 		this.setRotation(root.getDouble("yaw"), root.getDouble("pitch"));
 		double fov = root.getDouble("fov");
-		this.fov = Double.isNaN(fov) ? 0.5D : Math.clamp(fov, 0.0D, 1.0D);
+		this.fov.set(Double.isNaN(fov) ? 0.5D : Math.clamp(fov, 0.0D, 1.0D));
 		this.loaded = true;
 	}
 
 	public void setRotation(double yaw, double pitch) {
 		yaw = Double.isNaN(yaw) ? 0.0D : (yaw %= Math.PI * 2.0D) + (yaw < 0.0D ? Math.PI * 2.0D : 0.0D);
-		this.yaw = yaw;
-		this.cosYaw = Math.cos(yaw);
-		this.sinYaw = Math.sin(yaw);
-
+		this.yaw.set(yaw);
 		pitch = Double.isNaN(pitch) ? 0.0D : Math.clamp(pitch, Math.PI * -0.5D, Math.PI * 0.5D);
-		this.pitch = pitch;
-		this.cosPitch = Math.cos(pitch);
-		this.sinPitch = Math.sin(pitch);
+		this.pitch.set(pitch);
 	}
 
 	@Override
@@ -87,13 +134,13 @@ public class CubeLayerView extends LayerView {
 			uvY *= this.canvasHeight / this.canvasWidth;
 		}
 
-		double cameraX =  uvX * 2.0D * (1.0D - this.fov);
-		double cameraY = -uvY * 2.0D * (1.0D - this.fov);
+		double cameraX =  uvX * 2.0D * (1.0D - this.fovCache);
+		double cameraY = -uvY * 2.0D * (1.0D - this.fovCache);
 		double cameraZ =  CAMERA_DISTANCE;
-		double rayX    =  uvX * this.fov;
-		double rayY    = -uvY * this.fov;
+		double rayX    =  uvX * this.fovCache;
+		double rayY    = -uvY * this.fovCache;
 		double rayZ    = -1.0D;
-		if (this.fov != 0.0D) {
+		if (this.fovCache != 0.0D) {
 			double rcpRayMagnitude = 1.0D / Math.sqrt(rayX * rayX + rayY * rayY + rayZ * rayZ);
 			rayX *= rcpRayMagnitude;
 			rayY *= rcpRayMagnitude;
@@ -173,16 +220,34 @@ public class CubeLayerView extends LayerView {
 			return null;
 		}
 		else {
-			final float shade_ = this.shade.isSelected() ? shade : 1.0F;
-			return new ProjectionResult(
-				hitBinding.getCurrent(),
-				Math.clamp((int)(hitBinding.getU(resultX, resultY) * this.layerWidth), 0, this.layerWidth - 1),
-				Math.clamp((int)(hitBinding.getV(resultX, resultY) * this.layerHeight), 0, this.layerHeight - 1)
-			) {
-
-				@Override
-				public FloatVector sample() {
-					return super.sample().mul(shade_, Util.RGB_MASK);
+			return switch (hitBinding.getCurrent()) {
+				case UniformSamplerProvider uniform -> {
+					FloatVector color = uniform.getColor();
+					yield new ProjectionResult(
+						uniform,
+						0,
+						0,
+						color.lane(HDRImage.RED_OFFSET),
+						color.lane(HDRImage.GREEN_OFFSET),
+						color.lane(HDRImage.BLUE_OFFSET),
+						color.lane(HDRImage.ALPHA_OFFSET)
+					);
+				}
+				case VaryingSamplerProvider varying -> {
+					HDRImage image = varying.getBackingLayer().getFrame();
+					int projectedX = Math.clamp((int)(hitBinding.getU(resultX, resultY) * this.layerWidth), 0, this.layerWidth - 1);
+					int projectedY = Math.clamp((int)(hitBinding.getV(resultX, resultY) * this.layerHeight), 0, this.layerHeight - 1);
+					int baseIndex = image.baseIndex(projectedX, projectedY);
+					float r = image.pixels[baseIndex | HDRImage.  RED_OFFSET];
+					float g = image.pixels[baseIndex | HDRImage.GREEN_OFFSET];
+					float b = image.pixels[baseIndex | HDRImage. BLUE_OFFSET];
+					float a = image.pixels[baseIndex | HDRImage.ALPHA_OFFSET];
+					if (this.shade.isSelected()) {
+						r *= shade;
+						g *= shade;
+						b *= shade;
+					}
+					yield new ProjectionResult(varying, projectedX, projectedY, r, g, b, a);
 				}
 			};
 		}
@@ -194,9 +259,9 @@ public class CubeLayerView extends LayerView {
 
 	@Override
 	public void zoom(double x, double y, boolean zoomIn) {
-		double nextFov = zoomIn ? Math.min(this.fov + 0.0625D, 1.0D) : Math.max(this.fov - 0.0625D, 0.0D);
-		if (this.fov != nextFov) {
-			this.fov = nextFov;
+		double nextFov = zoomIn ? Math.min(this.fov.get() + 0.0625D, 1.0D) : Math.max(this.fov.get() - 0.0625D, 0.0D);
+		if (this.fov.get() != nextFov) {
+			this.fov.set(nextFov);
 			this.views.layer.graph.openImage.imageDisplay.redrawLater();
 		}
 	}
@@ -206,8 +271,8 @@ public class CubeLayerView extends LayerView {
 		ZoomableImage display = this.views.layer.graph.openImage.imageDisplay;
 		Canvas canvas = display.display.display;
 		this.setRotation(
-			this.yaw - deltaX * Math.PI / canvas.getWidth(),
-			this.pitch - deltaY * Math.PI / canvas.getHeight()
+			this.yaw.get() - deltaX * Math.PI / canvas.getWidth(),
+			this.pitch.get() - deltaY * Math.PI / canvas.getHeight()
 		);
 		display.redrawLater();
 	}
@@ -218,7 +283,7 @@ public class CubeLayerView extends LayerView {
 			this.loaded = false;
 		}
 		else {
-			this.fov = 0.5D;
+			this.fov.set(0.5D);
 			this.setRotation(0.0D, 0.0D);
 		}
 	}
@@ -325,20 +390,20 @@ public class CubeLayerView extends LayerView {
 		z111 = tmp1;
 		y111 = tmp2;
 
-		if (cameraX < -this.fov || cameraZ < -this.fov) this.drawTransformedLine(pixels, x000, y000, z000, x010, y010, z010, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraX >  this.fov || cameraZ < -this.fov) this.drawTransformedLine(pixels, x100, y100, z100, x110, y110, z110, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraX < -this.fov || cameraZ >  this.fov) this.drawTransformedLine(pixels, x001, y001, z001, x011, y011, z011, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraX >  this.fov || cameraZ >  this.fov) this.drawTransformedLine(pixels, x101, y101, z101, x111, y111, z111, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX < -this.fovCache || cameraZ < -this.fovCache) this.drawTransformedLine(pixels, x000, y000, z000, x010, y010, z010, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX >  this.fovCache || cameraZ < -this.fovCache) this.drawTransformedLine(pixels, x100, y100, z100, x110, y110, z110, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX < -this.fovCache || cameraZ >  this.fovCache) this.drawTransformedLine(pixels, x001, y001, z001, x011, y011, z011, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX >  this.fovCache || cameraZ >  this.fovCache) this.drawTransformedLine(pixels, x101, y101, z101, x111, y111, z111, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
 
-		if (cameraX < -this.fov || cameraY < -this.fov) this.drawTransformedLine(pixels, x000, y000, z000, x001, y001, z001, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraX >  this.fov || cameraY < -this.fov) this.drawTransformedLine(pixels, x100, y100, z100, x101, y101, z101, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraX < -this.fov || cameraY >  this.fov) this.drawTransformedLine(pixels, x010, y010, z010, x011, y011, z011, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraX >  this.fov || cameraY >  this.fov) this.drawTransformedLine(pixels, x110, y110, z110, x111, y111, z111, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX < -this.fovCache || cameraY < -this.fovCache) this.drawTransformedLine(pixels, x000, y000, z000, x001, y001, z001, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX >  this.fovCache || cameraY < -this.fovCache) this.drawTransformedLine(pixels, x100, y100, z100, x101, y101, z101, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX < -this.fovCache || cameraY >  this.fovCache) this.drawTransformedLine(pixels, x010, y010, z010, x011, y011, z011, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraX >  this.fovCache || cameraY >  this.fovCache) this.drawTransformedLine(pixels, x110, y110, z110, x111, y111, z111, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
 
-		if (cameraY < -this.fov || cameraZ < -this.fov) this.drawTransformedLine(pixels, x000, y000, z000, x100, y100, z100, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraY >  this.fov || cameraZ < -this.fov) this.drawTransformedLine(pixels, x010, y010, z010, x110, y110, z110, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraY < -this.fov || cameraZ >  this.fov) this.drawTransformedLine(pixels, x001, y001, z001, x101, y101, z101, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
-		if (cameraY >  this.fov || cameraZ >  this.fov) this.drawTransformedLine(pixels, x011, y011, z011, x111, y111, z111, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraY < -this.fovCache || cameraZ < -this.fovCache) this.drawTransformedLine(pixels, x000, y000, z000, x100, y100, z100, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraY >  this.fovCache || cameraZ < -this.fovCache) this.drawTransformedLine(pixels, x010, y010, z010, x110, y110, z110, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraY < -this.fovCache || cameraZ >  this.fovCache) this.drawTransformedLine(pixels, x001, y001, z001, x101, y101, z101, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
+		if (cameraY >  this.fovCache || cameraZ >  this.fovCache) this.drawTransformedLine(pixels, x011, y011, z011, x111, y111, z111, canvasWidth, canvasHeight, LAYER_OUTLINE_DARK, LAYER_OUTLINE_LIGHT);
 	}
 
 	@Override
@@ -377,7 +442,7 @@ public class CubeLayerView extends LayerView {
 
 		CubeDependencies deps = this.dependencies;
 		CubeDimensions dims = deps.dimensions;
-		if (cameraY > this.fov * (plane = dims.maxY * 2.0D - 1.0D)) {
+		if (cameraY > this.fovCache * (plane = dims.maxY * 2.0D - 1.0D)) {
 			this.drawUntransformedQuad(
 				pixels,
 				Util.mix(dims.minX, dims.maxX, deps.up.ungetU(scaledX1, scaledY1)) * 2.0D - 1.0D,
@@ -398,7 +463,7 @@ public class CubeLayerView extends LayerView {
 				SELECTION_OUTLINE_LIGHT
 			);
 		}
-		if (cameraY < this.fov * (plane = dims.minY * 2.0D - 1.0D)) {
+		if (cameraY < this.fovCache * (plane = dims.minY * 2.0D - 1.0D)) {
 			this.drawUntransformedQuad(
 				pixels,
 				Util.mix(dims.minX, dims.maxX, deps.down.ungetU(scaledX1, scaledY1)) * 2.0D - 1.0D,
@@ -419,7 +484,7 @@ public class CubeLayerView extends LayerView {
 				SELECTION_OUTLINE_LIGHT
 			);
 		}
-		if (cameraZ > this.fov * (plane = dims.maxZ * 2.0D - 1.0D)) {
+		if (cameraZ > this.fovCache * (plane = dims.maxZ * 2.0D - 1.0D)) {
 			this.drawUntransformedQuad(
 				pixels,
 				Util.mix(dims.minX, dims.maxX, deps.south.ungetU(scaledX1, scaledY1)) * 2.0D - 1.0D,
@@ -440,7 +505,7 @@ public class CubeLayerView extends LayerView {
 				SELECTION_OUTLINE_LIGHT
 			);
 		}
-		if (cameraZ < this.fov * (plane = dims.minZ * 2.0D - 1.0D)) {
+		if (cameraZ < this.fovCache * (plane = dims.minZ * 2.0D - 1.0D)) {
 			this.drawUntransformedQuad(
 				pixels,
 				Util.mix(dims.maxX, dims.minX, deps.north.ungetU(scaledX1, scaledY1)) * 2.0D - 1.0D,
@@ -461,7 +526,7 @@ public class CubeLayerView extends LayerView {
 				SELECTION_OUTLINE_LIGHT
 			);
 		}
-		if (cameraX > this.fov * (plane = dims.maxX * 2.0D - 1.0D)) {
+		if (cameraX > this.fovCache * (plane = dims.maxX * 2.0D - 1.0D)) {
 			this.drawUntransformedQuad(
 				pixels,
 				plane,
@@ -482,7 +547,7 @@ public class CubeLayerView extends LayerView {
 				SELECTION_OUTLINE_LIGHT
 			);
 		}
-		if (cameraX < this.fov * (plane = dims.minX * 2.0D - 1.0D)) {
+		if (cameraX < this.fovCache * (plane = dims.minX * 2.0D - 1.0D)) {
 			this.drawUntransformedQuad(
 				pixels,
 				plane,
@@ -569,10 +634,10 @@ public class CubeLayerView extends LayerView {
 		int dark,
 		int light
 	) {
-		double screenX1 = (CAMERA_DISTANCE * x1) / (CAMERA_DISTANCE - this.fov * z1);
-		double screenY1 = (CAMERA_DISTANCE * y1) / (CAMERA_DISTANCE - this.fov * z1);
-		double screenX2 = (CAMERA_DISTANCE * x2) / (CAMERA_DISTANCE - this.fov * z2);
-		double screenY2 = (CAMERA_DISTANCE * y2) / (CAMERA_DISTANCE - this.fov * z2);
+		double screenX1 = (CAMERA_DISTANCE * x1) / (CAMERA_DISTANCE - this.fovCache * z1);
+		double screenY1 = (CAMERA_DISTANCE * y1) / (CAMERA_DISTANCE - this.fovCache * z1);
+		double screenX2 = (CAMERA_DISTANCE * x2) / (CAMERA_DISTANCE - this.fovCache * z2);
+		double screenY2 = (CAMERA_DISTANCE * y2) / (CAMERA_DISTANCE - this.fovCache * z2);
 		if (canvasWidth > canvasHeight) {
 			screenX1 *= ((double)(canvasHeight)) / ((double)(canvasWidth));
 			screenX2 *= ((double)(canvasHeight)) / ((double)(canvasWidth));

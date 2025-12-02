@@ -20,10 +20,10 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.util.Util;
 
 public class ConvolveLayerSource extends MainMaskLayerSource {
 
@@ -71,7 +71,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	}
 
 	public ConvolveLayerSource(LayerSources sources) {
-		super(Type.CONVOLVE, sources);
+		super(LayerSourceType.CONVOLVE, sources);
 		this.layout();
 		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius, this.linear));
 		this.borderPane.setCenter(this.customWeights);
@@ -209,11 +209,12 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	}
 
 	public HDRImage getSeparableScratch() {
-		HDRImage from = this.sources.layer.image;
+		int width = this.sources.layer.imageWidth();
+		int height = this.sources.layer.imageHeight();
 		if (this.separableScratch == null) {
-			this.separableScratch = new HDRImage(from.width, from.height);
+			this.separableScratch = new HDRImage(width, height);
 		}
-		this.separableScratch.checkSize(from.width, from.height, false);
+		this.separableScratch.checkSize(width, height, false);
 		return this.separableScratch;
 	}
 
@@ -226,7 +227,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	}
 
 	@Override
-	public void doRedraw(LayerSourceInput main, LayerSourceInput mask, HDRImage destination) throws RedrawException {
+	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
 		int radius = this.radius.getValue();
 		boolean linear = this.linear.isSelected();
 		float[] weights = this.weight.getValue().getWeights(this);

@@ -1,33 +1,35 @@
 package builderb0y.bigpixel.views;
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import javafx.beans.value.ObservableValue;
 import javafx.scene.Node;
-import javafx.scene.canvas.Canvas;
 import javafx.scene.control.CheckBox;
-import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.bigpixel.AnimationView.DrawParams;
 import builderb0y.bigpixel.ConfigParameter;
 import builderb0y.bigpixel.F3Menu;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.json.JsonMap;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.views.LayerView.LayerViewType;
 
-public abstract class LayerView implements OrganizedSelection.Value<LayerView.Type> {
+public abstract class LayerView implements OrganizedSelection.Value<LayerViewType> {
 
-	public final Type type;
+	public final LayerViewType type;
 	public final LayerViews views;
 	public final ViewParameters parameters = new ViewParameters(this);
 	public CheckBox drawOutline = this.parameters.addCheckbox("draw_outline", "Draw Outline", true);
 	public double canvasWidth, canvasHeight;
 	public int layerWidth, layerHeight;
 
-	public LayerView(Type type, LayerViews views) {
+	public LayerView(LayerViewType type, LayerViews views) {
 		this.type = type;
 		this.views = views;
 		super();
@@ -36,13 +38,6 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerView.Ty
 	@Override
 	public LayerNode getLayer() {
 		return this.views.layer;
-	}
-
-	public void beforeRedraw(Canvas canvas, LayerNode layer) {
-		this.canvasWidth  = canvas.getWidth();
-		this.canvasHeight = canvas.getHeight();
-		this.layerWidth   = layer.image.width;
-		this.layerHeight  = layer.image.height;
 	}
 
 	@Override
@@ -64,6 +59,13 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerView.Ty
 
 	public abstract Node getRootConfigPane();
 
+	public void beforeRedraw(int imageWidth, int imageHeight, int canvasWidth, int canvasHeight) {
+		this.layerWidth   = imageWidth;
+		this.layerHeight  = imageHeight;
+		this.canvasWidth  = canvasWidth;
+		this.canvasHeight = canvasHeight;
+	}
+
 	@Override
 	public void redrawLater() {
 		this.views.layer.graph.openImage.imageDisplay.redrawLater();
@@ -71,25 +73,20 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerView.Ty
 
 	public abstract @Nullable ProjectionResult project(double x, double y);
 
-	public static class ProjectionResult {
+	public static record ProjectionResult(SamplerProvider input, int x, int y, float r, float g, float b, float a) {
 
-		public final LayerSourceInput layer;
-		public final int x;
-		public final int y;
-
-		public ProjectionResult(LayerSourceInput layer, int x, int y) {
-			this.layer = layer;
-			this.x = x;
-			this.y = y;
+		public static final DecimalFormat COLOR_FORMAT = new DecimalFormat();
+		static {
+			COLOR_FORMAT.setMaximumFractionDigits(3);
 		}
 
-		public FloatVector sample() {
-			return this.layer.getColor(this.x, this.y);
+		public ProjectionResult(SamplerProvider input, int x, int y) {
+			this(input, x, y, 0.0F, 0.0F, 0.0F, 0.0F);
 		}
 
 		@Override
 		public String toString() {
-			return this.x + ", " + this.y;
+			return "(" + this.x + ", " + this.y + ") -> [ " + COLOR_FORMAT.format(this.r) + ", " + COLOR_FORMAT.format(this.g) + ", " + COLOR_FORMAT.format(this.b) + ", " + COLOR_FORMAT.format(this.a) + " ]";
 		}
 	}
 
@@ -98,6 +95,8 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerView.Ty
 	public abstract void drag(double deltaX, double deltaY);
 
 	public abstract void center();
+
+	public abstract ObservableValue<DrawParams> drawParamsProperty();
 
 	public void updateF3(F3Menu f3) {
 		//no-op by default.
@@ -141,15 +140,15 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerView.Ty
 	}
 
 	@Override
-	public Type getType() {
+	public LayerViewType getType() {
 		return this.type;
 	}
 
-	public static enum Category implements OrganizedSelection.Category<Category> {
+	public static enum LayerViewCategory implements OrganizedSelection.Category<LayerViewCategory> {
 		ROOT;
 
 		@Override
-		public @Nullable Category getParent() {
+		public @Nullable LayerView.LayerViewCategory getParent() {
 			return null;
 		}
 
@@ -159,18 +158,18 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerView.Ty
 		}
 	}
 
-	public static enum Type implements OrganizedSelection.Type<LayerView, Category> {
+	public static enum LayerViewType implements OrganizedSelection.Type<LayerView, LayerViewCategory> {
 		FLAT_CLAMPED("flat_clamped", "Flat (Clamped)", FlatClampedLayerView::new),
 		FLAT_TILING("flat_tiling", "Flat (Tiling)", FlatTilingLayerView::new),
 		CUBE("cube", "Cube", CubeLayerView::new);
 
-		public static final Type[] VALUES = values();
-		public static final Map<String, Type> BY_SAVE_NAME = Arrays.stream(VALUES).collect(Collectors.toMap(Type::getSaveName, Function.identity()));
+		public static final LayerViewType[] VALUES = values();
+		public static final Map<String, LayerViewType> BY_SAVE_NAME = Arrays.stream(VALUES).collect(Collectors.toMap(LayerViewType::getSaveName, Function.identity()));
 
 		public final String saveName, displayName;
 		public final Function<LayerViews, LayerView> constructor;
 
-		Type(String saveName, String name, Function<LayerViews, LayerView> constructor) {
+		LayerViewType(String saveName, String name, Function<LayerViews, LayerView> constructor) {
 			this.saveName = saveName;
 			this.displayName = name;
 			this.constructor = constructor;
@@ -182,8 +181,8 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerView.Ty
 		}
 
 		@Override
-		public Category getCategory() {
-			return Category.ROOT;
+		public LayerViewCategory getCategory() {
+			return LayerViewCategory.ROOT;
 		}
 
 		@Override

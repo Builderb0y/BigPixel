@@ -1,9 +1,13 @@
 package builderb0y.bigpixel.sources.dependencies;
 
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
+import javafx.beans.WeakInvalidationListener;
+import javafx.beans.binding.BooleanBinding;
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -20,18 +24,20 @@ import javafx.scene.layout.Pane;
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.MovableInputBinding;
+import builderb0y.bigpixel.util.Util;
 
 public class MultiLayerDependencies extends LayerDependencies {
 
 	public OrganizedSelection.Value<?> owner;
 	public ColorBoxGroup colorBoxGroup;
 	public ListView<MovableInputBinding> listView = new ListView<>();
+	public AnimatedBinding animated = new AnimatedBinding(this.listView.getItems());
 	public Button addButton = new Button("+");
 	public HBox bottomPane = new HBox(this.addButton);
 	public BorderPane configView = new BorderPane();
@@ -112,20 +118,13 @@ public class MultiLayerDependencies extends LayerDependencies {
 	}
 
 	@Override
-	public boolean dependsOn(LayerNode layer) {
-		for (MovableInputBinding input : this.listView.getItems()) {
-			if (input.getSelectedLayer() == layer) return true;
-		}
-		return false;
+	public Stream<SamplerProvider> getAll() {
+		return this.listView.getItems().stream().map(InputBinding::getCurrent);
 	}
 
 	@Override
-	public boolean containsAny(Predicate<LayerNode> layers) {
-		for (MovableInputBinding input : this.listView.getItems()) {
-			LayerNode layer = input.getSelectedLayer();
-			if (layer != null && layers.test(layer)) return true;
-		}
-		return false;
+	public ObservableBooleanValue animatedProperty() {
+		return this.animated;
 	}
 
 	@Override
@@ -140,6 +139,51 @@ public class MultiLayerDependencies extends LayerDependencies {
 	@Override
 	public Parent getConfigPane() {
 		return this.configView;
+	}
+
+	public static class AnimatedBinding extends BooleanBinding implements InvalidationListener {
+
+		public ObservableList<MovableInputBinding> currentBindings;
+		public List<MovableInputBinding> previousBindings = List.of();
+		public boolean changed;
+
+		public AnimatedBinding(ObservableList<MovableInputBinding> currentBindings) {
+			this.currentBindings = currentBindings;
+			currentBindings.addListener(new WeakInvalidationListener(this));
+			this.changed = !currentBindings.isEmpty();
+		}
+
+		public void updateBindings() {
+			if (this.changed) {
+				for (MovableInputBinding binding : this.previousBindings) {
+					if (!this.currentBindings.contains(binding)) {
+						this.unbind(binding.animated);
+					}
+				}
+				for (MovableInputBinding binding : this.currentBindings) {
+					if (!this.previousBindings.contains(binding)) {
+						this.bind(binding.animated);
+					}
+				}
+				this.previousBindings = List.copyOf(this.currentBindings);
+				this.changed = false;
+			}
+		}
+
+		@Override
+		public boolean computeValue() {
+			this.updateBindings();
+			for (MovableInputBinding binding : this.currentBindings) {
+				if (binding.animated.get()) return true;
+			}
+			return false;
+		}
+
+		@Override
+		public void invalidated(Observable currentBindings) {
+			this.changed = true;
+			this.invalidate();
+		}
 	}
 
 	public static class NoSelection<T> extends MultipleSelectionModel<T> {

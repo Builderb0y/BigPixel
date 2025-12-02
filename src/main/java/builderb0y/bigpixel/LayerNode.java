@@ -2,6 +2,7 @@ package builderb0y.bigpixel;
 
 import java.util.stream.IntStream;
 
+import javafx.application.Platform;
 import javafx.beans.binding.When;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.css.PseudoClass;
@@ -12,9 +13,6 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.image.ImageView;
-import javafx.scene.image.PixelFormat;
-import javafx.scene.image.PixelWriter;
-import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
@@ -22,20 +20,19 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.text.Font;
-import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.IntVector;
 
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.LayerSource;
+import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.LayerSources;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
+import builderb0y.bigpixel.util.Util;
 import builderb0y.bigpixel.views.LayerView;
 import builderb0y.bigpixel.views.LayerViews;
 
-import static builderb0y.bigpixel.HDRImage.*;
-
-public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
+public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 
 	public static final int
 		GRID_WIDTH = 256,
@@ -47,8 +44,10 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 
 	public LayerGraph
 		graph;
-	public HDRImage
-		image;
+	public HDRAnimation
+		animation;
+	public Thumbnail
+		thumbnail;
 	public LayerDragHandler
 		dragHandler = new LayerDragHandler(this);
 	public LayerSources
@@ -66,7 +65,7 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 	public RadioButton
 		showing = new RadioButton();
 	public ImageView
-		thumbnailView = new ImageView();
+		thumbnailView;
 	public Label
 		displayName = new Label();
 	public HBox
@@ -88,8 +87,8 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 			.with("name", this.getDisplayName())
 			.with("gridX", this.getGridX())
 			.with("gridY", this.getGridY())
-			.with("width", this.image.width)
-			.with("height", this.image.height)
+			.with("width", this.imageWidth())
+			.with("height", this.imageHeight())
 			.with("sources", this.sources.save())
 			.with("views", this.views.save())
 		);
@@ -111,10 +110,12 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		);
 	}
 
-	public LayerNode(LayerGraph graph, int x, int y, int width, int height, String name) {
+	public LayerNode(LayerGraph graph, int gridX, int gridY, int width, int height, String name) {
 		this.graph = graph;
-		this.image = new HDRImage(width, height);
 		super();
+		this.animation = new HDRAnimation(this, width, height);
+		this.thumbnail = new Thumbnail(graph.openImage.animationSource, this.animation, 32);
+		this.thumbnailView = this.thumbnail.createView();
 		this.sources.init();
 		this.views.init();
 		this.dragHandler.init();
@@ -134,10 +135,7 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		this.outerPreview.getStyleClass().add("popout-borders");
 		this.showing.setToggleGroup(graph.visibleLayer);
 		this.showing.setUserData(this);
-		this.setGridPos(x, y, false);
-		this.thumbnailView.setPreserveRatio(true);
-		this.thumbnailView.setImage(new WritableImage(width, height));
-		this.onThumbnailSizeChanged();
+		this.setGridPos(gridX, gridY, false);
 		this.displayName.styleProperty().bind(
 			this.redrawException.map((Throwable _) -> "-fx-text-fill: #FF3F3F;")
 		);
@@ -168,15 +166,33 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		this.viewConfigPane.centerProperty().bind(this.views.selectedValue.map(LayerView::getRootConfigPane));
 	}
 
-	public FloatVector getPixelWrapped(IntVector coord) {
-		return this.getPixelWrapped(coord.lane(0), coord.lane(1));
+	public HDRImage getFrame() {
+		return this.animation.getFrame();
 	}
 
-	public FloatVector getPixelWrapped(int x, int y) {
-		return this.getColor(
-			Math.floorMod(x, this.image.width),
-			this.image.height + ~Math.floorMod(y, this.image.height)
-		);
+	public HDRImage getOnlyFrame() {
+		if (this.animation.isAnimated()) {
+			throw new IllegalStateException("Animated");
+		}
+		else {
+			return this.getFrame();
+		}
+	}
+
+	public HDRImage getFrame(int index) {
+		return this.animation.getFrame(index);
+	}
+
+	public int getFrameCount() {
+		return this.animation.getFrameCount();
+	}
+
+	public int imageWidth() {
+		return this.animation.width();
+	}
+
+	public int imageHeight() {
+		return this.animation.height();
 	}
 
 	@Override
@@ -184,22 +200,43 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 		return this;
 	}
 
-	public void requestRedraw() {
-		this.redrawRequested = true;
-		this.graph.requestRedraw();
+	public VaryingSampler createInvertedInput(int frame) {
+		return VaryingSampler.inverted(this, this.getFrame(frame));
 	}
 
-	public void redrawImmediately() {
+	public void requestRedraw() {
+		this.redrawRequested = true;
+		this.graph.redrawThread.wakeup();
+	}
+
+	public void redrawOffThread() {
 		try {
-			this.sources.selectedValue.get().redrawImmediately();
-			this.redrawThumbnail();
-			this.redrawException.set(null);
+			LayerSource source = this.sources.currentSource();
+			int frameCount = this.animation.getFrameCount();
+			if (frameCount == 1) {
+				source.doRedraw(0);
+			}
+			else {
+				IntStream.range(0, frameCount).parallel().forEach((int frame) -> {
+					try {
+						source.doRedraw(frame);
+					}
+					catch (RedrawException exception) {
+						throw Util.rethrow(exception);
+					}
+				});
+			}
+			Platform.runLater(() -> this.redrawException.set(null));
+		}
+		catch (RedrawException exception) {
+			Platform.runLater(() -> this.redrawException.set(exception));
 		}
 		catch (Throwable throwable) {
 			while (throwable.getCause() != null) {
 				throwable = throwable.getCause();
 			}
-			this.redrawException.set(throwable);
+			Throwable throwable_ = throwable;
+			Platform.runLater(() -> this.redrawException.set(throwable_));
 		}
 	}
 
@@ -221,56 +258,6 @@ public class LayerNode implements LayerPosition, VaryingLayerSourceInput {
 	public void setDisplayNameDirectly(String displayName) {
 		this.displayName.setText(displayName);
 		this.nameEditor.setText(displayName);
-	}
-
-	public ImageView duplicateThumbnail() {
-		ImageView view = new ImageView();
-		view.setPreserveRatio(true);
-		view.imageProperty().bind(this.thumbnailView.imageProperty());
-		view.fitWidthProperty().bind(this.thumbnailView.fitWidthProperty());
-		view.fitHeightProperty().bind(this.thumbnailView.fitHeightProperty());
-		return view;
-	}
-
-	public void onThumbnailSizeChanged() {
-		if (this.image.width > this.image.height) {
-			this.thumbnailView.setFitWidth(32.0D);
-			this.thumbnailView.setFitHeight(0.0D);
-		}
-		else {
-			this.thumbnailView.setFitWidth(0.0D);
-			this.thumbnailView.setFitHeight(32.0D);
-		}
-	}
-
-	public void redrawThumbnail() {
-		WritableImage fxImage = (WritableImage)(this.thumbnailView.getImage());
-		if (fxImage.getWidth() != this.image.width || fxImage.getHeight() != this.image.height) {
-			this.thumbnailView.setImage(fxImage = new WritableImage(this.image.width, this.image.height));
-			this.onThumbnailSizeChanged();
-		}
-		PixelWriter writer = fxImage.getPixelWriter();
-		if (writer.getPixelFormat() != PixelFormat.getByteBgraPreInstance()) {
-			throw new IllegalStateException("Pixel format changed");
-		}
-		int width = this.image.width;
-		int height = this.image.height;
-		byte[] pixels = new byte[width * height * 4];
-		IntStream.range(0, height).parallel().forEach((int y) -> {
-			for (int x = 0; x < width; x++) {
-				int baseIndex = this.image.baseIndex(x, y);
-				float red     = this.image.pixels[baseIndex |   RED_OFFSET];
-				float green   = this.image.pixels[baseIndex | GREEN_OFFSET];
-				float blue    = this.image.pixels[baseIndex |  BLUE_OFFSET];
-				float alpha   = this.image.pixels[baseIndex | ALPHA_OFFSET];
-				float clampedAlpha = Util.clampF(alpha);
-				pixels[baseIndex    ] = Util.clampB(blue  * clampedAlpha);
-				pixels[baseIndex | 1] = Util.clampB(green * clampedAlpha);
-				pixels[baseIndex | 2] = Util.clampB(red   * clampedAlpha);
-				pixels[baseIndex | 3] = Util.clampB(               alpha);
-			}
-		});
-		writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);
 	}
 
 	public Pane getPreviewNode() {

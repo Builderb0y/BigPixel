@@ -2,6 +2,8 @@ package builderb0y.bigpixel.views;
 
 import java.util.Locale;
 
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.ObjectBinding;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
@@ -13,11 +15,13 @@ import javafx.scene.layout.HBox;
 
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.OrganizedSelection;
-import builderb0y.bigpixel.Util;
+import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.tools.Symmetry;
+import builderb0y.bigpixel.util.Util;
 
 public class FaceInputBinding extends InputBinding {
 
@@ -53,6 +57,40 @@ public class FaceInputBinding extends InputBinding {
 		titledPane = new TitledPane();
 	public SimpleObjectProperty<Symmetry>
 		rotation = new SimpleObjectProperty<>(this, "rotation", Symmetry.IDENTITY);
+	public ObjectBinding<Params>
+		drawParams;
+	public static record Params(
+		double minU,
+		double minV,
+		double maxU,
+		double maxV,
+		Symmetry rotation,
+		boolean enabled,
+		SamplerProvider input
+	) {}
+
+	@Override
+	public JsonMap save() {
+		return (
+			super
+			.save()
+			.with("minU", this.minUSpinner.getValue())
+			.with("minV", this.minVSpinner.getValue())
+			.with("maxU", this.maxUSpinner.getValue())
+			.with("maxV", this.maxVSpinner.getValue())
+			.with("rotation", this.rotation.get().name())
+		);
+	}
+
+	@Override
+	public void load(JsonMap map) {
+		super.load(map);
+		this.minUSpinner.getValueFactory().setValue(map.getDouble("minU"));
+		this.minVSpinner.getValueFactory().setValue(map.getDouble("minV"));
+		this.maxUSpinner.getValueFactory().setValue(map.getDouble("maxU"));
+		this.maxVSpinner.getValueFactory().setValue(map.getDouble("maxV"));
+		this.rotation.set(Symmetry.valueOf(map.getString("rotation")));
+	}
 
 	public FaceInputBinding(OrganizedSelection.Value<?> owner, CubeDimensions dimensions, Face face, ColorBoxGroup group) {
 		this.dimensions = dimensions;
@@ -103,6 +141,24 @@ public class FaceInputBinding extends InputBinding {
 		this.titledPane.setExpanded(false);
 		//animation plays too slowly for my preferences and can't be configured.
 		this.titledPane.setAnimated(false);
+		this.drawParams = Bindings.createObjectBinding(
+			() -> new Params(
+				this.minUSpinner.getValue(),
+				this.minVSpinner.getValue(),
+				this.maxUSpinner.getValue(),
+				this.maxVSpinner.getValue(),
+				this.rotation.get(),
+				this.enabled.isSelected(),
+				this.selection.getValue()
+			),
+			this.minUSpinner.valueProperty(),
+			this.minVSpinner.valueProperty(),
+			this.maxUSpinner.valueProperty(),
+			this.maxVSpinner.valueProperty(),
+			this.rotation,
+			this.enabled.selectedProperty(),
+			this.selection.valueProperty()
+		);
 	}
 
 	public Button makeSymmetryButton(Symmetry symmetry, Image image) {

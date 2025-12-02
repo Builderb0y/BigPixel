@@ -26,7 +26,7 @@ public class RandomInsnTree extends InsnTree {
 		for (InsnTree argument : this.arguments) {
 			argument.emitBytecode(context);
 		}
-		context.codeBuilder.lconst_0();
+		context.codeBuilder.push(0L);
 		for (int argIndex = this.arguments.length; --argIndex >= 0;) {
 			VectorType[] argTypes = this.arguments[argIndex].types();
 			for (int typeIndex = argTypes.length; --typeIndex >= 0;) {

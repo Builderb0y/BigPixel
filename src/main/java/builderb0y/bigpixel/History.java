@@ -68,7 +68,9 @@ public class History implements Comparable<History> {
 	}
 
 	public void save(String name) {
-		long toAdd = ((long)(this.source.sources.layer.image.pixels.length)) * ((long)(Float.BYTES));
+		assert this.source.sources.layer.getFrameCount() == 1;
+		HDRImage image = this.source.sources.layer.getFrame(0);
+		long toAdd = ((long)(image.pixels.length)) * ((long)(Float.BYTES));
 		if (toAdd > MAX_MEMORY) {
 			System.err.println("Insufficient memory to store undo history for current layer.");
 			return;
@@ -91,7 +93,7 @@ public class History implements Comparable<History> {
 			currentMemory -= toAdd;
 			return;
 		}
-		Entry next = new Entry(name, this.source.sources.layer.image);
+		Entry next = new Entry(name, image);
 		Entry current = this.currentEntry.get();
 		next.prev = current;
 		if (current != null) current.next = next;
@@ -176,7 +178,7 @@ public class History implements Comparable<History> {
 		}
 
 		public void restore(ManualLayerSource source) {
-			HDRImage destination = source.toollessImage;
+			HDRImage destination = source.getToollessImage();
 			destination.checkSize(this.width, this.height, false);
 			if (this.compressedPixels != null) try {
 				destination.decompressPixels(this.compressedPixels);

@@ -16,8 +16,8 @@ import org.jetbrains.annotations.Nullable;
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.ManualLayerSource;
+import builderb0y.bigpixel.util.Util;
 
 public class MoveTool extends Tool<MoveTool.Work> {
 
@@ -78,7 +78,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 			);
 			if (moving == BoundaryPosition.OUTSIDE) {
 				this.enter();
-				this.work = new Work(this.source.toollessImage, x, y);
+				this.work = new Work(this.source.getToollessImage(), x, y);
 			}
 			else {
 				work.prevX = x;
@@ -88,7 +88,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		}
 		else {
 			this.source.beginUsingTool();
-			this.work = new Work(this.source.toollessImage, x, y);
+			this.work = new Work(this.source.getToollessImage(), x, y);
 			this.requestRedraw();
 			this.updateLabelText();
 		}
@@ -129,7 +129,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	public void redraw() {
 		Work work = this.work;
 		if (work == null) return;
-		HDRImage to = this.layer().image;
+		HDRImage to = this.layer().getOnlyFrame();
 		this.maybeFill(work, to);
 		this.transfer(work, work.source, to);
 	}
@@ -206,7 +206,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 		Work work = this.work;
 		if (work != null) {
 			super.enter();
-			this.work = new Work(this.source.toollessImage);
+			this.work = new Work(this.source.getToollessImage());
 			this.work.x1 = work.x1 + work.offsetX;
 			this.work.x2 = work.x2 + work.offsetX;
 			this.work.y1 = work.y1 + work.offsetY;

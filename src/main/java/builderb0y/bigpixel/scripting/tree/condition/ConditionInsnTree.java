@@ -1,6 +1,6 @@
 package builderb0y.bigpixel.scripting.tree.condition;
 
-import java.lang.classfile.Label;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.InsnTree;
 import builderb0y.bigpixel.scripting.types.VectorType;
@@ -20,7 +20,11 @@ public class ConditionInsnTree extends InsnTree {
 			zero = context.codeBuilder.newLabel(),
 			end = context.codeBuilder.newLabel();
 		this.condition.emitBytecode(context, null, zero);
-		context.codeBuilder.iconst_1().goto_(end).labelBinding(zero).iconst_0().labelBinding(end);
+		context.codeBuilder.push(1);
+		context.codeBuilder.goTo(end);
+		context.codeBuilder.visitLabel(zero);
+		context.codeBuilder.push(0);
+		context.codeBuilder.visitLabel(end);
 	}
 
 	@Override

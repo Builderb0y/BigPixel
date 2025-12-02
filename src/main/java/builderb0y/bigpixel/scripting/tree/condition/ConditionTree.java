@@ -1,8 +1,7 @@
 package builderb0y.bigpixel.scripting.tree.condition;
 
-import java.lang.classfile.Label;
-
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.CodeEmitter;
 import builderb0y.bigpixel.scripting.tree.InsnTree;

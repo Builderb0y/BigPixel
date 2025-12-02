@@ -2,6 +2,8 @@ package builderb0y.bigpixel.scripting.tree;
 
 import builderb0y.bigpixel.scripting.types.VectorType;
 
+import static org.objectweb.asm.Opcodes.*;
+
 public class LoadInsnTree extends InsnTree {
 
 	public final String name;
@@ -14,13 +16,16 @@ public class LoadInsnTree extends InsnTree {
 	@Override
 	public void emitBytecode(Context context) {
 		int index = context.getVariable(this.name).index();
-		switch (this.type()) {
-			case INT, BOOLEAN -> context.codeBuilder.iload(index);
-			case LONG -> context.codeBuilder.lload(index);
-			case FLOAT -> context.codeBuilder.fload(index);
-			case DOUBLE -> context.codeBuilder.dload(index);
-			default -> context.codeBuilder.aload(index);
-		}
+		context.codeBuilder.visitVarInsn(
+			switch (this.type()) {
+				case INT, BOOLEAN -> ILOAD;
+				case LONG -> LLOAD;
+				case FLOAT -> FLOAD;
+				case DOUBLE -> DLOAD;
+				default -> ALOAD;
+			},
+			index
+		);
 	}
 
 	@Override

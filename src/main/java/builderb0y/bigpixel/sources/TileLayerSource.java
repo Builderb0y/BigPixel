@@ -8,8 +8,8 @@ import jdk.incubator.vector.FloatVector;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MainDependencies;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 
 public class TileLayerSource extends LayerSource {
 
@@ -20,7 +20,7 @@ public class TileLayerSource extends LayerSource {
 		offsetY = this.parameters.addIntSpinner("offsetY", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80);
 
 	public TileLayerSource(LayerSources sources) {
-		super(Type.TILE, sources);
+		super(LayerSourceType.TILE, sources);
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Offset X: "), this.offsetX));
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Offset Y: "), this.offsetY));
 	}
@@ -31,23 +31,24 @@ public class TileLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void doRedraw() throws RedrawException {
-		HDRImage destination = this.sources.layer.image;
-		switch (this.dependencies.main.getCurrent()) {
-			case UniformLayerSourceInput uniform -> {
+	public void doRedraw(int frame) throws RedrawException {
+		HDRImage destination = this.sources.layer.getFrame(frame);
+		switch (this.dependencies.main.getCurrent().createSamplerForFrame(frame)) {
+			case UniformSampler uniform -> {
 				FloatVector color = uniform.getColor();
 				for (int index = 0; index < destination.pixels.length; index += 4) {
 					color.intoArray(destination.pixels, index);
 				}
 			}
-			case VaryingLayerSourceInput varying -> {
+			case VaryingSampler varying -> {
 				int offsetX = this.offsetX.getValue();
 				int offsetY = this.offsetY.getValue();
-				HDRImage sourceImage = varying.getBackingLayer().image;
+				int srcWidth = varying.getBackingLayer().imageWidth();
+				int srcHeight = varying.getBackingLayer().imageHeight();
 				for (int y = 0; y < destination.height; y++) {
-					int modY = Math.floorMod(y - offsetY, sourceImage.height);
+					int modY = Math.floorMod(y - offsetY, srcHeight);
 					for (int x = 0; x < destination.width; x++) {
-						int modX = Math.floorMod(x - offsetX, sourceImage.width);
+						int modX = Math.floorMod(x - offsetX, srcWidth);
 						destination.setColor(x, y, varying.getColor(modX, modY));
 					}
 				}

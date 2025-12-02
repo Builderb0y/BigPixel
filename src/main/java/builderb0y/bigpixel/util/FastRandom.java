@@ -1,4 +1,4 @@
-package builderb0y.bigpixel;
+package builderb0y.bigpixel.util;
 
 import java.util.random.RandomGenerator;
 

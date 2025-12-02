@@ -2,17 +2,17 @@ package builderb0y.bigpixel.views;
 
 import java.util.Arrays;
 
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.value.ObservableValue;
-import javafx.scene.canvas.Canvas;
+import javafx.beans.value.ObservableDoubleValue;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.F3Menu;
-import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.ZoomableImage;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
-import builderb0y.bigpixel.sources.dependencies.NoDependencies;
+import builderb0y.bigpixel.sources.dependencies.SingletonDependencies;
+import builderb0y.bigpixel.util.Util;
 
 public abstract class LayerView2D extends LayerView {
 
@@ -43,13 +43,16 @@ public abstract class LayerView2D extends LayerView {
 		48.0D,
 		64.0D,
 	};
-	public double offsetX, offsetY;
-	public SimpleIntegerProperty zoomIndex = new SimpleIntegerProperty(12); //1.0
-	public ObservableValue<Double> zoom = this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]);
-	public NoDependencies dependencies = new NoDependencies();
+	public final SimpleDoubleProperty
+		offsetX = new SimpleDoubleProperty(this, "offsetX"),
+		offsetY = new SimpleDoubleProperty(this, "offsetY");
+	public final SimpleIntegerProperty zoomIndex = new SimpleIntegerProperty(12); //1.0
+	public final ObservableDoubleValue zoom = Util.toDouble(this.zoomIndex.map((Number index) -> ZOOMS[index.intValue()]), 1.0D);
+	public final SingletonDependencies dependencies;
 
-	public LayerView2D(Type type, LayerViews views) {
+	public LayerView2D(LayerViewType type, LayerViews views) {
 		super(type, views);
+		this.dependencies = new SingletonDependencies(views.layer);
 	}
 
 	@Override
@@ -59,9 +62,9 @@ public abstract class LayerView2D extends LayerView {
 
 	@Override
 	public @Nullable ProjectionResult project(double x, double y) {
-		double zoom = this.zoom.getValue();
-		int projectedX = (int)(Math.floor((x - this.offsetX) / zoom));
-		int projectedY = (int)(Math.floor((y - this.offsetY) / zoom));
+		double zoom = this.zoom.get();
+		int projectedX = (int)(Math.floor((x - this.offsetX.get()) / zoom));
+		int projectedY = (int)(Math.floor((y - this.offsetY.get()) / zoom));
 		return this.handleEdge(projectedX, projectedY);
 	}
 
@@ -82,8 +85,8 @@ public abstract class LayerView2D extends LayerView {
 			double oldZoom = ZOOMS[oldZoomIndex];
 			double newZoom = ZOOMS[newZoomIndex];
 			this.setPosition(
-				(this.offsetX - x) * (newZoom / oldZoom) + x,
-				(this.offsetY - y) * (newZoom / oldZoom) + y
+				(this.offsetX.get() - x) * (newZoom / oldZoom) + x,
+				(this.offsetY.get() - y) * (newZoom / oldZoom) + y
 			);
 		}
 	}
@@ -91,22 +94,24 @@ public abstract class LayerView2D extends LayerView {
 	public void setPosition(double posX, double posY) {
 		LayerNode layer = this.views.layer;
 		if (layer == null) return;
-		HDRImage image = layer.image;
-		double zoom = this.zoom.getValue();
-		ZoomableImage display = this.views.layer.graph.openImage.imageDisplay;
-		Canvas canvas = display.display.display;
-		if (posX + image.width  * zoom < 0) posX = image.width  * -zoom;
-		if (posY + image.height * zoom < 0) posY = image.height * -zoom;
-		if (posX > canvas.getWidth ()) posX = canvas.getWidth ();
-		if (posY > canvas.getHeight()) posY = canvas.getHeight();
-		this.offsetX = posX;
-		this.offsetY = posY;
-		display.redrawLater();
+		double width = layer.imageWidth();
+		double height = layer.imageHeight();
+		double zoom = this.zoom.get();
+		ZoomableImage zoomableImage = this.views.layer.graph.openImage.imageDisplay;
+		double canvasWidth = zoomableImage.display.display.getWidth();
+		double canvasHeight = zoomableImage.display.display.getHeight();
+		if (posX + width  * zoom < 0) posX = width  * -zoom;
+		if (posY + height * zoom < 0) posY = height * -zoom;
+		if (posX > canvasWidth ) posX = canvasWidth ;
+		if (posY > canvasHeight) posY = canvasHeight;
+		this.offsetX.set(posX);
+		this.offsetY.set(posY);
+		zoomableImage.redrawLater();
 	}
 
 	@Override
 	public void drag(double deltaX, double deltaY) {
-		this.setPosition(this.offsetX + deltaX, this.offsetY + deltaY);
+		this.setPosition(this.offsetX.get() + deltaX, this.offsetY.get() + deltaY);
 	}
 
 	@Override
@@ -121,8 +126,8 @@ public abstract class LayerView2D extends LayerView {
 		if (zoomIndex < 0) zoomIndex = Math.min(-1 + ~zoomIndex, ZOOMS.length - 1);
 
 		this.zoomIndex.set(zoomIndex);
-		this.offsetX = (this.canvasWidth  - this.layerWidth  * ZOOMS[zoomIndex]) * 0.5D;
-		this.offsetY = (this.canvasHeight - this.layerHeight * ZOOMS[zoomIndex]) * 0.5D;
+		this.offsetX.set((this.canvasWidth  - this.layerWidth  * ZOOMS[zoomIndex]) * 0.5D);
+		this.offsetY.set((this.canvasHeight - this.layerHeight * ZOOMS[zoomIndex]) * 0.5D);
 	}
 
 	@Override
@@ -183,11 +188,11 @@ public abstract class LayerView2D extends LayerView {
 		int dark,
 		int light
 	) {
-		double zoom = this.zoom.getValue();
-		x1 = (int)(Math.ceil(this.offsetX + x1 * zoom)) - 1;
-		y1 = (int)(Math.ceil(this.offsetY + y1 * zoom)) - 1;
-		x2 = (int)(Math.ceil(this.offsetX + x2 * zoom));
-		y2 = (int)(Math.ceil(this.offsetY + y2 * zoom));
+		double zoom = this.zoom.get();
+		x1 = (int)(Math.ceil(this.offsetX.get() + x1 * zoom)) - 1;
+		y1 = (int)(Math.ceil(this.offsetY.get() + y1 * zoom)) - 1;
+		x2 = (int)(Math.ceil(this.offsetX.get() + x2 * zoom));
+		y2 = (int)(Math.ceil(this.offsetY.get() + y2 * zoom));
 		for (int x = x1; x <= x2; x++) {
 			setColorSafe(pixels, x, y1, canvasWidth, canvasHeight, ((x ^ y1) & 8) == 0 ? dark : light);
 			setColorSafe(pixels, x, y2, canvasWidth, canvasHeight, ((x ^ y2) & 8) == 0 ? dark : light);

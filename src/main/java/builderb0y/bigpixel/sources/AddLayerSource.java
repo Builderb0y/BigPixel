@@ -8,8 +8,8 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
+import builderb0y.bigpixel.util.Util;
 
 public class AddLayerSource extends MultiInputLayerSource {
 
@@ -17,7 +17,7 @@ public class AddLayerSource extends MultiInputLayerSource {
 	public CheckBox alphaWeighting = this.parameters.addCheckbox("alpha_weighting", "Alpha Weighting", false);
 
 	public AddLayerSource(LayerSources sources) {
-		super(Type.ADD, sources);
+		super(LayerSourceType.ADD, sources);
 		this.dependencies.getBottomPane().getChildren().addAll(this.linear, this.alphaWeighting);
 	}
 

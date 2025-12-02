@@ -1,12 +1,12 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.lang.constant.ClassDesc;
-import java.lang.constant.MethodTypeDesc;
-
 import jdk.incubator.vector.Vector;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
 
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.VectorType;
+
+import static org.objectweb.asm.Opcodes.*;
 
 public class SquareInsnTree extends InsnTree {
 
@@ -29,20 +29,16 @@ public class SquareInsnTree extends InsnTree {
 		else context.codeBuilder.dup();
 		switch (type.shape) {
 			case UNIT -> {
-				switch (type.componentType) {
-					case INT -> context.codeBuilder.imul();
-					case LONG -> context.codeBuilder.lmul();
-					case FLOAT -> context.codeBuilder.fmul();
-					case DOUBLE -> context.codeBuilder.dmul();
-					default -> throw new IllegalStateException(type.toString());
-				}
+				context.codeBuilder.math(GeneratorAdapter.MUL, type.componentType.unitDesc);
 			}
 			case VEC2, VEC3, VEC4 -> {
-				ClassDesc vecType = Util.desc(type.holderClass());
-				context.codeBuilder.invokevirtual(
-					vecType,
+				Type vecType = Type.getType(type.holderClass());
+				context.method.visitMethodInsn(
+					INVOKEVIRTUAL,
+					vecType.getInternalName(),
 					"mul",
-					MethodTypeDesc.of(vecType, Util.desc(Vector.class))
+					Type.getMethodDescriptor(vecType, Type.getType(Vector.class)),
+					false
 				);
 			}
 			/*

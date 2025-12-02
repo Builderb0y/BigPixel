@@ -1,8 +1,7 @@
 package builderb0y.bigpixel.scripting.tree.condition;
 
-import java.lang.classfile.Label;
-
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.CodeEmitter;
 import builderb0y.bigpixel.scripting.tree.ConstantInsnTree;
@@ -38,6 +37,6 @@ public class ConstantConditionTree extends ConditionTree {
 	public void emitBytecode(CodeEmitter.Context context, @Nullable Label ifTrue, @Nullable Label ifFalse) {
 		ConditionTree.checkLabels(ifTrue, ifFalse);
 		Label label = this.value ? ifTrue : ifFalse;
-		if (label != null) context.codeBuilder.goto_(label);
+		if (label != null) context.codeBuilder.goTo(label);
 	}
 }

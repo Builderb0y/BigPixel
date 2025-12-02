@@ -49,7 +49,12 @@ dependencies() {
 		"org.openjfx:javafx-base:${jfxVersion}:linux",
 		"org.openjfx:javafx-controls:${jfxVersion}:linux",
 		"org.openjfx:javafx-graphics:${jfxVersion}:linux",
-		'org.jetbrains:annotations:25.0.0'
+		'org.jetbrains:annotations:25.0.0',
+		'org.ow2.asm:asm:9.9',
+		'org.ow2.asm:asm-commons:9.9',
+		'org.ow2.asm:asm-util:9.9',
+		'org.ow2.asm:asm-tree:9.9',
+		'org.ow2.asm:asm-analysis:9.9',
 	]) {
 		implementation(spec)
 		copyImplementation(spec)

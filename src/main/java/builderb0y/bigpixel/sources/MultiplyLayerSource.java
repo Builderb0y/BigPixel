@@ -7,15 +7,15 @@ import javafx.scene.control.CheckBox;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
+import builderb0y.bigpixel.util.Util;
 
 public class MultiplyLayerSource extends MultiInputLayerSource {
 
 	public CheckBox alphaWeighting = this.parameters.addCheckbox("alpha_weighting", "Alpha Weighting", false);
 
 	public MultiplyLayerSource(LayerSources sources) {
-		super(Type.MULTIPLY, sources);
+		super(LayerSourceType.MULTIPLY, sources);
 		this.dependencies.getBottomPane().getChildren().add(this.alphaWeighting);
 	}
 

@@ -24,7 +24,7 @@ public class ConstantInsnTree extends InsnTree {
 	public void emitBytecode(Context context) {
 		switch (this.type()) {
 			case INT -> {
-				context.codeBuilder.loadConstant(this.<Integer>get());
+				context.codeBuilder.push(this.<Integer>get());
 			}
 			case INT2 -> {
 				throw new UnsupportedOperationException();
@@ -47,7 +47,7 @@ public class ConstantInsnTree extends InsnTree {
 			}
 			*/
 			case LONG -> {
-				context.codeBuilder.loadConstant(this.<Long>get());
+				context.codeBuilder.push(this.<Long>get());
 			}
 			case LONG2 -> {
 				throw new UnsupportedOperationException();
@@ -70,7 +70,7 @@ public class ConstantInsnTree extends InsnTree {
 			}
 			*/
 			case FLOAT -> {
-				context.codeBuilder.loadConstant(this.<Float>get());
+				context.codeBuilder.push(this.<Float>get());
 			}
 			case FLOAT2 -> {
 				throw new UnsupportedOperationException();
@@ -93,7 +93,7 @@ public class ConstantInsnTree extends InsnTree {
 			}
 			*/
 			case DOUBLE -> {
-				context.codeBuilder.loadConstant(this.<Double>get());
+				context.codeBuilder.push(this.<Double>get());
 			}
 			case DOUBLE2 -> {
 				throw new UnsupportedOperationException();
@@ -116,12 +116,7 @@ public class ConstantInsnTree extends InsnTree {
 			}
 			*/
 			case BOOLEAN -> {
-				if (this.<Boolean>get()) {
-					context.codeBuilder.iconst_1();
-				}
-				else {
-					context.codeBuilder.iconst_0();
-				}
+				context.codeBuilder.push(this.<Boolean>get());
 			}
 			case BOOLEAN2 -> {
 				throw new UnsupportedOperationException();

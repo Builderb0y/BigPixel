@@ -8,6 +8,7 @@ import javafx.scene.input.MouseButton;
 
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.ColorHelper;
+import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.sources.ManualLayerSource;
 
@@ -35,7 +36,7 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 
 	public void handleMouse(int x, int y, MouseButton button) {
 		LayerNode layer = this.layer();
-		if (x >= 0 && x < layer.image.width && y >= 0 && y < layer.image.height) {
+		if (x >= 0 && x < layer.imageWidth() && y >= 0 && y < layer.imageHeight()) {
 			if (button == MouseButton.PRIMARY) {
 				this.work.points.add(new Point(x, y));
 				layer.requestRedraw();
@@ -60,8 +61,9 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 		if (work == null) return;
 		LayerNode layer = this.layer();
 		ColorHelper color = layer.graph.openImage.mainWindow.colorPicker.currentColor;
+		HDRImage destination = layer.getOnlyFrame();
 		for (Point point : work.points) {
-			layer.image.setColor(point.x, point.y, color);
+			destination.setColor(point.x, point.y, color);
 		}
 	}
 

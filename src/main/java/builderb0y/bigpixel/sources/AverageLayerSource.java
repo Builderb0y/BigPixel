@@ -14,7 +14,7 @@ public class AverageLayerSource extends MultiInputLayerSource {
 	public CheckBox alphaWeighting = this.parameters.addCheckbox("alpha_weighting", "Alpha Weighting", false);
 
 	public AverageLayerSource(LayerSources sources) {
-		super(Type.AVERAGE, sources);
+		super(LayerSourceType.AVERAGE, sources);
 		this.dependencies.getBottomPane().getChildren().addAll(this.linear, this.alphaWeighting);
 	}
 

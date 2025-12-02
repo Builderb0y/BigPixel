@@ -9,14 +9,14 @@ import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 
 public abstract class MainMaskLayerSource extends LayerSource {
 
 	public MainMaskDependencies dependencies = this.createDependencies();
 
-	public MainMaskLayerSource(Type type, LayerSources sources) {
+	public MainMaskLayerSource(LayerSourceType type, LayerSources sources) {
 		super(type, sources);
 	}
 
@@ -30,13 +30,13 @@ public abstract class MainMaskLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void doRedraw() throws RedrawException {
+	public void doRedraw(int frame) throws RedrawException {
 		boolean resized = false;
-		HDRImage destination = this.sources.layer.image;
+		HDRImage destination = this.sources.layer.getFrame(frame);
 		for (InputBinding binding : this.dependencies.allBindings.values()) {
 			if (this.requiresSameSize(binding)) {
-				if (binding.getCurrent() instanceof VaryingLayerSourceInput varying) {
-					HDRImage source = varying.getBackingLayer().image;
+				if (binding.getCurrent() instanceof VaryingSampler varying) {
+					HDRImage source = varying.getBackingLayer().getFrame(frame);
 					if (source.width != destination.width || source.height != destination.height) {
 						if (resized) {
 							throw new RedrawException("Not all input layers are of the same resolution");
@@ -50,9 +50,10 @@ public abstract class MainMaskLayerSource extends LayerSource {
 			}
 		}
 		this.doRedraw(
-			this.dependencies.main.getCurrent(),
-			this.dependencies.mask.getCurrent(),
-			destination
+			this.dependencies.main.getCurrent().createSamplerForFrame(frame),
+			this.dependencies.mask.getCurrent().createSamplerForFrame(frame),
+			destination,
+			frame
 		);
 	}
 
@@ -60,7 +61,7 @@ public abstract class MainMaskLayerSource extends LayerSource {
 		return true;
 	}
 
-	public abstract void doRedraw(LayerSourceInput main, LayerSourceInput mask, HDRImage destination) throws RedrawException;
+	public abstract void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException;
 
 	//handles NaN's and inf's properly.
 	public static FloatVector carefulMix(FloatVector a, FloatVector b, FloatVector f, VectorMask<Float> zeroLanes, VectorMask<Float> oneLanes) {

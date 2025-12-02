@@ -22,9 +22,11 @@ import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.util.Notifier;
+import builderb0y.bigpixel.util.Util;
 
 //serializable for the sole purpose of allowing HDRImage's to be copy-pasted with a Clipboard.
-public class HDRImage implements Serializable {
+public class HDRImage extends Notifier implements Serializable {
 
 	@Serial
 	private static final long serialVersionUID = 0xBE5393B55731DD65L;
@@ -52,7 +54,7 @@ public class HDRImage implements Serializable {
 		this.doCopyFrom(saveData);
 	}
 
-	//for serialization.
+	@Deprecated //for serialization only.
 	public HDRImage() {
 		this.pixels = new float[0];
 	}
@@ -129,9 +131,11 @@ public class HDRImage implements Serializable {
 	}
 
 	public void doCopyFrom(Image image) {
+		int width = this.width;
+		int height = this.height;
 		PixelReader reader = image.getPixelReader();
-		for (int y = 0; y < this.height; y++) {
-			for (int x = 0; x < this.width; x++) {
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
 				Color color = reader.getColor(x, y);
 				this.setRgba(x, y, (float)(color.getRed()), (float)(color.getGreen()), (float)(color.getBlue()), (float)(color.getOpacity()));
 			}
@@ -184,21 +188,6 @@ public class HDRImage implements Serializable {
 		return (y * this.width + x) << 2;
 	}
 
-	public int redIndex  (int x, int y) { return this.baseIndex(x, y) |   RED_OFFSET; }
-	public int greenIndex(int x, int y) { return this.baseIndex(x, y) | GREEN_OFFSET; }
-	public int blueIndex (int x, int y) { return this.baseIndex(x, y) |  BLUE_OFFSET; }
-	public int alphaIndex(int x, int y) { return this.baseIndex(x, y) | ALPHA_OFFSET; }
-
-	public float getRed  (int x, int y) { return this.pixels[this.  redIndex(x, y)]; }
-	public float getGreen(int x, int y) { return this.pixels[this.greenIndex(x, y)]; }
-	public float getBlue (int x, int y) { return this.pixels[this. blueIndex(x, y)]; }
-	public float getAlpha(int x, int y) { return this.pixels[this.alphaIndex(x, y)]; }
-
-	public void setRed  (int x, int y, float red  ) { this.pixels[this.  redIndex(x, y)] = red  ; }
-	public void setGreen(int x, int y, float green) { this.pixels[this.greenIndex(x, y)] = green; }
-	public void setBlue (int x, int y, float blue ) { this.pixels[this. blueIndex(x, y)] = blue ; }
-	public void setAlpha(int x, int y, float alpha) { this.pixels[this.alphaIndex(x, y)] = alpha; }
-
 	public int getPackedArgb(int x, int y) {
 		int baseIndex = this.baseIndex(x, y);
 		float red   = this.pixels[baseIndex |   RED_OFFSET];
@@ -218,14 +207,6 @@ public class HDRImage implements Serializable {
 		this.pixels[baseIndex | GREEN_OFFSET] = green;
 		this.pixels[baseIndex |  BLUE_OFFSET] = blue;
 		this.pixels[baseIndex | ALPHA_OFFSET] = alpha;
-	}
-
-	public void setGrayscale(int x, int y, float brightness, float alpha) {
-		this.setRgba(x, y, brightness, brightness, brightness, alpha);
-	}
-
-	public void setColor(int x, int y, Color color) {
-		this.setRgba(x, y, (float)(color.getRed()), (float)(color.getGreen()), (float)(color.getBlue()), (float)(color.getOpacity()));
 	}
 
 	public void setColor(int x, int y, ColorHelper color) {
@@ -285,36 +266,20 @@ public class HDRImage implements Serializable {
 
 	public BufferedImage toAwtImage() {
 		BufferedImage image = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_ARGB);
-		WritableRaster raster = image.getRaster();
-		int[] pixel = new int[1];
-		for (int y = 0; y < this.height; y++) {
-			for (int x = 0; x < this.width; x++) {
-				pixel[0] = this.getPackedArgb(x, y);
-				raster.setDataElements(x, y, pixel);
-			}
-		}
+		this.toAwtImage(image, 0);
 		return image;
 	}
 
-	public BufferedImage toAwtImage(AnimationSource animation) {
-		int frames = animation.frames.get();
-		BufferedImage image = new BufferedImage(this.width, this.height * frames, BufferedImage.TYPE_INT_ARGB);
+	public void toAwtImage(BufferedImage image, int frame) {
+		int width = this.width, height = this.height;
 		WritableRaster raster = image.getRaster();
 		int[] pixel = new int[1];
-		int oldFrame = animation.frame.get();
-		for (int frame = 0; frame < frames; frame++) {
-			animation.frame.set(frame);
-			animation.openImage.layerGraph.redrawAllImmediately(false);
-			for (int y = 0; y < this.height; y++) {
-				for (int x = 0; x < this.width; x++) {
-					pixel[0] = this.getPackedArgb(x, y);
-					raster.setDataElements(x, y + frame * this.height, pixel);
-				}
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				pixel[0] = this.getPackedArgb(x, y);
+				raster.setDataElements(x, y + frame * height, pixel);
 			}
 		}
-		animation.frame.set(oldFrame);
-		animation.openImage.layerGraph.redrawAllImmediately(false);
-		return image;
 	}
 
 	public static byte[] toPngByteArray(BufferedImage image, SaveProgress progress) {

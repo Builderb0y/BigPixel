@@ -23,6 +23,7 @@ public class NamedLayerDependencies extends AbstractNamedDependencies {
 			throw new IllegalArgumentException("Duplicate input binding: " + saveName);
 		}
 		binding.addRow(this.gridPane, size);
+		this.onBindingAdded(binding);
 		return binding;
 	}
 

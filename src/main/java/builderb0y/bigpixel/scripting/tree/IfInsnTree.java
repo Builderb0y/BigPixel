@@ -1,6 +1,6 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.lang.classfile.Label;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.condition.ConditionTree;
 
@@ -20,7 +20,7 @@ public class IfInsnTree extends InsnTree {
 		Label end = context.codeBuilder.newLabel();
 		this.condition.emitBytecode(context, null, end);
 		this.body.emitBytecode(context);
-		context.codeBuilder.labelBinding(end);
+		context.codeBuilder.visitLabel(end);
 	}
 
 	@Override

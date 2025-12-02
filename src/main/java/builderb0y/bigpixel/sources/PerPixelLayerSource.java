@@ -5,21 +5,21 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 
 public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 
-	public PerPixelLayerSource(Type type, LayerSources sources) {
+	public PerPixelLayerSource(LayerSourceType type, LayerSources sources) {
 		super(type, sources);
 	}
 
 	@Override
-	public void doRedraw(LayerSourceInput main, LayerSourceInput mask, HDRImage destination) throws RedrawException {
-		PerPixelApplicator applicator = this.getApplicator(main, mask);
+	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
+		PerPixelApplicator applicator = this.getApplicator(main, mask, frame);
 		switch (mask) {
-			case UniformLayerSourceInput uniform -> {
+			case UniformSampler uniform -> {
 				FloatVector maskColor = uniform.getColor();
 				VectorMask<Float> oneLanes = maskColor.compare(VectorOperators.GE, 1.0F);
 				VectorMask<Float> zeroLanes = maskColor.compare(VectorOperators.LE, 0.0F);
@@ -58,7 +58,7 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 					}
 				}
 			}
-			case VaryingLayerSourceInput _ -> {
+			case VaryingSampler _ -> {
 				for (int y = 0; y < destination.height; y++) {
 					for (int x = 0; x < destination.width; x++) {
 						FloatVector maskColor = mask.getColor(x, y);
@@ -82,7 +82,7 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 		}
 	}
 
-	public abstract PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException;
+	public abstract PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException;
 
 	public static abstract class PerPixelApplicator {
 

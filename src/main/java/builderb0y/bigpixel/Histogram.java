@@ -6,13 +6,18 @@ import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Tab;
 import javafx.scene.image.PixelFormat;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+
+import builderb0y.bigpixel.util.BaseCanvasHelper;
+import builderb0y.bigpixel.util.CanvasHelper;
+import builderb0y.bigpixel.util.Util;
 
 public class Histogram {
 
 	public MainWindow window;
-	public CanvasHelper canvas = new CanvasHelper().resizeable(this::redrawCanvas).popIn();
+	public CanvasHelper canvas = new CanvasHelper().resizeable((BaseCanvasHelper canvas) -> this.redrawCanvas((CanvasHelper)(canvas))).popIn();
 	public CheckBox log = new CheckBox("Log Scale");
 	public CheckBox alpha = new CheckBox("Alpha");
 	public HBox settings = new HBox(this.log, this.alpha);
@@ -52,18 +57,22 @@ public class Histogram {
 		int width = (int)(canvas.display.getWidth());
 		int height = (int)(canvas.display.getHeight());
 		if (width == 0 || height == 0) return;
-		byte[] colors = canvas.pixels;
-		for (int index = 3; index < colors.length; index += 4) {
-			colors[index] = -1;
+		WritableImage image = canvas.getImage();
+		byte[] colors = this.canvas.pixels.get();
+		for (int index = 0; index < colors.length; index += 4) {
+			colors[index    ] =  0;
+			colors[index | 1] =  0;
+			colors[index | 2] =  0;
+			colors[index | 3] = -1;
 		}
 		if (layer != null) {
 			if (this.alpha.isSelected()) {
 				int[] alphas = new int[width];
 				double max = this.collectValues(alphas, layer, HDRImage.ALPHA_OFFSET);
 				if (this.log.isSelected()) max = Math.log1p(max);
-				this.drawBar(colors, alphas, max, 0);
-				this.drawBar(colors, alphas, max, 1);
-				this.drawBar(colors, alphas, max, 2);
+				this.drawBar(image, colors, alphas, max, 0);
+				this.drawBar(image, colors, alphas, max, 1);
+				this.drawBar(image, colors, alphas, max, 2);
 			}
 			else {
 				int[] reds = new int[width], greens = new int[width], blues = new int[width];
@@ -73,12 +82,13 @@ public class Histogram {
 					this.collectValues(blues, layer, HDRImage.BLUE_OFFSET)
 				);
 				if (this.log.isSelected()) max = Math.log1p(max);
-				this.drawBar(colors, reds, max, 2);
-				this.drawBar(colors, greens, max, 1);
-				this.drawBar(colors, blues, max, 0);
+				this.drawBar(image, colors, reds, max, 2);
+				this.drawBar(image, colors, greens, max, 1);
+				this.drawBar(image, colors, blues, max, 0);
 			}
 		}
-		this.canvas.display.getGraphicsContext2D().getPixelWriter().setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), colors, 0, width << 2);
+		image.getPixelWriter().setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), colors, 0, width << 2);
+		canvas.blit();
 	}
 
 	public static int max3(int a, int b, int c) {
@@ -87,7 +97,7 @@ public class Histogram {
 
 	public int collectValues(int[] buckets, LayerNode layer, int component) {
 		int max = 0;
-		float[] pixels = layer.image.pixels;
+		float[] pixels = layer.getFrame().pixels;
 		for (int index = component; index < pixels.length; index += 4) {
 			float pixel = pixels[index];
 			if (pixel >= 0.0F && pixel <= 1.0F) {
@@ -97,9 +107,9 @@ public class Histogram {
 		return max;
 	}
 
-	public void drawBar(byte[] colors, int[] buckets, double max, int component) {
-		int canvasWidth  = (int)(this.canvas.display.getWidth());
-		int canvasHeight = (int)(this.canvas.display.getHeight());
+	public void drawBar(WritableImage image, byte[] colors, int[] buckets, double max, int component) {
+		int canvasWidth  = (int)(image.getWidth());
+		int canvasHeight = (int)(image.getHeight());
 		boolean log = this.log.isSelected();
 		for (int x = 0; x < buckets.length; x++) {
 			double height = buckets[x];

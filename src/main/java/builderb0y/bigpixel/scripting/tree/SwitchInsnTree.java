@@ -1,27 +1,27 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.lang.classfile.Label;
-import java.lang.classfile.instruction.SwitchCase;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.types.VectorType;
 
 public class SwitchInsnTree extends InsnTree {
 
-	public static record Case(int[] matchedValues, InsnTree tree) {}
+	public static record SingleCase(int matchedValue, Label jump) {}
+	public static record MultiCase(int[] matchedValues, InsnTree tree) {}
 
 	public final InsnTree value;
-	public final List<Case> cases;
+	public final List<MultiCase> cases;
 	public final @Nullable InsnTree defaultCase;
 
 	public SwitchInsnTree(
 		VectorType[] types,
 		InsnTree value,
-		List<Case> cases,
+		List<MultiCase> cases,
 		@Nullable InsnTree defaultCase
 	) {
 		super(types);
@@ -30,7 +30,7 @@ public class SwitchInsnTree extends InsnTree {
 		this.defaultCase = defaultCase;
 	}
 
-	public static InsnTree create(InsnTree value, List<Case> cases, @Nullable InsnTree defaultCase) {
+	public static InsnTree create(InsnTree value, List<MultiCase> cases, @Nullable InsnTree defaultCase) {
 		int casesCount = cases.size();
 		if (casesCount == 0) throw new IllegalArgumentException("No cases");
 		VectorType[] types = null;
@@ -60,14 +60,14 @@ public class SwitchInsnTree extends InsnTree {
 		Label end = context.codeBuilder.newLabel();
 		int minKey = Integer.MAX_VALUE;
 		int maxKey = Integer.MIN_VALUE;
-		List<SwitchCase> compiledCases = new ArrayList<>(this.cases.size() << 1);
-		for (Case case_ : this.cases) {
+		List<SingleCase> compiledCases = new ArrayList<>(this.cases.size() << 1);
+		for (MultiCase case_ : this.cases) {
 			Label label = context.codeBuilder.newLabel();
 			labels.add(label);
 			for (int matchedValue : case_.matchedValues) {
 				minKey = Math.min(minKey, matchedValue);
 				maxKey = Math.max(maxKey, matchedValue);
-				compiledCases.add(SwitchCase.of(matchedValue, label));
+				compiledCases.add(new SingleCase(matchedValue, label));
 			}
 		}
 		Label defaultLabel = this.defaultCase != null ? context.codeBuilder.newLabel() : end;
@@ -75,30 +75,34 @@ public class SwitchInsnTree extends InsnTree {
 		int occupancy = this.cases.size();
 		this.value.emitBytecode(context);
 		if (occupancy < range >> 2) { //sparse.
-			context.codeBuilder.lookupswitch(defaultLabel, compiledCases);
+			context.codeBuilder.visitLookupSwitchInsn(
+				defaultLabel,
+				compiledCases.stream().mapToInt(SingleCase::matchedValue).toArray(),
+				compiledCases.stream().map(SingleCase::jump).toArray(Label[]::new)
+			);
 		}
 		else { //dense.
-			context.codeBuilder.tableswitch(minKey, maxKey, defaultLabel, compiledCases);
+			context.codeBuilder.visitTableSwitchInsn(minKey, maxKey, defaultLabel, compiledCases.stream().map(SingleCase::jump).toArray(Label[]::new));
 		}
-		List<Case> cases = this.cases;
+		List<MultiCase> cases = this.cases;
 		for (int index = 0, size = cases.size(); index < size; index++) {
-			Case case_ = cases.get(index);
-			context.codeBuilder.labelBinding(labels.get(index));
+			MultiCase case_ = cases.get(index);
+			context.codeBuilder.visitLabel(labels.get(index));
 			case_.tree.emitBytecode(context);
-			context.codeBuilder.goto_(end);
+			context.codeBuilder.goTo(end);
 		}
 		if (this.defaultCase != null) {
-			context.codeBuilder.labelBinding(defaultLabel);
+			context.codeBuilder.visitLabel(defaultLabel);
 			this.defaultCase.emitBytecode(context);
 			//we can fallthrough here, since we're at the end anyway.
 		}
-		context.codeBuilder.labelBinding(end);
+		context.codeBuilder.visitLabel(end);
 	}
 
 	@Override
 	public boolean canBeStatement() {
 		return (
-			this.cases.stream().map(Case::tree).allMatch(InsnTree::canBeStatement) &&
+			this.cases.stream().map(MultiCase::tree).allMatch(InsnTree::canBeStatement) &&
 			(this.defaultCase == null || this.defaultCase.canBeStatement())
 		);
 	}
@@ -107,11 +111,11 @@ public class SwitchInsnTree extends InsnTree {
 	public @Nullable InsnTree cast(VectorType... types) {
 		if (Arrays.equals(this.types, types)) return this;
 		if (this.defaultCase == null) return null;
-		List<Case> newCases = new ArrayList<>(this.cases.size());
-		for (Case case_ : this.cases) {
+		List<MultiCase> newCases = new ArrayList<>(this.cases.size());
+		for (MultiCase case_ : this.cases) {
 			InsnTree tree = case_.tree.cast(types);
 			if (tree == null) return null;
-			newCases.add(new Case(case_.matchedValues, tree));
+			newCases.add(new MultiCase(case_.matchedValues, tree));
 		}
 		InsnTree defaultCase = this.defaultCase.cast(types);
 		if (defaultCase == null) return null;
@@ -121,9 +125,9 @@ public class SwitchInsnTree extends InsnTree {
 	@Override
 	public InsnTree castToVoid() {
 		if (this.types.length == 0) return this;
-		List<Case> newCases = new ArrayList<>(this.cases.size());
-		for (Case case_ : this.cases) {
-			newCases.add(new Case(case_.matchedValues, case_.tree.castToVoid()));
+		List<MultiCase> newCases = new ArrayList<>(this.cases.size());
+		for (MultiCase case_ : this.cases) {
+			newCases.add(new MultiCase(case_.matchedValues, case_.tree.castToVoid()));
 		}
 		InsnTree defaultCase = this.defaultCase != null ? this.defaultCase.castToVoid() : null;
 		return new SwitchInsnTree(new VectorType[0], this.value, newCases, defaultCase);

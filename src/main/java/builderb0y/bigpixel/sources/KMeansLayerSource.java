@@ -8,10 +8,8 @@ import javafx.scene.control.Spinner;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
-import builderb0y.bigpixel.FastRandom;
-import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.util.FastRandom;
 
 public class KMeansLayerSource extends PerPixelLayerSource {
 
@@ -23,7 +21,7 @@ public class KMeansLayerSource extends PerPixelLayerSource {
 		linear = this.parameters.addCheckbox("linear", "Linear", false);
 
 	public KMeansLayerSource(LayerSources sources) {
-		super(Type.K_MEANS, sources);
+		super(LayerSourceType.K_MEANS, sources);
 		int row = this.dependencies.gridPane.getRowCount();
 		this.dependencies.gridPane.add(new Label("Seed: "), 0, row);
 		this.dependencies.gridPane.add(this.seed, 1, row);
@@ -35,23 +33,24 @@ public class KMeansLayerSource extends PerPixelLayerSource {
 	}
 
 	@Override
-	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
-		HDRImage destination = ((VaryingLayerSourceInput)(main)).getBackingLayer().image;
+	public PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException {
+		int dstWidth   = this.sources.layer.imageWidth();
+		int dstHeight  = this.sources.layer.imageHeight();
 		int colorCount = this.colors.getValue();
 		int iterations = this.iterations.getValue();
 		boolean linear = this.linear.isSelected();
 		FastRandom random = new FastRandom(this.seed.getValue().longValue());
 		float[] closestColors = new float[colorCount << 2];
 		for (int index = 0; index < colorCount; index++) {
-			FloatVector pixel = main.getColor(random.nextInt(destination.width), random.nextInt(destination.height));
+			FloatVector pixel = main.getColor(random.nextInt(dstWidth), random.nextInt(dstHeight));
 			if (linear) pixel = pixel.mul(pixel);
 			pixel.intoArray(closestColors, index << 2);
 		}
 		float[] swap = new float[colorCount << 2];
 		int[] counts = new int[colorCount];
 		for (int iteration = 0; iteration < iterations; iteration++) {
-			for (int y = 0; y < destination.height; y++) {
-				for (int x = 0; x < destination.width; x++) {
+			for (int y = 0; y < dstHeight; y++) {
+				for (int x = 0; x < dstWidth; x++) {
 					FloatVector pixel = main.getColor(x, y);
 					if (linear) pixel = pixel.mul(pixel);
 					int closestIndex = getClosestIndex(colorCount, closestColors, pixel);

@@ -1,9 +1,5 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.lang.constant.ClassDesc;
-import java.lang.constant.ConstantDescs;
-import java.lang.constant.DynamicCallSiteDesc;
-import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.*;
 import java.util.Arrays;
 
@@ -11,10 +7,15 @@ import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
+import org.objectweb.asm.ConstantDynamic;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Type;
 
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.VectorType;
 import builderb0y.bigpixel.scripting.types.VectorType.GroupShape;
+import builderb0y.bigpixel.util.Util;
+
+import static org.objectweb.asm.Opcodes.*;
 
 public class SwizzleSetInsnTree extends InsnTree {
 
@@ -51,6 +52,47 @@ public class SwizzleSetInsnTree extends InsnTree {
 	public void emitBytecode(Context context) {
 		this.vector.emitBytecode(context);
 		this.value.emitBytecode(context);
+		context.codeBuilder.invokeDynamic(
+			this.swizzle,
+			Type.getMethodDescriptor(
+				Type.getType(this.vector.type().holderClass()),
+				Util.make(new Type[this.value.types().length + 1], (Type[] array) -> {
+					array[0] = Type.getType(this.vector.type().holderClass());
+					Type componentType = Type.getType(this.type().componentType.holderClass(GroupShape.UNIT));
+					Arrays.fill(array, 1, array.length, componentType);
+				})
+			),
+			new Handle(
+				H_INVOKESTATIC,
+				Type.getInternalName(SwizzleSetInsnTree.class),
+				"makeBlender",
+				Type.getMethodDescriptor(
+					Type.getType(CallSite.class),
+					Type.getType(MethodHandles.Lookup.class),
+					Type.getType(String.class),
+					Type.getType(MethodType.class),
+					Type.getType(VectorType.class)
+				),
+				false
+			),
+			new ConstantDynamic(
+				this.type().name(),
+				Type.getDescriptor(VectorType.class),
+				new Handle(
+					H_INVOKESTATIC,
+					Type.getInternalName(ConstantBootstraps.class),
+					"enumConstant",
+					Type.getMethodDescriptor(
+						Type.getType(Enum.class),
+						Type.getType(MethodHandles.Lookup.class),
+						Type.getType(String.class),
+						Type.getType(Class.class)
+					),
+					false
+				)
+			)
+		);
+		/*
 		context.codeBuilder.invokedynamic(
 			DynamicCallSiteDesc.of(
 				ConstantDescs.ofCallsiteBootstrap(
@@ -71,6 +113,7 @@ public class SwizzleSetInsnTree extends InsnTree {
 				this.type().describeConstable().orElseThrow()
 			)
 		);
+		*/
 	}
 
 	public static CallSite makeBlender(

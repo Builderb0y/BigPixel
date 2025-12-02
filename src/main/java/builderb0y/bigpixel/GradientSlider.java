@@ -5,6 +5,8 @@ import javafx.event.EventHandler;
 import javafx.scene.input.MouseEvent;
 import jdk.incubator.vector.FloatVector;
 
+import builderb0y.bigpixel.util.RateLimitedMouseEventHandler;
+
 public abstract class GradientSlider extends Gradient {
 
 	public final SimpleIntegerProperty clickedPosition = new SimpleIntegerProperty();
@@ -13,7 +15,7 @@ public abstract class GradientSlider extends Gradient {
 		EventHandler<MouseEvent> mouseHandler = new RateLimitedMouseEventHandler(
 			(MouseEvent event) -> {
 				this.clickedPosition.set(this.castPosition(event.getX()));
-				this.redraw();
+				this.redraw(this); //we ARE the handler that gets bound to... ourself.
 			}
 		);
 		this.display.setOnMousePressed(mouseHandler);
@@ -22,7 +24,7 @@ public abstract class GradientSlider extends Gradient {
 	}
 
 	public int castPosition(double pos) {
-		return Math.clamp((int)(pos), 0, (int)(this.display.getWidth()) - 1);
+		return Math.clamp((int)(pos), 0, (int)(this.getImage().getWidth()) - 1);
 	}
 
 	@Override

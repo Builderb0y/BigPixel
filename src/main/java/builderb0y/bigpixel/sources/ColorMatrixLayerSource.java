@@ -5,7 +5,7 @@ import jdk.incubator.vector.FloatVector;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
 
 public class ColorMatrixLayerSource extends PerPixelLayerSource {
@@ -32,23 +32,23 @@ public class ColorMatrixLayerSource extends PerPixelLayerSource {
 	}
 
 	public ColorMatrixLayerSource(LayerSources sources) {
-		super(Type.COLOR_MATRIX, sources);
+		super(LayerSourceType.COLOR_MATRIX, sources);
 	}
 
 	@Override
-	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
+	public PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException {
 		return new Applicator(
-			this.dependencies().toRed.getCurrent(),
-			this.dependencies().toGreen.getCurrent(),
-			this.dependencies().toBlue.getCurrent()
+			this.dependencies().toRed.getCurrent().createSamplerForFrame(frame),
+			this.dependencies().toGreen.getCurrent().createSamplerForFrame(frame),
+			this.dependencies().toBlue.getCurrent().createSamplerForFrame(frame)
 		);
 	}
 
 	public static class Applicator extends PerPixelApplicator {
 
-		public final LayerSourceInput red, green, blue;
+		public final Sampler red, green, blue;
 
-		public Applicator(LayerSourceInput red, LayerSourceInput green, LayerSourceInput blue) {
+		public Applicator(Sampler red, Sampler green, Sampler blue) {
 			this.red = red;
 			this.green = green;
 			this.blue = blue;

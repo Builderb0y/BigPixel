@@ -36,7 +36,7 @@ public class BigPixel extends Application {
 				else System.err.println("File not found or not normal: " + file.getAbsolutePath());
 			}
 		}
-		new Thread() {
+		new Thread("Open Queue Reader Thread") {
 
 			{
 				this.setDaemon(true);

@@ -4,10 +4,13 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.scene.Parent;
 
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.util.Constant.ConstantBoolean;
 
 public class NoDependencies extends LayerDependencies {
 
@@ -29,13 +32,28 @@ public class NoDependencies extends LayerDependencies {
 	}
 
 	@Override
+	public Stream<SamplerProvider> getAll() {
+		return Stream.empty();
+	}
+
+	@Override
+	public Stream<LayerNode> getLayers() {
+		return Stream.empty();
+	}
+
+	@Override
 	public boolean dependsOn(LayerNode layer) {
 		return false;
 	}
 
 	@Override
-	public boolean containsAny(Predicate<LayerNode> layers) {
+	public boolean containsAny(Predicate<LayerNode> filter) {
 		return false;
+	}
+
+	@Override
+	public ObservableBooleanValue animatedProperty() {
+		return ConstantBoolean.FALSE;
 	}
 
 	@Override

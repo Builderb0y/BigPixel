@@ -4,7 +4,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.constant.ClassDesc;
 import java.lang.reflect.AnnotatedType;
 import java.util.Arrays;
 import java.util.Locale;
@@ -14,8 +13,7 @@ import java.util.stream.Collectors;
 
 import jdk.incubator.vector.*;
 import org.jetbrains.annotations.Nullable;
-
-import builderb0y.bigpixel.Util;
+import org.objectweb.asm.Type;
 
 public enum VectorType {
 	INT     (ComponentType.INT, GroupShape.UNIT),
@@ -154,13 +152,13 @@ public enum VectorType {
 
 		public final boolean isFloatingPoint;
 		public final boolean isDoubleWidth;
-		public final ClassDesc unitDesc, vectorDesc;
+		public final Type unitDesc, vectorDesc;
 
 		ComponentType(boolean isFloatingPoint, boolean isDoubleWidth, Class<?> unitClass, Class<?> vectorDesc) {
 			this.isFloatingPoint = isFloatingPoint;
 			this.isDoubleWidth = isDoubleWidth;
-			this.unitDesc = Util.desc(unitClass);
-			this.vectorDesc = Util.desc(vectorDesc);
+			this.unitDesc = Type.getType(unitClass);
+			this.vectorDesc = Type.getType(vectorDesc);
 		}
 
 		public boolean isFixedPoint() {

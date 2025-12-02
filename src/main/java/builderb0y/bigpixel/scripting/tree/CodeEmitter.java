@@ -1,12 +1,12 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.lang.classfile.ClassBuilder;
-import java.lang.classfile.CodeBuilder;
-import java.lang.classfile.MethodBuilder;
-import java.lang.classfile.TypeKind;
-import java.lang.constant.ClassDesc;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import builderb0y.bigpixel.scripting.types.VectorType;
 import builderb0y.bigpixel.scripting.util.LocalVariable;
@@ -17,13 +17,13 @@ public interface CodeEmitter {
 
 	public static class Context {
 
-		public final ClassDesc self;
-		public final ClassBuilder clazz;
-		public final MethodBuilder method;
-		public final CodeBuilder codeBuilder;
+		public final Type self;
+		public final ClassNode clazz;
+		public final MethodNode method;
+		public final GeneratorAdapter codeBuilder;
 		public final Map<String, LocalVariable> variablesByName;
 
-		public Context(ClassDesc self, ClassBuilder clazz, MethodBuilder method, CodeBuilder codeBuilder, Map<String, LocalVariable> variables) {
+		public Context(Type self, ClassNode clazz, MethodNode method, GeneratorAdapter codeBuilder, Map<String, LocalVariable> variables) {
 			this.self = self;
 			this.clazz = clazz;
 			this.method = method;
@@ -35,7 +35,7 @@ public interface CodeEmitter {
 			if (this.variablesByName.containsKey(name)) {
 				throw new IllegalArgumentException("Duplicate variable with name: " + name);
 			}
-			int index = this.codeBuilder.allocateLocal(TypeKind.from(type.holderClass()));
+			int index = this.codeBuilder.newLocal(Type.getType(type.holderClass()));
 			LocalVariable variable = new LocalVariable(index, type);
 			this.variablesByName.put(name, variable);
 			return variable;
@@ -47,8 +47,8 @@ public interface CodeEmitter {
 			else throw new IllegalStateException("No such variable with name: " + name);
 		}
 
-		public Context fork(CodeBuilder codeBuilder) {
-			return new Context(this.self, this.clazz, this.method, codeBuilder, new HashMap<>(this.variablesByName));
+		public Context fork() {
+			return new Context(this.self, this.clazz, this.method, this.codeBuilder, new HashMap<>(this.variablesByName));
 		}
 	}
 }

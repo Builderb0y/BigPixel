@@ -4,12 +4,14 @@ import javafx.scene.canvas.Canvas;
 
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
-import builderb0y.bigpixel.Util;
+import builderb0y.bigpixel.util.Util;
+import builderb0y.bigpixel.views.LayerView.LayerViewCategory;
+import builderb0y.bigpixel.views.LayerView.LayerViewType;
 
-public class LayerViews extends OrganizedSelection<LayerView, LayerView.Type, LayerView.Category> {
+public class LayerViews extends OrganizedSelection<LayerView, LayerViewType, LayerViewCategory> {
 
 	public LayerViews(LayerNode layer) {
-		super(layer, LayerView.Type.class, LayerView.Category.class);
+		super(layer, LayerViewType.class, LayerViewCategory.class);
 	}
 
 	public void init() {
@@ -17,14 +19,20 @@ public class LayerViews extends OrganizedSelection<LayerView, LayerView.Type, La
 	}
 
 	@Override
-	public LayerView createValue(LayerView.Type type) {
+	public LayerView createValue(LayerViewType type) {
 		LayerView value = super.createValue(type);
 		value.setPossibleDependencies(this.layer.graph.layerList);
 		Canvas canvas = this.layer.graph.openImage.imageDisplay.display.display;
-		if (canvas.getWidth() > 0.0D && canvas.getHeight() > 0.0D) {
-			value.beforeRedraw(canvas, this.layer);
+		int width  = (int)(canvas.getWidth());
+		int height = (int)(canvas.getHeight());
+		if (width > 0 && height > 0) {
+			value.beforeRedraw(this.layer.imageWidth(), this.layer.imageHeight(), width, height);
 			value.center();
 		}
 		return value;
+	}
+
+	public LayerView currentView() {
+		return this.selectedValue.get();
 	}
 }

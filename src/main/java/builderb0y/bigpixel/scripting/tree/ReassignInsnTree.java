@@ -2,6 +2,8 @@ package builderb0y.bigpixel.scripting.tree;
 
 import builderb0y.bigpixel.scripting.types.VectorType;
 
+import static org.objectweb.asm.Opcodes.*;
+
 public class ReassignInsnTree extends InsnTree {
 
 	public final String name;
@@ -20,13 +22,16 @@ public class ReassignInsnTree extends InsnTree {
 	public void emitBytecode(Context context) {
 		int index = context.getVariable(this.name).index();
 		this.value.emitBytecode(context);
-		switch (this.value.type()) {
-			case BOOLEAN, INT -> context.codeBuilder.istore(index);
-			case LONG -> context.codeBuilder.lstore(index);
-			case FLOAT -> context.codeBuilder.fstore(index);
-			case DOUBLE -> context.codeBuilder.dstore(index);
-			default -> context.codeBuilder.astore(index);
-		}
+		context.codeBuilder.visitVarInsn(
+			switch (this.value.type()) {
+				case BOOLEAN, INT -> ISTORE;
+				case LONG -> LSTORE;
+				case FLOAT -> FSTORE;
+				case DOUBLE -> DSTORE;
+				default -> ASTORE;
+			},
+			index
+		);
 	}
 
 	@Override

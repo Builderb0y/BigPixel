@@ -9,15 +9,15 @@ import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MultiLayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.VaryingLayerSourceInput;
 import builderb0y.bigpixel.sources.dependencies.inputs.MovableInputBinding;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 
 public abstract class MultiInputLayerSource extends LayerSource {
 
 	public MultiLayerDependencies dependencies = new MultiLayerDependencies(this);
 
-	public MultiInputLayerSource(Type type, LayerSources sources) {
+	public MultiInputLayerSource(LayerSourceType type, LayerSources sources) {
 		super(type, sources);
 	}
 
@@ -27,14 +27,16 @@ public abstract class MultiInputLayerSource extends LayerSource {
 			throw new RedrawException("No inputs");
 		}
 		List<InputBinding> filtered = new ArrayList<>(inputs.size());
-		HDRImage first = null;
+		int width = -1, height = -1;
 		for (MovableInputBinding input : inputs) {
-			if (input.selection.getValue() instanceof VaryingLayerSourceInput varying) {
-				HDRImage image = varying.getBackingLayer().image;
-				if (first == null) {
-					first = image;
+			if (input.selection.getValue() instanceof VaryingSamplerProvider varying) {
+				int imageWidth = varying.getBackingLayer().imageWidth();
+				int imageHeight = varying.getBackingLayer().imageHeight();
+				if (width < 0) {
+					width = imageWidth;
+					height = imageHeight;
 				}
-				else if (first.width != image.width || first.height != image.height) {
+				else if (width != imageWidth || height != imageHeight) {
 					throw new RedrawException("All layer-based dependencies must have the same resolution");
 				}
 			}
@@ -45,9 +47,8 @@ public abstract class MultiInputLayerSource extends LayerSource {
 		if (filtered.isEmpty()) {
 			throw new RedrawException("No enabled inputs");
 		}
-		HDRImage destination = this.sources.layer.image;
-		if (first != null) {
-			destination.checkSize(first.width, first.height, false);
+		if (width >= 0) {
+			this.sources.layer.animation.checkSize(width, height, false, false);
 		}
 		return filtered;
 	}
@@ -55,13 +56,13 @@ public abstract class MultiInputLayerSource extends LayerSource {
 	public abstract MultiInputAccumulator getAccumulator();
 
 	@Override
-	public void doRedraw() throws RedrawException {
+	public void doRedraw(int frame) throws RedrawException {
 		List<? extends InputBinding> bindings = this.ensureSameSize();
 		MultiInputAccumulator accumulator = this.getAccumulator();
-		HDRImage destination = this.sources.layer.image;
+		HDRImage destination = this.sources.layer.getFrame(frame);
 		accumulator.preprocess(destination, bindings);
 		for (int index = bindings.size(); --index >= 0;) {
-			LayerSourceInput next = bindings.get(index).getCurrent();
+			Sampler next = bindings.get(index).getCurrent().createSamplerForFrame(frame);
 			for (int y = 0; y < destination.height; y++) {
 				for (int x = 0; x < destination.width; x++) {
 					destination.setColor(

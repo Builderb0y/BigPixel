@@ -1,4 +1,4 @@
-package builderb0y.bigpixel;
+package builderb0y.bigpixel.util;
 
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;

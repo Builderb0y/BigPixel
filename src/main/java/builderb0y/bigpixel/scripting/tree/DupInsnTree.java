@@ -1,7 +1,7 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.VectorType;
+import builderb0y.bigpixel.util.Util;
 
 public class DupInsnTree extends InsnTree {
 

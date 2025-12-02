@@ -1,14 +1,17 @@
 package builderb0y.bigpixel.sources.dependencies;
 
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.scene.Parent;
 
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.DerivedLayerSource;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 
 public class DerivedLayerDependencies extends LayerDependencies {
 
@@ -16,7 +19,8 @@ public class DerivedLayerDependencies extends LayerDependencies {
 	public Map<String, LayerNode> potentialDependencies = new HashMap<>();
 	public Set<LayerNode> actualDependencies = Collections.emptySet();
 	public List<CurveHelper> curves = new ArrayList<>();
-	public boolean animated;
+	public SimpleBooleanProperty animated = new SimpleBooleanProperty(this, "animated", false);
+	public boolean directlyAnimated;
 
 	@Override
 	public JsonMap save() {
@@ -32,10 +36,12 @@ public class DerivedLayerDependencies extends LayerDependencies {
 		this.source = source;
 	}
 
-	public void setActualDependencies(Set<LayerNode> dependencies) {
+	public void setActualDependencies(Set<LayerNode> dependencies, boolean directlyAnimated) {
 		this.actualDependencies = dependencies;
+		boolean animated = directlyAnimated;
 		int index = 0;
 		for (LayerNode dependency : dependencies) {
+			if (!animated) animated = dependency.sources.currentSource().getDependencies().animatedProperty().get();
 			CurveHelper curve;
 			if (this.curves.size() > index) {
 				curve = this.curves.get(index);
@@ -49,6 +55,8 @@ public class DerivedLayerDependencies extends LayerDependencies {
 			curve.setOtherEnd(dependency);
 			index++;
 		}
+		this.directlyAnimated = directlyAnimated;
+		this.animated.set(animated);
 		while (this.curves.size() > index) {
 			this.curves.removeLast().otherBindingIsVarying.set(false);
 		}
@@ -64,20 +72,17 @@ public class DerivedLayerDependencies extends LayerDependencies {
 	}
 
 	@Override
+	public Stream<SamplerProvider> getAll() {
+		return this.actualDependencies.stream().map(Function.identity());
+	}
+
+	@Override
 	public boolean dependsOn(LayerNode layer) {
 		return this.actualDependencies.contains(layer);
 	}
 
 	@Override
-	public boolean containsAny(Predicate<LayerNode> layers) {
-		for (LayerNode dependency : this.actualDependencies) {
-			if (layers.test(dependency)) return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean isAnimated() {
+	public ObservableBooleanValue animatedProperty() {
 		return this.animated;
 	}
 

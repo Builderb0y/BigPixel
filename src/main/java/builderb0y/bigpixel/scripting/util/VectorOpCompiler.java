@@ -1,15 +1,13 @@
 package builderb0y.bigpixel.scripting.util;
 
-import java.lang.classfile.Opcode;
-import java.lang.constant.ClassDesc;
-import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.tree.CodeEmitter;
 
 public class VectorOpCompiler extends BinaryCombiner<CodeEmitter> {
@@ -21,11 +19,11 @@ public class VectorOpCompiler extends BinaryCombiner<CodeEmitter> {
 		Class<?> owner = method.getDeclaringClass();
 		String name = method.getName();
 		Class<?>[] paramTypes = method.getParameterTypes();
-		ClassDesc ownerDesc = Util.desc(owner);
-		Opcode opcode = Modifier.isStatic(method.getModifiers()) ? Opcode.INVOKESTATIC : owner.isInterface() ? Opcode.INVOKEINTERFACE : Opcode.INVOKEVIRTUAL;
-		MethodTypeDesc paramDesc = MethodTypeDesc.of(Util.desc(method.getReturnType()), Arrays.stream(paramTypes).map(Class::descriptorString).map(ClassDesc::ofDescriptor).toArray(ClassDesc[]::new));
+		String ownerDesc = Type.getInternalName(owner);
+		int opcode = Modifier.isStatic(method.getModifiers()) ? Opcodes.INVOKESTATIC : owner.isInterface() ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL;
+		String paramDesc = Type.getMethodDescriptor(Type.getType(method.getReturnType()), Arrays.stream(paramTypes).map(Type::getType).toArray(Type[]::new));
 		boolean isInterface = owner.isInterface();
-		return (CodeEmitter.Context context) -> context.codeBuilder.invoke(
+		return (CodeEmitter.Context context) -> context.codeBuilder.visitMethodInsn(
 			opcode,
 			ownerDesc,
 			name,

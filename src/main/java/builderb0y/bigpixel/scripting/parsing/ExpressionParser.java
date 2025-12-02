@@ -1,15 +1,5 @@
 package builderb0y.bigpixel.scripting.parsing;
 
-import java.lang.classfile.ClassBuilder;
-import java.lang.classfile.ClassFile;
-import java.lang.classfile.CodeBuilder;
-import java.lang.classfile.MethodBuilder;
-import java.lang.constant.ClassDesc;
-import java.lang.constant.ConstantDescs;
-import java.lang.constant.MethodTypeDesc;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.AccessFlag;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -19,12 +9,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.internal.classfile.components.ClassPrinter.Verbosity;
 import org.jetbrains.annotations.NotNull;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import builderb0y.bigpixel.CommonReader.CursorPos;
-import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.FunctionHandler;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.KeywordHandler;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.VariableHandler;
@@ -41,6 +32,10 @@ import builderb0y.bigpixel.scripting.util.BinaryOperatorWrapper;
 import builderb0y.bigpixel.scripting.util.LocalVariable;
 import builderb0y.bigpixel.scripting.util.MethodInfo;
 import builderb0y.bigpixel.scripting.util.UnaryOperatorWrapper;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.util.Util;
+
+import static org.objectweb.asm.Opcodes.*;
 
 public class ExpressionParser<I> {
 
@@ -49,13 +44,11 @@ public class ExpressionParser<I> {
 	public final ExpressionReader reader;
 	public final Method implMethod;
 	public Scope scope;
-	public Map<String, Integer> usedLayers;
 
 	public ExpressionParser(ExpressionReader reader, Method implMethod) {
 		this.reader = reader;
 		this.implMethod = implMethod;
 		this.scope = this.new Scope();
-		this.usedLayers = new HashMap<>();
 	}
 
 	public ExpressionParser(String source, Class<I> interfaceClass) {
@@ -177,43 +170,15 @@ public class ExpressionParser<I> {
 		return this;
 	}
 
-	public static final MethodInfo getPixelWrappedOneArg  = new MethodInfo(LayerNode.class, "getPixelWrapped", 1);
-	public static final MethodInfo getPixelWrappedTwoArgs = new MethodInfo(LayerNode.class, "getPixelWrapped", 2);
-
-	public ExpressionParser<I> addLayers(Collection<LayerNode> layers) {
-		for (LayerNode layer : layers) {
-			this.scope.environment.addFunction(
-				layer.getDisplayName(),
-				(ExpressionParser<?> parser, String name, InsnTree[] params) -> {
-					VectorType[] types = InsnTree.flattenTypes(params);
-					int index = parser.usedLayers.computeIfAbsent(name, (String _) -> parser.usedLayers.size());
-					return switch (types.length) {
-						case 1 -> {
-							InsnTree[] castParams = ScriptHandlers.multiCast(params, VectorType.INT2);
-							if (castParams == null) yield null;
-							yield new SampleInsnTree(castParams, "layer" + index, getPixelWrappedOneArg);
-						}
-						case 2 -> {
-							InsnTree[] castParams = ScriptHandlers.multiCast(params, VectorType.INT, VectorType.INT);
-							if (castParams == null) yield null;
-							yield new SampleInsnTree(castParams, "layer" + index, getPixelWrappedTwoArgs);
-						}
-						default -> {
-							yield null;
-						}
-					};
-				}
-			);
-		}
-		return this;
-	}
+	public static final MethodInfo getPixelWrappedOneArg  = new MethodInfo(Sampler.class, "getColor", 1);
+	public static final MethodInfo getPixelWrappedTwoArgs = new MethodInfo(Sampler.class, "getColor", 2);
 
 	public ExpressionParser<I> configureEnvironment(Consumer<ScriptEnvironment> configurator) {
 		configurator.accept(this.scope.environment);
 		return this;
 	}
 
-	public I parse(Map<String, LayerNode> layers) throws ScriptParsingException {
+	public ClassNode parseBasic() throws ScriptParsingException {
 		InsnTree tree;
 		try {
 			tree = this.nextScript();
@@ -231,69 +196,48 @@ public class ExpressionParser<I> {
 		if (!tree.jumpsUnconditionally()) {
 			throw new ScriptParsingException("Missing return statement", this.reader);
 		}
-		ClassDesc generatedClassDesc = ClassDesc.ofInternalName(ExpressionParser.class.getName().replace('.', '/') + "$Generated$" + UNIQUIFIER.getAndIncrement());
-		byte[] bytes = ClassFile.of().build(generatedClassDesc, (ClassBuilder clazz) -> {
-			clazz
-			.withVersion(ClassFile.latestMajorVersion(), ClassFile.latestMinorVersion())
-			.withFlags(AccessFlag.PUBLIC, AccessFlag.FINAL, AccessFlag.SYNTHETIC)
-			.withSuperclass(ConstantDescs.CD_Object)
-			.withInterfaceSymbols(Util.desc(this.implMethod.getDeclaringClass()));
-
-			for (Map.Entry<String, Integer> entry : this.usedLayers.entrySet()) {
-				clazz.withField("layer" + entry.getValue(), Util.desc(LayerNode.class), Modifier.PUBLIC | Modifier.FINAL);
+		ClassNode clazz = new ClassNode();
+		clazz.visit(
+			V24,
+			ACC_PUBLIC | ACC_FINAL | ACC_SYNTHETIC,
+			this.getClass().getName().replace('.', '/') + "$Generated_" + UNIQUIFIER.getAndIncrement(),
+			null,
+			Type.getInternalName(Object.class),
+			new String[] { Type.getInternalName(this.implMethod.getDeclaringClass()) }
+		);
+		MethodNode method = new MethodNode(
+			ACC_PUBLIC,
+			this.implMethod.getName(),
+			Type.getMethodDescriptor(this.implMethod),
+			null,
+			null
+		);
+		GeneratorAdapter codeBuilder = new GeneratorAdapter(
+			method,
+			ACC_PUBLIC,
+			this.implMethod.getName(),
+			Type.getMethodDescriptor(this.implMethod)
+		);
+		int parameterIndex = 1; //reserve slot for "this".
+		Map<String, LocalVariable> parameters = new HashMap<>();
+		for (Parameter parameter : this.implMethod.getParameters()) {
+			if (!parameter.isNamePresent()) {
+				throw new IllegalStateException("Parameter " + parameter + " is missing a name.");
 			}
-
-			clazz
-			.withMethod(
-				ConstantDescs.INIT_NAME,
-				MethodTypeDesc.of(ConstantDescs.CD_void, Util.desc(Map.class)),
-				Modifier.PUBLIC,
-				(MethodBuilder constructor) -> constructor.withCode((CodeBuilder code) -> {
-					code
-					.aload(code.receiverSlot())
-					.invokespecial(ConstantDescs.CD_Object, ConstantDescs.INIT_NAME, ConstantDescs.MTD_void, false);
-
-					for (Map.Entry<String, Integer> entry : this.usedLayers.entrySet()) {
-						code
-						.aload(code.receiverSlot())
-						.aload(code.parameterSlot(0))
-						.ldc(entry.getKey())
-						.invokeinterface(Util.desc(Map.class), "get", MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object))
-						.checkcast(Util.desc(LayerNode.class))
-						.putfield(generatedClassDesc, "layer" + entry.getValue(), Util.desc(LayerNode.class));
-					}
-
-					code.return_();
-				})
+			parameters.put(parameter.getName(), new LocalVariable(parameterIndex, VectorType.get(parameter.getAnnotatedType())));
+			parameterIndex += parameter.getType() == long.class || parameter.getType() == double.class ? 2 : 1;
+		}
+		clazz.methods.add(method);
+		tree.emitBytecode(
+			new CodeEmitter.Context(
+				Type.getObjectType(clazz.name),
+				clazz,
+				method,
+				codeBuilder,
+				parameters
 			)
-			.withMethod(
-				this.implMethod.getName(),
-				MethodTypeDesc.of(
-					Util.desc(this.implMethod.getReturnType()),
-					Arrays.stream(this.implMethod.getParameterTypes()).map(Util::desc).toArray(ClassDesc[]::new)
-				),
-				Modifier.PUBLIC,
-				(MethodBuilder method) -> method.withCode((CodeBuilder code) -> {
-					Map<String, LocalVariable> variables = new HashMap<>();
-					Parameter[] parameters = this.implMethod.getParameters();
-					for (int index = 0, length = parameters.length; index < length; index++) {
-						Parameter parameter = parameters[index];
-						if (!parameter.isNamePresent()) throw new IllegalStateException(this.implMethod + " is missing parameter names");
-						variables.put(parameter.getName(), new LocalVariable(code.parameterSlot(index), VectorType.get(parameter.getAnnotatedType())));
-					}
-					tree.emitBytecode(new CodeEmitter.Context(generatedClassDesc, clazz, method, code, variables));
-				})
-			);
-		});
-		try {
-			MethodHandles.Lookup lookup = MethodHandles.lookup().defineHiddenClass(bytes, false);
-			return (I)(lookup.findConstructor(lookup.lookupClass(), MethodType.methodType(void.class, Map.class)).invoke(layers));
-		}
-		catch (Throwable throwable) {
-			StringBuilder message = new StringBuilder("Error defining class!\n");
-			jdk.internal.classfile.components.ClassPrinter.toJson(ClassFile.of().parse(bytes), Verbosity.TRACE_ALL, message::append);
-			throw new ScriptParsingException(message.toString(), throwable, null);
-		}
+		);
+		return clazz;
 	}
 
 	public @NotNull InsnTree nextScript() throws ScriptParsingException {

@@ -8,15 +8,15 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
+import builderb0y.bigpixel.util.Util;
 
 public class AlphaLayerSource extends MultiInputLayerSource {
 
 	public CheckBox linear = this.parameters.addCheckbox("linear", "Linear", false);
 
 	public AlphaLayerSource(LayerSources sources) {
-		super(Type.ALPHA, sources);
+		super(LayerSourceType.ALPHA, sources);
 		this.dependencies.getBottomPane().getChildren().add(this.linear);
 	}
 

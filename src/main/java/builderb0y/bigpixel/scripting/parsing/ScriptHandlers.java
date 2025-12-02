@@ -9,6 +9,7 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.scripting.tree.*;
+import builderb0y.bigpixel.scripting.tree.SwitchInsnTree.MultiCase;
 import builderb0y.bigpixel.scripting.tree.condition.ConditionTree;
 import builderb0y.bigpixel.scripting.types.VectorType;
 import builderb0y.bigpixel.scripting.util.MethodInfo;
@@ -181,7 +182,7 @@ public class ScriptHandlers {
 				parser.reader.expectAfterWhitespace(')');
 				parser.reader.expectAfterWhitespace('{');
 				HashSet<Integer> allCases = new HashSet<>();
-				List<SwitchInsnTree.Case> cases = new ArrayList<>();
+				List<MultiCase> cases = new ArrayList<>();
 				InsnTree defaultCase = null;
 				while (true) {
 					if (parser.reader.hasIdentifierAfterWhitespace("case")) {
@@ -216,7 +217,7 @@ public class ScriptHandlers {
 						if (valueCount != matchedValues.length) {
 							matchedValues = Arrays.copyOf(matchedValues, valueCount);
 						}
-						cases.add(new SwitchInsnTree.Case(matchedValues, tree));
+						cases.add(new MultiCase(matchedValues, tree));
 					}
 					else if (parser.reader.hasIdentifierAfterWhitespace("default")) {
 						if (defaultCase != null) {

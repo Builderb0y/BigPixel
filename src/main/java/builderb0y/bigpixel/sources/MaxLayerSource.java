@@ -11,7 +11,7 @@ import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 public class MaxLayerSource extends MultiInputLayerSource {
 
 	public MaxLayerSource(LayerSources sources) {
-		super(Type.MAX, sources);
+		super(LayerSourceType.MAX, sources);
 	}
 
 	@Override

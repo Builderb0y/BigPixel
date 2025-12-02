@@ -12,14 +12,15 @@ import builderb0y.bigpixel.ConfigParameter;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.sources.LayerSource.LayerSourceType;
 
-public abstract class LayerSource implements OrganizedSelection.Value<LayerSource.Type> {
+public abstract class LayerSource implements OrganizedSelection.Value<LayerSourceType> {
 
-	public final Type type;
+	public final LayerSourceType type;
 	public final LayerSources sources;
 	public final SourceParameters parameters;
 
-	public LayerSource(Type type, LayerSources sources) {
+	public LayerSource(LayerSourceType type, LayerSources sources) {
 		this.type = type;
 		this.sources = sources;
 		this.parameters = new SourceParameters(this);
@@ -63,24 +64,7 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		this.sources.layer.requestRedraw();
 	}
 
-	public void redrawImmediately() {
-		try {
-			this.doRedraw();
-			this.sources.layer.redrawException.set(null);
-		}
-		catch (RedrawException exception) {
-			this.sources.layer.redrawException.set(exception);
-		}
-		catch (Throwable exception) {
-			exception.printStackTrace();
-			while (exception.getCause() != null) {
-				exception = exception.getCause();
-			}
-			this.sources.layer.redrawException.set(exception);
-		}
-	}
-
-	public abstract void doRedraw() throws RedrawException;
+	public abstract void doRedraw(int frame) throws RedrawException;
 
 	@Override
 	public String toString() {
@@ -88,7 +72,7 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	}
 
 	@Override
-	public Type getType() {
+	public LayerSourceType getType() {
 		return this.type;
 	}
 
@@ -99,22 +83,22 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		}
 	}
 
-	public static enum Category implements OrganizedSelection.Category<Category> {
+	public static enum LayerSourceCategory implements OrganizedSelection.Category<LayerSourceCategory> {
 		ROOT(null, "All Effects"),
 		SIMPLE(ROOT, "Simple Effects"),
 		MEDIUM(ROOT, "Medium Effects"),
 		COMPLEX(ROOT, "Complex Effects");
 
-		public final Category parent;
+		public final LayerSourceCategory parent;
 		public final String displayName;
 
-		Category(Category parent, String displayName) {
+		LayerSourceCategory(LayerSourceCategory parent, String displayName) {
 			this.parent = parent;
 			this.displayName = displayName;
 		}
 
 		@Override
-		public @Nullable Category getParent() {
+		public @Nullable LayerSourceCategory getParent() {
 			return this.parent;
 		}
 
@@ -124,41 +108,41 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		}
 	}
 
-	public static enum Type implements OrganizedSelection.Type<LayerSource, Category> {
-		MANUAL        (Category.ROOT,    "manual",         "Manual",                ManualLayerSource::new),
-		PASSTHROUGH   (Category.ROOT,    "passthrough",    "Passthrough",      PassthroughLayerSource::new),
+	public static enum LayerSourceType implements OrganizedSelection.Type<LayerSource, LayerSourceCategory> {
+		MANUAL        (LayerSourceCategory.ROOT,    "manual",         "Manual",                ManualLayerSource::new),
+		PASSTHROUGH   (LayerSourceCategory.ROOT,    "passthrough",    "Passthrough",      PassthroughLayerSource::new),
 
-		ALPHA         (Category.SIMPLE,  "alpha",          "Alpha Blend",            AlphaLayerSource::new),
-		ADD           (Category.SIMPLE,  "add",            "Addition",                 AddLayerSource::new),
-		AVERAGE       (Category.SIMPLE,  "avg",            "Average",              AverageLayerSource::new),
-		MULTIPLY      (Category.SIMPLE,  "mul",            "Multiply",            MultiplyLayerSource::new),
-		SCREEN        (Category.SIMPLE,  "screen",         "Screen",                ScreenLayerSource::new),
-		MIN           (Category.SIMPLE,  "min",            "Min",                      MinLayerSource::new),
-		MAX           (Category.SIMPLE,  "max",            "Max",                      MaxLayerSource::new),
-		INVERT        (Category.SIMPLE,  "invert",         "Invert",                InvertLayerSource::new),
-		CLAMP         (Category.SIMPLE,  "clamp",          "Clamp",                  ClampLayerSource::new),
+		ALPHA         (LayerSourceCategory.SIMPLE,  "alpha",          "Alpha Blend",            AlphaLayerSource::new),
+		ADD           (LayerSourceCategory.SIMPLE,  "add",            "Addition",                 AddLayerSource::new),
+		AVERAGE       (LayerSourceCategory.SIMPLE,  "avg",            "Average",              AverageLayerSource::new),
+		MULTIPLY      (LayerSourceCategory.SIMPLE,  "mul",            "Multiply",            MultiplyLayerSource::new),
+		SCREEN        (LayerSourceCategory.SIMPLE,  "screen",         "Screen",                ScreenLayerSource::new),
+		MIN           (LayerSourceCategory.SIMPLE,  "min",            "Min",                      MinLayerSource::new),
+		MAX           (LayerSourceCategory.SIMPLE,  "max",            "Max",                      MaxLayerSource::new),
+		INVERT        (LayerSourceCategory.SIMPLE,  "invert",         "Invert",                InvertLayerSource::new),
+		CLAMP         (LayerSourceCategory.SIMPLE,  "clamp",          "Clamp",                  ClampLayerSource::new),
 
-		NORMALIZE     (Category.MEDIUM,  "normalize",      "Normalize",          NormalizeLayerSource::new),
-		GRADIENT_REMAP(Category.MEDIUM,  "gradient_remap", "Gradient Remap", GradientRemapLayerSource::new),
-		COLOR_MATRIX  (Category.MEDIUM,  "color_matrix",   "Color Matrix",     ColorMatrixLayerSource::new),
-		CLIFF_CURVE   (Category.MEDIUM,  "cliff",          "Cliff Curve",       CliffCurveLayerSource::new),
-		TILE          (Category.MEDIUM,  "tile",           "Tile",                    TileLayerSource::new),
+		NORMALIZE     (LayerSourceCategory.MEDIUM,  "normalize",      "Normalize",          NormalizeLayerSource::new),
+		GRADIENT_REMAP(LayerSourceCategory.MEDIUM,  "gradient_remap", "Gradient Remap", GradientRemapLayerSource::new),
+		COLOR_MATRIX  (LayerSourceCategory.MEDIUM,  "color_matrix",   "Color Matrix",     ColorMatrixLayerSource::new),
+		CLIFF_CURVE   (LayerSourceCategory.MEDIUM,  "cliff",          "Cliff Curve",       CliffCurveLayerSource::new),
+		TILE          (LayerSourceCategory.MEDIUM,  "tile",           "Tile",                    TileLayerSource::new),
 
-		CONVOLVE      (Category.COMPLEX, "convolve",       "Convolve",            ConvolveLayerSource::new),
-		K_MEANS       (Category.COMPLEX, "kmeans",         "K-Means",               KMeansLayerSource::new),
-		DENOISE       (Category.COMPLEX, "denoise",        "De-noise",             DeNoiseLayerSource::new),
-		WFC           (Category.COMPLEX, "wfc",            "Wave Function Collapse",   WFCLayerSource::new),
+		CONVOLVE      (LayerSourceCategory.COMPLEX, "convolve",       "Convolve",            ConvolveLayerSource::new),
+		K_MEANS       (LayerSourceCategory.COMPLEX, "kmeans",         "K-Means",               KMeansLayerSource::new),
+		DENOISE       (LayerSourceCategory.COMPLEX, "denoise",        "De-noise",             DeNoiseLayerSource::new),
+		WFC           (LayerSourceCategory.COMPLEX, "wfc",            "Wave Function Collapse",   WFCLayerSource::new),
 
-		DERIVED       (Category.ROOT,    "derived",        "Derived",              DerivedLayerSource::new);
+		DERIVED       (LayerSourceCategory.ROOT,    "derived",        "Derived",              DerivedLayerSource::new);
 
-		public static final Type[] VALUES = values();
-		public static final Map<String, Type> BY_SAVE_NAME = Arrays.stream(VALUES).collect(Collectors.toMap(Type::getSaveName, Function.identity()));
+		public static final LayerSourceType[] VALUES = values();
+		public static final Map<String, LayerSourceType> BY_SAVE_NAME = Arrays.stream(VALUES).collect(Collectors.toMap(LayerSourceType::getSaveName, Function.identity()));
 
-		public final Category category;
+		public final LayerSourceCategory category;
 		public final String saveName, displayName;
 		public final Function<LayerSources, LayerSource> factory;
 
-		Type(Category category, String saveName, String displayName, Function<LayerSources, LayerSource> factory) {
+		LayerSourceType(LayerSourceCategory category, String saveName, String displayName, Function<LayerSources, LayerSource> factory) {
 			this.category = category;
 			this.saveName = saveName;
 			this.displayName = displayName;
@@ -171,7 +155,7 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		}
 
 		@Override
-		public Category getCategory() {
+		public LayerSourceCategory getCategory() {
 			return this.category;
 		}
 

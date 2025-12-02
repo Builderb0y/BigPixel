@@ -1,8 +1,7 @@
 package builderb0y.bigpixel.scripting.tree.condition;
 
-import java.lang.classfile.Label;
-
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.CodeEmitter;
 
@@ -22,7 +21,7 @@ public class AndConditionTree extends ConditionTree {
 		if (madeFalse) ifFalse = context.codeBuilder.newLabel();
 		this.left.emitBytecode(context, null, ifFalse);
 		this.right.emitBytecode(context, null, ifFalse);
-		if (ifTrue != null) context.codeBuilder.goto_(ifTrue);
-		if (madeFalse) context.codeBuilder.labelBinding(ifFalse);
+		if (ifTrue != null) context.codeBuilder.goTo(ifTrue);
+		if (madeFalse) context.codeBuilder.visitLabel(ifFalse);
 	}
 }

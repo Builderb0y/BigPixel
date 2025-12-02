@@ -11,7 +11,7 @@ import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 public class MinLayerSource extends MultiInputLayerSource {
 
 	public MinLayerSource(LayerSources sources) {
-		super(Type.MIN, sources);
+		super(LayerSourceType.MIN, sources);
 	}
 
 	@Override

@@ -1,21 +1,21 @@
-package builderb0y.bigpixel;
+package builderb0y.bigpixel.util;
 
 import java.io.File;
-import java.lang.constant.ClassDesc;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
+import javafx.beans.binding.Bindings;
+import javafx.beans.value.*;
 import javafx.scene.control.Spinner;
 import javafx.scene.input.ScrollEvent;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
+
+import builderb0y.bigpixel.HDRImage;
 
 public class Util {
 
@@ -60,6 +60,11 @@ public class Util {
 		return (ObservableValue<? extends T> observable, T oldValue, T newValue) -> consumer.accept(oldValue, newValue);
 	}
 
+	@SuppressWarnings("unchecked")
+	public static <X extends Throwable> RuntimeException rethrow(Throwable throwable) throws X {
+		throw (X)(throwable);
+	}
+
 	public static File changeExtension(File file, String extension) {
 		String path = file.getPath();
 		for (int index = path.length(); --index >= 0;) {
@@ -96,10 +101,6 @@ public class Util {
 	public static <T> T make(T object, Consumer<T> action) {
 		action.accept(object);
 		return object;
-	}
-
-	public static ClassDesc desc(Class<?> clazz) {
-		return ClassDesc.ofDescriptor(clazz.descriptorString());
 	}
 
 	public static String capitalize(String word) {
@@ -158,40 +159,56 @@ public class Util {
 		return FloatVector.fromArray(FloatVector.SPECIES_128, array, 0);
 	}
 
-	public static void invokeAndWait(Runnable task) throws InterruptedException {
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Platform.runLater(() -> {
-			try {
-				task.run();
-				future.complete(null);
-			}
-			catch (Throwable throwable) {
-				future.completeExceptionally(throwable);
-			}
-		});
-		try {
-			future.get();
-		}
-		catch (ExecutionException exception) {
-			throw new RuntimeException(exception);
-		}
+	public static void invokeAndWait(Runnable task) {
+		CompletableFuture.runAsync(task, Platform::runLater).join();
 	}
 
-	public static <T> T getAndWait(Supplier<T> supplier) throws InterruptedException {
-		CompletableFuture<T> future = new CompletableFuture<>();
-		Platform.runLater(() -> {
-			try {
-				future.complete(supplier.get());
-			}
-			catch (Throwable throwable) {
-				future.completeExceptionally(throwable);
-			}
-		});
-		try {
-			return future.get();
-		}
-		catch (ExecutionException exception) {
-			throw new RuntimeException(exception);
-		}
+	public static <T> T getAndWait(Supplier<T> supplier) {
+		return CompletableFuture.supplyAsync(supplier, Platform::runLater).join();
+	}
+
+	public static int     or(Number  number, int     nullDefault) { return number != null ? number.    intValue() : nullDefault; }
+	public static long    or(Number  number, long    nullDefault) { return number != null ? number.   longValue() : nullDefault; }
+	public static float   or(Number  number, float   nullDefault) { return number != null ? number.  floatValue() : nullDefault; }
+	public static double  or(Number  number, double  nullDefault) { return number != null ? number. doubleValue() : nullDefault; }
+	public static boolean or(Boolean bool,   boolean nullDefault) { return bool   != null ? bool  .booleanValue() : nullDefault; }
+
+	public static ObservableIntegerValue toInt(ObservableValue<? extends Number> value, int nullDefault) {
+		return (
+			value instanceof ObservableIntegerValue correct ? correct :
+			value instanceof ObservableNumberValue number ? Bindings.createIntegerBinding(number::intValue, number) :
+			Bindings.createIntegerBinding(() -> or(value.getValue(), nullDefault), value)
+		);
+	}
+
+	public static ObservableLongValue toLong(ObservableValue<? extends Number> value, long nullDefault) {
+		return (
+			value instanceof ObservableLongValue correct ? correct :
+			value instanceof ObservableNumberValue number ? Bindings.createLongBinding(number::longValue, number) :
+			Bindings.createLongBinding(() -> or(value.getValue(), nullDefault), value)
+		);
+	}
+
+	public static ObservableFloatValue toFloat(ObservableValue<? extends Number> value, float nullDefault) {
+		return (
+			value instanceof ObservableFloatValue correct ? correct :
+			value instanceof ObservableNumberValue number ? Bindings.createFloatBinding(number::floatValue, number) :
+			Bindings.createFloatBinding(() -> or(value.getValue(), nullDefault), value)
+		);
+	}
+
+	public static ObservableDoubleValue toDouble(ObservableValue<? extends Number> value, double nullDefault) {
+		return (
+			value instanceof ObservableDoubleValue correct ? correct :
+			value instanceof ObservableNumberValue number ? Bindings.createDoubleBinding(number::doubleValue, number) :
+			Bindings.createDoubleBinding(() -> or(value.getValue(), nullDefault), value)
+		);
+	}
+
+	public static ObservableBooleanValue toBoolean(ObservableValue<Boolean> value, boolean nullDefault) {
+		return (
+			value instanceof ObservableBooleanValue correct ? correct :
+			Bindings.createBooleanBinding(() -> or(value.getValue(), nullDefault), value)
+		);
 	}
 }

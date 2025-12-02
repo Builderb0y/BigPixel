@@ -1,7 +1,7 @@
 package builderb0y.bigpixel.sources;
 
 import builderb0y.bigpixel.ConfigParameters;
-import builderb0y.bigpixel.Util;
+import builderb0y.bigpixel.util.Util;
 
 public class SourceParameters extends ConfigParameters {
 

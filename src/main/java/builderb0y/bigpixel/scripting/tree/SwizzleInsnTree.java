@@ -2,11 +2,11 @@ package builderb0y.bigpixel.scripting.tree;
 
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.scripting.types.VectorType;
 import builderb0y.bigpixel.scripting.types.VectorType.GroupShape;
 import builderb0y.bigpixel.scripting.util.MethodInfo;
+import builderb0y.bigpixel.util.Util;
 
 public class SwizzleInsnTree extends InsnTree {
 
@@ -115,17 +115,14 @@ public class SwizzleInsnTree extends InsnTree {
 				context.codeBuilder.dup();
 			}
 			int constant = this.indices[laneIndex];
-			switch (constant) {
-				case 0 -> context.codeBuilder.iconst_0();
-				case 1 -> context.codeBuilder.iconst_1();
-				case 2 -> context.codeBuilder.iconst_2();
-				case 3 -> context.codeBuilder.iconst_3();
-				default -> throw new IllegalStateException("Swizzle out of range: " + constant);
+			if (constant < 0 || constant >= 4) {
+				throw new IllegalStateException("Swizzle out of range: " + constant);
 			}
+			context.codeBuilder.push(constant);
 			this.lane.emitBytecode(context);
 			if (laneIndex != lanes - 1) {
 				if (doubleWidth) {
-					context.codeBuilder.dup2_x1();
+					context.codeBuilder.dup2X1();
 					context.codeBuilder.pop2();
 				}
 				else {

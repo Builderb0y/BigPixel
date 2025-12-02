@@ -7,24 +7,25 @@ import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 
 public class NormalizeLayerSource extends PerPixelLayerSource {
 
 	public CheckBox perChannel = this.parameters.addCheckbox("per_channel", "Per channel", true);
 
 	public NormalizeLayerSource(LayerSources sources) {
-		super(Type.NORMALIZE, sources);
+		super(LayerSourceType.NORMALIZE, sources);
 		this.dependencies.addExtraNodeRow(this.perChannel);
 	}
 
 	@Override
-	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
-		HDRImage destination = this.sources.layer.image;
+	public PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException {
+		int width = this.sources.layer.imageWidth();
+		int height = this.sources.layer.imageHeight();
 		FloatVector min = FloatVector.broadcast(FloatVector.SPECIES_128, Float.POSITIVE_INFINITY);
 		FloatVector max = FloatVector.broadcast(FloatVector.SPECIES_128, Float.NEGATIVE_INFINITY);
-		for (int y = 0; y < destination.height; y++) {
-			for (int x = 0; x < destination.width; x++) {
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
 				FloatVector pixel = main.getColor(x, y);
 				if (pixel.lane(HDRImage.ALPHA_OFFSET) > 0.0F) {
 					FloatVector maskColor = mask.getColor(x, y);

@@ -1,8 +1,11 @@
 package builderb0y.bigpixel;
 
 import javafx.scene.image.PixelFormat;
-import javafx.scene.image.PixelWriter;
+import javafx.scene.image.WritableImage;
 import jdk.incubator.vector.*;
+
+import builderb0y.bigpixel.util.BaseCanvasHelper;
+import builderb0y.bigpixel.util.CanvasHelper;
 
 public abstract class Gradient extends CanvasHelper {
 
@@ -10,17 +13,28 @@ public abstract class Gradient extends CanvasHelper {
 	public static final VectorMask<Byte> BYTE_MASK = VectorMask.fromValues(ByteVector.SPECIES_64, true, true, true, true, false, false, false, false);
 	public static final VectorShuffle<Float> RGBA_TO_BRGA = VectorShuffle.fromValues(FloatVector.SPECIES_128, 2, 1, 0, 3);
 
+	public Gradient() {
+		this.redrawer = (BaseCanvasHelper helper) -> this.redraw((CanvasHelper)(helper));
+	}
+
+	@Override
+	@SuppressWarnings("deprecation")
+	public Gradient fixedSize(double width, double height) {
+		return (Gradient)(super.fixedSize(width, height));
+	}
+
 	public abstract FloatVector computeColor(int pixelPos, float fraction);
 
-	public void redraw() {
-		PixelWriter writer = this.display.getGraphicsContext2D().getPixelWriter();
-		int width = ((int)(this.display.getWidth()));
+	public void redraw(CanvasHelper self) {
+		WritableImage image = self.getImage();
+		int width = ((int)(image.getWidth()));
 		byte[] colors = new byte[width * 4];
 		width--;
 		for (int x = 0; x <= width; x++) {
 			putColor(this.computeColor(x, ((float)(x)) / ((float)(width))), colors, x << 2);
 		}
-		writer.setPixels(0, 0, width + 1, ((int)(this.display.getHeight())), PixelFormat.getByteBgraPreInstance(), colors, 0, 0);
+		image.getPixelWriter().setPixels(0, 0, width + 1, ((int)(image.getHeight())), PixelFormat.getByteBgraPreInstance(), colors, 0, 0);
+		self.blit();
 	}
 
 	public static void putColor(FloatVector color, byte[] colors, int index) {

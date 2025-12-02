@@ -5,8 +5,8 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
 
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.VectorType.Vec;
+import builderb0y.bigpixel.util.Util;
 
 @SuppressWarnings({ "unused", "MethodParameterNamingConvention", "StandardVariableNames" })
 public class UtilityOperations {

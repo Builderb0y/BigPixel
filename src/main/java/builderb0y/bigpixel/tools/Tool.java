@@ -29,16 +29,22 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 
 	@Override
 	public void mouseDown(int x, int y, LayerNode layer, MouseButton button) {
-		if (this.layer() == layer) {
+		if (this.canDraw(layer)) {
 			this.mouseDown(x, y, button);
 		}
 	}
 
 	@Override
 	public void mouseDragged(int x, int y, LayerNode layer, MouseButton button) {
-		if (this.layer() == layer) {
+		if (this.canDraw(layer)) {
 			this.mouseDragged(x, y, button);
 		}
+	}
+
+	public boolean canDraw(LayerNode clicked) {
+		//very lenient check.
+		LayerNode target = this.layer();
+		return clicked.imageWidth() == target.imageWidth() && clicked.imageHeight() == target.imageHeight();
 	}
 
 	public LayerNode layer() {

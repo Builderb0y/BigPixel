@@ -1,14 +1,13 @@
 package builderb0y.bigpixel.scripting.util;
 
-import java.lang.classfile.Opcode;
-import java.lang.constant.ClassDesc;
-import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
-import builderb0y.bigpixel.Util;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
 import builderb0y.bigpixel.scripting.tree.CodeEmitter;
 import builderb0y.bigpixel.scripting.types.VectorType;
 
@@ -71,15 +70,15 @@ public record MethodInfo(int access, Class<?> owner, String name, AnnotatedType 
 
 	@Override
 	public void emitBytecode(Context context) {
-		context.codeBuilder.invoke(
+		context.codeBuilder.visitMethodInsn(
 			Modifier.isStatic(this.access)
-			? Opcode.INVOKESTATIC
+			? Opcodes.INVOKESTATIC
 			: this.owner.isInterface()
-			? Opcode.INVOKEINTERFACE
-			: Opcode.INVOKEVIRTUAL,
-			this.ownerDesc(),
+			? Opcodes.INVOKEINTERFACE
+			: Opcodes.INVOKEVIRTUAL,
+			Type.getInternalName(this.owner()),
 			this.name,
-			MethodTypeDesc.of(
+			Type.getMethodDescriptor(
 				this.returnTypeDesc(),
 				this.paramTypesDesc()
 			),
@@ -87,20 +86,20 @@ public record MethodInfo(int access, Class<?> owner, String name, AnnotatedType 
 		);
 	}
 
-	public ClassDesc ownerDesc() {
-		return Util.desc(this.owner);
+	public Type ownerDesc() {
+		return Type.getType(this.owner);
 	}
 
-	public ClassDesc returnTypeDesc() {
-		return Util.desc(this.returnType());
+	public Type returnTypeDesc() {
+		return Type.getType(this.returnType());
 	}
 
-	public ClassDesc[] paramTypesDesc() {
+	public Type[] paramTypesDesc() {
 		Class<?>[] paramTypes = this.paramTypes();
 		int length = paramTypes.length;
-		ClassDesc[] descs = new ClassDesc[length];
+		Type[] descs = new Type[length];
 		for (int index = 0; index < length; index++) {
-			descs[index] = Util.desc(paramTypes[index]);
+			descs[index] = Type.getType(paramTypes[index]);
 		}
 		return descs;
 	}

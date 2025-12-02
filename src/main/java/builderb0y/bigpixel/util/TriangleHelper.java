@@ -1,4 +1,4 @@
-package builderb0y.bigpixel;
+package builderb0y.bigpixel.util;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
@@ -7,6 +7,8 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polygon;
 import jdk.incubator.vector.FloatVector;
+
+import builderb0y.bigpixel.HDRImage;
 
 public class TriangleHelper extends BorderHelper<Pane> {
 

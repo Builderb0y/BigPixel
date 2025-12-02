@@ -8,12 +8,14 @@ import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.Gradient;
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
+import builderb0y.bigpixel.util.CanvasHelper;
+import builderb0y.bigpixel.util.Util;
 
 public class CliffCurveLayerSource extends PerPixelLayerSource {
 
@@ -47,43 +49,43 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 		gradient = (CliffGradient)(new CliffGradient().fixedSize(128.0D, 16.0D).popIn());
 
 	public CliffCurveLayerSource(LayerSources sources) {
-		super(Type.CLIFF_CURVE, sources);
+		super(LayerSourceType.CLIFF_CURVE, sources);
 		this.dependencies().midpoint.bindDisabled(this.dual.selectedProperty().not());
 		this.dependencies().addExtraNodeRow(new HBox(this.linear, this.dual));
 		this.dependencies().addExtraNodeRow(this.gradient.getRootPane());
 	}
 
-	public CliffCurver getCurver(boolean requireUniform) {
-		LayerSourceInput strength = this.dependencies().strength.getCurrent();
-		if (requireUniform && !(strength instanceof UniformLayerSourceInput)) return null;
+	public CliffCurver getCurver(boolean requireUniform, int frame) {
+		SamplerProvider strength = this.dependencies().strength.getCurrent();
+		if (requireUniform && !(strength instanceof UniformSamplerProvider)) return null;
 		boolean linear = this.linear.isSelected();
 		if (this.dual.isSelected()) {
-			LayerSourceInput midpoint = this.dependencies().midpoint.getCurrent();
-			if (requireUniform && !(midpoint instanceof UniformLayerSourceInput)) return null;
-			return new DualCliffCurver(strength, midpoint, linear);
+			SamplerProvider midpoint = this.dependencies().midpoint.getCurrent();
+			if (requireUniform && !(midpoint instanceof UniformSamplerProvider)) return null;
+			return new DualCliffCurver(strength.createSamplerForFrame(frame), midpoint.createSamplerForFrame(frame), linear);
 		}
 		else {
-			return new SingleCliffCurver(strength, linear);
+			return new SingleCliffCurver(strength.createSamplerForFrame(frame), linear);
 		}
 	}
 
 	@Override
-	public void doRedraw() throws RedrawException {
-		this.gradient.redraw();
-		super.doRedraw();
+	public void doRedraw(int frame) throws RedrawException {
+		this.gradient.redraw(this.gradient);
+		super.doRedraw(frame);
 	}
 
 	@Override
-	public PerPixelApplicator getApplicator(LayerSourceInput main, LayerSourceInput mask) throws RedrawException {
-		return this.getCurver(false);
+	public PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException {
+		return this.getCurver(false, frame);
 	}
 
 	public static abstract class CliffCurver extends PerPixelApplicator {
 
 		public final boolean linear;
-		public final LayerSourceInput strength;
+		public final Sampler strength;
 
-		public CliffCurver(LayerSourceInput strength, boolean linear) {
+		public CliffCurver(Sampler strength, boolean linear) {
 			this.strength = strength;
 			this.linear = linear;
 		}
@@ -91,7 +93,7 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 
 	public static class SingleCliffCurver extends CliffCurver {
 
-		public SingleCliffCurver(LayerSourceInput strength, boolean linear) {
+		public SingleCliffCurver(Sampler strength, boolean linear) {
 			super(strength, linear);
 		}
 
@@ -110,9 +112,9 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 
 	public static class DualCliffCurver extends CliffCurver {
 
-		public final LayerSourceInput midpoint;
+		public final Sampler midpoint;
 
-		public DualCliffCurver(LayerSourceInput strength, LayerSourceInput midpoint, boolean linear) {
+		public DualCliffCurver(Sampler strength, Sampler midpoint, boolean linear) {
 			super(strength, linear);
 			this.midpoint = midpoint;
 		}
@@ -158,10 +160,10 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 		public CliffCurver curver;
 
 		@Override
-		public void redraw() {
-			this.curver = CliffCurveLayerSource.this.getCurver(true);
+		public void redraw(CanvasHelper canvas) {
+			this.curver = CliffCurveLayerSource.this.getCurver(true, 0);
 			this.getRootPane().setVisible(this.curver != null);
-			if (this.curver != null) super.redraw();
+			if (this.curver != null) super.redraw(canvas);
 		}
 
 		@Override

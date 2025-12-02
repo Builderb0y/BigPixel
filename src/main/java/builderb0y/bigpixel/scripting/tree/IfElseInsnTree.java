@@ -1,9 +1,9 @@
 package builderb0y.bigpixel.scripting.tree;
 
-import java.lang.classfile.Label;
 import java.util.Arrays;
 
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Label;
 
 import builderb0y.bigpixel.scripting.tree.condition.ConditionTree;
 import builderb0y.bigpixel.scripting.types.VectorType;
@@ -37,11 +37,11 @@ public class IfElseInsnTree extends InsnTree {
 		this.condition.emitBytecode(context, null, falseBranch);
 		this.ifTrue.emitBytecode(context);
 		if (!this.ifTrue.jumpsUnconditionally()) {
-			context.codeBuilder.goto_(end);
+			context.codeBuilder.goTo(end);
 		}
-		context.codeBuilder.labelBinding(falseBranch);
+		context.codeBuilder.visitLabel(falseBranch);
 		this.ifFalse.emitBytecode(context);
-		context.codeBuilder.labelBinding(end);
+		context.codeBuilder.visitLabel(end);
 	}
 
 	@Override

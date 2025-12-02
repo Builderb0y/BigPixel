@@ -11,11 +11,11 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.History;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.NoDependencies;
 import builderb0y.bigpixel.tools.*;
+import builderb0y.bigpixel.util.Util;
 
 public class ManualLayerSource extends LayerSource {
 
@@ -41,16 +41,16 @@ public class ManualLayerSource extends LayerSource {
 
 	@Override
 	public JsonMap save() {
-		return super.save().with("image", this.toollessImage.save());
+		return super.save().with("image", this.getToollessImage().save());
 	}
 
 	@Override
 	public void load(JsonMap map) {
-		this.toollessImage.copyFrom(map.getMap("image"));
+		this.getToollessImage().copyFrom(map.getMap("image"));
 	}
 
 	public ManualLayerSource(LayerSources sources) {
-		super(Type.MANUAL, sources);
+		super(LayerSourceType.MANUAL, sources);
 		this.toolSelection.add(this.rectButton, 0, 0);
 		this.toolSelection.add(this.lineButton, 1, 0);
 		this.toolSelection.add(this.freehandButton, 2, 0);
@@ -66,7 +66,7 @@ public class ManualLayerSource extends LayerSource {
 		this.toolWithoutColorPicker.addListener(Util.change((Tool<?> oldTool, Tool<?> newTool) -> {
 			if (oldTool != null) oldTool.enter();
 		}));
-		this.toollessImage = new HDRImage(this.sources.layer.image);
+		//this.toollessImage = new HDRImage(this.sources.layer.getOnlyFrame());
 	}
 
 	public Button button(Tool<?> tool) {
@@ -77,25 +77,29 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	public void beginUsingTool() {
-		System.arraycopy(this.sources.layer.image.pixels, 0, this.toollessImage.pixels, 0, this.toollessImage.pixels.length);
+		System.arraycopy(this.sources.layer.getOnlyFrame().pixels, 0, this.getToollessImage().pixels, 0, this.getToollessImage().pixels.length);
 	}
 
 	public void finishUsingTool() {
-		System.arraycopy(this.sources.layer.image.pixels, 0, this.toollessImage.pixels, 0, this.toollessImage.pixels.length);
+		System.arraycopy(this.sources.layer.getOnlyFrame().pixels, 0, this.getToollessImage().pixels, 0, this.getToollessImage().pixels.length);
 	}
 
 	public void cancelToolAction() {
 		this.redrawLater();
 	}
 
+	public HDRImage getToollessImage() {
+		if (this.toollessImage == null) {
+			this.toollessImage = new HDRImage(this.sources.layer.getOnlyFrame());
+		}
+		return this.toollessImage;
+	}
+
 	@Override
 	public void copyFrom(LayerSource source) {
 		super.copyFrom(source);
 		ManualLayerSource that = (ManualLayerSource)(source);
-		if (this.toollessImage == null) {
-			this.toollessImage = new HDRImage(this.sources.layer.image);
-		}
-		System.arraycopy(that.toollessImage.pixels, 0, this.toollessImage.pixels, 0, that.toollessImage.pixels.length);
+		System.arraycopy(that.getToollessImage().pixels, 0, this.getToollessImage().pixels, 0, that.getToollessImage().pixels.length);
 	}
 
 	@Override
@@ -109,9 +113,9 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
-	public void doRedraw() throws RedrawException {
-		HDRImage source = this.toollessImage;
-		HDRImage destination = this.sources.layer.image;
+	public void doRedraw(int frame) throws RedrawException {
+		HDRImage source = this.getToollessImage();
+		HDRImage destination = this.sources.layer.getOnlyFrame();
 		source.checkSize(destination.width, destination.height, true);
 		System.arraycopy(source.pixels, 0, destination.pixels, 0, destination.pixels.length);
 		Tool<?> tool = this.toolWithoutColorPicker.get();

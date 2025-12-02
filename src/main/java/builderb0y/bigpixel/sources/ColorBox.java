@@ -10,11 +10,11 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.TriangleHelper;
-import builderb0y.bigpixel.Util;
-import builderb0y.bigpixel.sources.dependencies.inputs.LayerSourceInput.UniformLayerSourceInput;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.util.TriangleHelper;
+import builderb0y.bigpixel.util.Util;
 
-public class ColorBox implements UniformLayerSourceInput {
+public class ColorBox implements UniformSamplerProvider {
 
 	public static final FloatVector GRAYSCALE_DOT = Util.rgba(0.25F, 0.5F, 0.25F, 0.0F);
 

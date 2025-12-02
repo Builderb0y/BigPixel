@@ -17,10 +17,10 @@ import org.jetbrains.annotations.Nullable;
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.Util;
 import builderb0y.bigpixel.scripting.types.UtilityOperations;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.sources.ManualLayerSource;
+import builderb0y.bigpixel.util.Util;
 
 public class BucketTool extends Tool<BucketTool.Work> {
 
@@ -50,7 +50,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 		}
 		Point clickedPoint = new Point(x, y);
 		if (button == MouseButton.PRIMARY) {
-			this.work.start = new Start(clickedPoint, this.source.toollessImage.getColor(x, y), null);
+			this.work.start = new Start(clickedPoint, this.source.getToollessImage().getColor(x, y), null);
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
 	}
@@ -58,7 +58,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	@Override
 	public void mouseDragged(int x, int y, MouseButton button) {
 		if (this.work != null && this.work.start != null) {
-			this.work.start = this.work.start.withBorder(this.source.toollessImage.getColor(x, y));
+			this.work.start = this.work.start.withBorder(this.source.getToollessImage().getColor(x, y));
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
 	}
@@ -79,7 +79,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	public void spreadAll() {
 		Work work = this.work;
 		work.endingPoints.clear();
-		HDRImage image = this.source.toollessImage;
+		HDRImage image = this.source.getToollessImage();
 		FloatVector startingColor = work.start.color;
 		for (int y = 0; y < image.height; y++) {
 			for (int x = 0; x < image.width; x++) {
@@ -95,7 +95,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 
 	public void doSpread() {
 		Work work = this.work;
-		HDRImage image = this.source.toollessImage;
+		HDRImage image = this.source.getToollessImage();
 		float threshold = work.start.borderColor != null ? work.start.borderColor.sub(work.start.color).abs().reduceLanes(VectorOperators.MAX) : 1.0F / 512.0F;
 		boolean blend = this.blend.isSelected();
 		while (!work.spreadingPoints.isEmpty()) {
@@ -137,8 +137,9 @@ public class BucketTool extends Tool<BucketTool.Work> {
 		FloatVector to = layer.graph.openImage.mainWindow.colorPicker.currentColor.toFloatVector();
 		FloatVector from = this.work.start.borderColor;
 		if (from == null) from = to;
+		HDRImage image = layer.getOnlyFrame();
 		for (Map.Entry<Point, Float> entry : work.endingPoints.entrySet()) {
-			layer.image.setColor(entry.getKey().x, entry.getKey().y, VectorOperations.mix_float3_float3_float(from, to, entry.getValue()));
+			image.setColor(entry.getKey().x, entry.getKey().y, VectorOperations.mix_float3_float3_float(from, to, entry.getValue()));
 		}
 	}
 

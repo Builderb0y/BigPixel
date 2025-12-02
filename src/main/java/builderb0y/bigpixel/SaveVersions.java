@@ -6,32 +6,33 @@ import builderb0y.bigpixel.json.*;
 
 public class SaveVersions {
 
-	public static final int CURRENT = 7;
+	public static final int CURRENT = 8;
 
 	@SuppressWarnings({ "fallthrough", "DefaultNotLastCaseInSwitch" })
-	public static void process(JsonMap map) {
-		int version = map.getInt("version");
+	public static void process(JsonMap root) {
+		int version = root.getInt("version");
 		switch (version) {
 			default: throw new IllegalArgumentException("Unknown save version: " + version);
-			case 0: process0(map);
-			case 1: process1(map);
-			case 2: process2(map);
-			case 3: process3(map);
-			case 4: process4(map);
-			case 5: process5(map);
-			case 6: process6(map);
-			case 7:
+			case 0: process0(root);
+			case 1: process1(root);
+			case 2: process2(root);
+			case 3: process3(root);
+			case 4: process4(root);
+			case 5: process5(root);
+			case 6: process6(root);
+			case 7: process7(root);
+			case 8:
 		}
 	}
 
-	public static void process0(JsonMap map) {
-		recursiveProcessLayers(map.getMap("root_layer"), (JsonMap layer) -> {
+	public static void process0(JsonMap root) {
+		recursiveProcessLayers(root.getMap("root_layer"), (JsonMap layer) -> {
 			layer.add("expanded", true);
 		});
 	}
 
-	public static void process1(JsonMap map) {
-		recursiveProcessLayers(map.getMap("root_layer"), (JsonMap layer) -> {
+	public static void process1(JsonMap root) {
+		recursiveProcessLayers(root.getMap("root_layer"), (JsonMap layer) -> {
 			JsonMap sources = layer.getMap("sources");
 			JsonMap derived = sources.removeMap("derived");
 			JsonMap procedural = sources.removeMap("procedural");
@@ -109,16 +110,37 @@ public class SaveVersions {
 				.rename("front",  "south")
 				.rename("left",   "west" )
 				.rename("bottom", "down" )
-				.getMap("dimensions")
-				.with("minX", 0.0D)
-				.with("minY", 0.0D)
-				.with("minZ", 0.0D)
-				.with("maxX", 0.0D)
-				.with("maxY", 0.0D)
-				.with("maxZ", 0.0D)
-				;
+				.put(
+					"dimensions",
+					new JsonMap()
+					.with("minX",  0.0D)
+					.with("minY",  0.0D)
+					.with("minZ",  0.0D)
+					.with("maxX", 16.0D)
+					.with("maxY", 16.0D)
+					.with("maxZ", 16.0D)
+				);
 			}
 		}
+	}
+
+	public static void process7(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap views = layer.asMap().getMap("views");
+			if (views.getString("type").equals("cube")) {
+				JsonMap deps = views.getMap("dependencies");
+				addMissingFaceData(deps.getMap("up"));
+				addMissingFaceData(deps.getMap("down"));
+				addMissingFaceData(deps.getMap("north"));
+				addMissingFaceData(deps.getMap("east"));
+				addMissingFaceData(deps.getMap("south"));
+				addMissingFaceData(deps.getMap("west"));
+			}
+		}
+	}
+
+	public static void addMissingFaceData(JsonMap binding) {
+		binding.with("minU", 0.0D).with("minV", 0.0D).with("maxU", 16.0D).with("maxV", 16.0D).with("rotation", "IDENTITY");
 	}
 
 	public static int findMaxDepthOfLayerTree(JsonMap layer) {

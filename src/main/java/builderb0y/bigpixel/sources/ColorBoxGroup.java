@@ -7,7 +7,7 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.Util;
+import builderb0y.bigpixel.util.Util;
 
 public class ColorBoxGroup {
 
