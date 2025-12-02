@@ -77,7 +77,7 @@ public class Thumbnail extends AnimationView {
 
 			public static final EmptyParams INSTANCE = new EmptyParams();
 		}
-		return this.getImage(new DrawKey(this.width.get(), this.height.get(), frame, EmptyParams.INSTANCE));
+		return this.getImage(new DrawKey(this.hdrAnimation.layer, this.width.get(), this.height.get(), frame, EmptyParams.INSTANCE));
 	}
 
 	public ImageView createView() {

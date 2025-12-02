@@ -81,7 +81,7 @@ public class WFCLayerSource extends LayerSource {
 		this.symmetrySettings.add(all, 0, 4);
 		this.symmetrySettings.add(none, 1, 4);
 
-		this.mainPane.getChildren().addAll(this.mainSettings, this.symmetrySettings);
+		this.mainPane.getChildren().addAll(this.dependencies.getConfigPane(), this.mainSettings, this.symmetrySettings);
 	}
 
 	public void setAllSymmetries(boolean selected) {
@@ -342,7 +342,12 @@ public class WFCLayerSource extends LayerSource {
 			this.intermediate.pixels = presentationPixels;
 			presentation.pixels = intermediatePixels;
 			this.swapCalled = true;
-			Platform.runLater(presentation::invalidate);
+			Platform.runLater(() -> {
+				presentation.invalidate();
+				if (layer.graph.getVisibleLayer() == layer) {
+					layer.graph.openImage.imageDisplay.invalidateAll();
+				}
+			});
 		}
 
 		public synchronized void swapWriting(boolean force) {
@@ -374,7 +379,7 @@ public class WFCLayerSource extends LayerSource {
 					this.tileLists[index++] = new TileList(x, y, tiles);
 				}
 			}
-			if (this.layerSource.sources.layer.redrawRequested) return;
+			if (this.shouldAbort()) return;
 			this.processList(this.tileLists[this.random.nextInt(this.tileLists.length)]);
 			//this.processList(this.nextList());
 			//*
@@ -382,10 +387,19 @@ public class WFCLayerSource extends LayerSource {
 				TileList list = this.nextList();
 				if (list == null) break;
 				this.processList(list);
-				if (this.layerSource.sources.layer.redrawRequested) return;
+				if (this.shouldAbort()) return;
 			}
 			//*/
 			this.swapWriting(true);
+		}
+
+		public boolean shouldAbort() {
+			LayerNode self = this.layerSource.sources.layer;
+			for (LayerNode layer : self.graph.layerList) {
+				if (layer.redrawRequested) return true;
+				if (layer == self) return false;
+			}
+			return false;
 		}
 
 		public TileList nextList() {

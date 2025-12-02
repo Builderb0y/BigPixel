@@ -103,5 +103,5 @@ public abstract class AnimationView {
 
 	public static interface DrawParams {}
 
-	public static record DrawKey(int width, int height, int frame, DrawParams params) {}
+	public static record DrawKey(LayerNode layer, int width, int height, int frame, DrawParams params) {}
 }

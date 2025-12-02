@@ -75,7 +75,8 @@ public class ZoomableImage extends AnimationView {
 
 			@Override
 			public ObservableList<HDRImage> computeValue() {
-				return openImage.layerGraph.getVisibleLayer().animation.frames;
+				LayerNode layer = openImage.layerGraph.getVisibleLayer();
+				return layer != null ? layer.animation.frames : null;
 			}
 		};
 		this.drawParams = (
@@ -209,6 +210,7 @@ public class ZoomableImage extends AnimationView {
 		int width = (int)(this.display.display.getWidth());
 		int height = (int)(this.display.display.getHeight());
 		if (width > 0 && height > 0) return this.getImage(new DrawKey(
+			this.openImage.layerGraph.getVisibleLayer(),
 			width,
 			height,
 			this.animationSource.getFrameIndex(),
@@ -239,23 +241,27 @@ public class ZoomableImage extends AnimationView {
 	}
 
 	public boolean center() {
-		LayerNode layer = this.openImage.layerGraph.getVisibleLayer();
-		if (layer == null) return false;
 		Canvas canvas = this.display.display;
 		int canvasWidth = (int)(canvas.getWidth());
 		int canvasHeight = (int)(canvas.getHeight());
 		if (canvasWidth == 0 || canvasHeight == 0) return false;
-		int layerWidth = layer.imageWidth();
-		int layerHeight = layer.imageHeight();
 		if (this.centerer != null) {
-			LayerViews views = layer.views;
-			for (LayerViewType type : LayerViewType.VALUES) {
-				LayerView projector = views.getOrCreateValue(type);
-				projector.beforeRedraw(layerWidth, layerHeight, canvasWidth, canvasHeight);
-				projector.center();
+			for (LayerNode layer : this.openImage.layerGraph.layerList) {
+				LayerViews views = layer.views;
+				int layerWidth = layer.imageWidth();
+				int layerHeight = layer.imageHeight();
+				for (LayerViewType type : LayerViewType.VALUES) {
+					LayerView projector = views.getOrCreateValue(type);
+					projector.beforeRedraw(layerWidth, layerHeight, canvasWidth, canvasHeight);
+					projector.center();
+				}
 			}
 		}
 		else {
+			LayerNode layer = this.openImage.layerGraph.getVisibleLayer();
+			if (layer == null) return false;
+			int layerWidth = layer.imageWidth();
+			int layerHeight = layer.imageHeight();
 			LayerView projector = this.getView();
 			if (projector != null) {
 				projector.beforeRedraw(layerWidth, layerHeight, canvasWidth, canvasHeight);
