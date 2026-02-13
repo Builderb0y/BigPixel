@@ -42,7 +42,7 @@ public class LayerGraph {
 	public Map<String, LayerNode>
 		layersByName = new HashMap<>();
 	public Rectangle
-		dragRectangle = new Rectangle(224.0D, 48.0D, new Color(0.25D, 1.0D, 0.25D, 0.5D));
+		dragRectangle = new Rectangle(LayerNode.PREVIEW_WIDTH, LayerNode.PREVIEW_HEIGHT, new Color(0.25D, 1.0D, 0.25D, 0.5D));
 	public Pane
 		underlay = new Pane(),
 		mainGrid = new Pane(),
@@ -340,8 +340,8 @@ public class LayerGraph {
 		}
 		this.mainGrid.getChildren().remove(layer.getPreviewNode());
 		layer.getDependencies().getCurves().forEach((CurveHelper helper) -> helper.selfSourceIsSelected.set(false));
-		this.selectedLayer.set(null);
-		this.visibleLayer.selectToggle(null);
+		if (this.selectedLayer.get() == layer) this.selectedLayer.set(null);
+		if (this.visibleLayerProperty.getValue() == layer) this.visibleLayer.selectToggle(null);
 		this.buttons.getChildren().set(0, this.layerList.isEmpty() ? this.addFirstLayerButton : this.addLayerButton);
 		this.updateFlow();
 	}
@@ -465,7 +465,7 @@ public class LayerGraph {
 		dialog.getDialogPane().setContent(gridPane);
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 		if (dialog.showAndWait().orElse(null) == ButtonType.OK) {
-			toResize.animation.checkSize(width.getValue(), height.getValue(), true, true);
+			toResize.animation.checkSize(width.getValue(), height.getValue(), true);
 			this.openImage.imageDisplay.center();
 			toResize.requestRedraw();
 		}

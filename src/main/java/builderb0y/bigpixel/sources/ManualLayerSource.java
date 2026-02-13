@@ -7,6 +7,7 @@ import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.HDRImage;
@@ -66,7 +67,7 @@ public class ManualLayerSource extends LayerSource {
 		this.toolWithoutColorPicker.addListener(Util.change((Tool<?> oldTool, Tool<?> newTool) -> {
 			if (oldTool != null) oldTool.enter();
 		}));
-		//this.toollessImage = new HDRImage(this.sources.layer.getOnlyFrame());
+		this.rootConfigPane.setCenter(this.toolSelection);
 	}
 
 	public Button button(Tool<?> tool) {
@@ -108,11 +109,6 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
-	public Node getConfigNode() {
-		return this.toolSelection;
-	}
-
-	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		HDRImage source = this.getToollessImage();
 		HDRImage destination = this.sources.layer.getOnlyFrame();
@@ -120,5 +116,6 @@ public class ManualLayerSource extends LayerSource {
 		System.arraycopy(source.pixels, 0, destination.pixels, 0, destination.pixels.length);
 		Tool<?> tool = this.toolWithoutColorPicker.get();
 		if (tool != null) tool.redraw();
+		this.clampImage(destination);
 	}
 }

@@ -16,8 +16,10 @@ import org.jetbrains.annotations.Nullable;
 import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.HDRImage;
+import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.ManualLayerSource;
 import builderb0y.bigpixel.util.Util;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public class MoveTool extends Tool<MoveTool.Work> {
 
@@ -66,7 +68,9 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	}
 
 	@Override
-	public void mouseDown(int x, int y, MouseButton button) {
+	public void onMouseDown(ProjectionResult position, MouseButton button) {
+		int x = position.x();
+		int y = position.y();
 		Work work = this.work;
 		if (work != null) {
 			Selection selection = new Selection();
@@ -95,7 +99,9 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	}
 
 	@Override
-	public void mouseDragged(int x, int y, MouseButton button) {
+	public void onMouseDragged(ProjectionResult position, MouseButton button) {
+		int x = position.x();
+		int y = position.y();
 		Work work = this.work;
 		switch (work.moving) {
 			case CORNER_X1_Y1  -> { work.x1 = x; work.y1 = y; }
@@ -126,7 +132,7 @@ public class MoveTool extends Tool<MoveTool.Work> {
 	}
 
 	@Override
-	public void redraw() {
+	public void redraw() throws RedrawException {
 		Work work = this.work;
 		if (work == null) return;
 		HDRImage to = this.layer().getOnlyFrame();

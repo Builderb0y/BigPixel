@@ -4,6 +4,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import javafx.application.Platform;
 
+import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.util.Util;
 
 public class RedrawThread extends Thread {
@@ -24,7 +25,13 @@ public class RedrawThread extends Thread {
 				for (LayerNode layerNode : this.graph.layerList) {
 					if (layerNode.redrawRequested) {
 						layerNode.redrawRequested = false;
-						return layerNode;
+						try {
+							layerNode.sources.currentSource().resizeIfNecessary();
+							return layerNode;
+						}
+						catch (RedrawException exception) {
+							layerNode.redrawException.set(exception.getLocalizedMessage());
+						}
 					}
 				}
 				return null;
@@ -32,13 +39,8 @@ public class RedrawThread extends Thread {
 			if (layer != null) {
 				layer.redrawOffThread();
 				Platform.runLater(() -> {
-					for (HDRImage frame : layer.animation.frames) {
-						frame.invalidate();
-					}
+					layer.afterRedraw();
 					this.graph.getDependants(layer).forEach(LayerNode::requestRedraw);
-					if (this.graph.getVisibleLayer().views.currentView().getDependencies().dependsOn(layer)) {
-						this.graph.openImage.imageDisplay.invalidateAll();
-					}
 				});
 			}
 			else {

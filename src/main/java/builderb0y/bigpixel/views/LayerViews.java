@@ -22,7 +22,7 @@ public class LayerViews extends OrganizedSelection<LayerView, LayerViewType, Lay
 	public LayerView createValue(LayerViewType type) {
 		LayerView value = super.createValue(type);
 		value.setPossibleDependencies(this.layer.graph.layerList);
-		Canvas canvas = this.layer.graph.openImage.imageDisplay.display.display;
+		Canvas canvas = this.layer.graph.openImage.imageDisplay.canvasHolder.display;
 		int width  = (int)(canvas.getWidth());
 		int height = (int)(canvas.getHeight());
 		if (width > 0 && height > 0) {

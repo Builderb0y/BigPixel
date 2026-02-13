@@ -102,18 +102,17 @@ public class HDRAnimation {
 		return this.animated.get();
 	}
 
-	public void checkSize(int width, int height, boolean copy, boolean notify) {
+	public void checkSize(int width, int height, boolean copy) {
 		if (this.width() != width || this.height() != height) {
-			this.resize(width, height, copy, notify);
+			this.resize(width, height, copy);
 		}
 	}
 
-	public void resize(int width, int height, boolean copy, boolean notify) {
+	public void resize(int width, int height, boolean copy) {
 		this.width.set(width);
 		this.height.set(height);
 		for (HDRImage image : this.frames.get()) {
 			image.resize(width, height, copy);
-			if (notify) image.invalidate();
 		}
 	}
 }

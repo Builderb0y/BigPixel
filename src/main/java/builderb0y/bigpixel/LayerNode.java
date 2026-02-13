@@ -1,5 +1,8 @@
 package builderb0y.bigpixel;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import javafx.application.Platform;
@@ -7,8 +10,6 @@ import javafx.beans.binding.When;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
-import javafx.geometry.NodeOrientation;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabClosingPolicy;
@@ -19,7 +20,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
-import javafx.scene.text.Font;
 
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.LayerSource;
@@ -28,17 +28,16 @@ import builderb0y.bigpixel.sources.LayerSources;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
-import builderb0y.bigpixel.util.Util;
 import builderb0y.bigpixel.views.LayerView;
 import builderb0y.bigpixel.views.LayerViews;
 
 public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 
 	public static final int
-		GRID_WIDTH = 256,
-		GRID_HEIGHT = 64,
-		PREVIEW_WIDTH = 192,
-		PREVIEW_HEIGHT = 48;
+		GRID_WIDTH = 192,
+		GRID_HEIGHT = 160,
+		PREVIEW_WIDTH = 128,
+		PREVIEW_HEIGHT = 128;
 	public static final PseudoClass
 		SELECTED = PseudoClass.getPseudoClass("selected");
 
@@ -47,7 +46,8 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	public HDRAnimation
 		animation;
 	public Thumbnail
-		thumbnail;
+		smallThumbnail,
+		bigThumbnail;
 	public LayerDragHandler
 		dragHandler = new LayerDragHandler(this);
 	public LayerSources
@@ -59,18 +59,16 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		viewConfigPane   = new BorderPane();
 	public TabPane
 		configPane = new TabPane(
-		new Tab("Source", this.sourceConfigPane),
-		new Tab("View", this.viewConfigPane)
-	);
+			new Tab("Source", this.sourceConfigPane),
+			new Tab("View", this.viewConfigPane)
+		);
 	public RadioButton
 		showing = new RadioButton();
 	public ImageView
-		thumbnailView;
-	public Label
-		displayName = new Label();
-	public HBox
-		innerPreview = new HBox(this.showing, this.displayName);
+		smallThumbnailView,
+		bigThumbnailView;
 	public BorderPane
+		innerPreview = new BorderPane(),
 		outerPreview = new BorderPane(this.innerPreview);
 	public TextField
 		nameEditor = new TextField();
@@ -78,7 +76,7 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		sourceAndNameEditor = new HBox(this.sources.rootButton, this.nameEditor);
 	public boolean
 		redrawRequested = true;
-	public SimpleObjectProperty<Throwable>
+	public SimpleObjectProperty<String>
 		redrawException = new SimpleObjectProperty<>(this, "redrawException");
 
 	public JsonMap save() {
@@ -114,19 +112,18 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		this.graph = graph;
 		super();
 		this.animation = new HDRAnimation(this, width, height);
-		this.thumbnail = new Thumbnail(graph.openImage.animationSource, this.animation, 32);
-		this.thumbnailView = this.thumbnail.createView();
+		this.smallThumbnail = new Thumbnail(this, 32);
+		this.bigThumbnail   = new Thumbnail(this, 80);
+		this.smallThumbnailView = this.smallThumbnail.createView();
+		this.bigThumbnailView   = this.bigThumbnail.createView();
+		this.innerPreview.setCenter(this.bigThumbnailView);
+		this.innerPreview.setTop(this.showing);
 		this.sources.init();
 		this.views.init();
 		this.dragHandler.init();
 		this.configPane.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
-		this.displayName.setText(name);
+		this.showing.setText(name);
 		this.nameEditor.setText(name);
-		this.showing.setFont(new Font(16));
-		this.showing.setGraphic(this.thumbnailView);
-		this.showing.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
-		this.innerPreview.setAlignment(Pos.CENTER_LEFT);
-		this.innerPreview.setSpacing(8.0D);
 		this.innerPreview.getStyleClass().add("layer-preview");
 		this.outerPreview.setMinWidth(PREVIEW_WIDTH);
 		this.outerPreview.setMaxWidth(PREVIEW_WIDTH);
@@ -136,14 +133,12 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		this.showing.setToggleGroup(graph.visibleLayer);
 		this.showing.setUserData(this);
 		this.setGridPos(gridX, gridY, false);
-		this.displayName.styleProperty().bind(
-			this.redrawException.map((Throwable _) -> "-fx-text-fill: #FF3F3F;")
+		this.showing.styleProperty().bind(
+			this.redrawException.map((String _) -> "-fx-text-fill: #FF3F3F;")
 		);
 		Tooltip tooltip = new Tooltip();
-		tooltip.textProperty().bind(
-			this.redrawException.map(Throwable::getLocalizedMessage)
-		);
-		this.displayName.tooltipProperty().bind(
+		tooltip.textProperty().bind(this.redrawException);
+		this.showing.tooltipProperty().bind(
 			new When(tooltip.textProperty().isNotEmpty())
 			.then(tooltip)
 			.otherwise((Tooltip)(null))
@@ -153,7 +148,7 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		});
 		this.nameEditor.setOnAction((ActionEvent _) -> {
 			this.setDisplayName(this.nameEditor.getText());
-			this.nameEditor.setText(this.displayName.getText());
+			this.nameEditor.setText(this.showing.getText());
 		});
 		this.nameEditor.setOnKeyPressed((KeyEvent event) -> {
 			if (event.getCode() == KeyCode.ESCAPE) {
@@ -161,7 +156,7 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 			}
 		});
 		this.sourceConfigPane.setTop(this.sourceAndNameEditor);
-		this.sourceConfigPane.centerProperty().bind(this.sources.selectedValue.map(LayerSource::getConfigNode));
+		this.sourceConfigPane.centerProperty().bind(this.sources.selectedValue.map((LayerSource source) -> source.rootConfigPane));
 		this.viewConfigPane.setTop(this.views.rootButton);
 		this.viewConfigPane.centerProperty().bind(this.views.selectedValue.map(LayerView::getRootConfigPane));
 	}
@@ -213,8 +208,14 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		try {
 			LayerSource source = this.sources.currentSource();
 			int frameCount = this.animation.getFrameCount();
+			Set<String> messages = new HashSet<>(2);
 			if (frameCount == 1) {
-				source.doRedraw(0);
+				try {
+					source.doRedraw(0);
+				}
+				catch (RedrawException exception) {
+					messages.add(exception.getLocalizedMessage());
+				}
 			}
 			else {
 				IntStream.range(0, frameCount).parallel().forEach((int frame) -> {
@@ -222,22 +223,28 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 						source.doRedraw(frame);
 					}
 					catch (RedrawException exception) {
-						throw Util.rethrow(exception);
+						messages.add(exception.getLocalizedMessage());
 					}
 				});
 			}
-			Platform.runLater(() -> this.redrawException.set(null));
-		}
-		catch (RedrawException exception) {
-			Platform.runLater(() -> this.redrawException.set(exception));
+			Platform.runLater(() -> this.redrawException.set(messages.isEmpty() ? null : messages.stream().collect(Collectors.joining("; "))));
 		}
 		catch (Throwable throwable) {
+			throwable.printStackTrace();
 			while (throwable.getCause() != null) {
 				throwable = throwable.getCause();
 			}
-			Throwable throwable_ = throwable;
-			Platform.runLater(() -> this.redrawException.set(throwable_));
+			String message = throwable.getLocalizedMessage();
+			Platform.runLater(() -> this.redrawException.set(message));
 		}
+	}
+
+	public void afterRedraw() {
+		if (this.graph.getVisibleLayer() == this) {
+			this.graph.openImage.imageDisplay.displayRenderer.invalidateAll();
+		}
+		this.bigThumbnail.invalidateAll();
+		this.smallThumbnail.invalidateAll();
 	}
 
 	public LayerDependencies getDependencies() {
@@ -245,7 +252,7 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	}
 
 	public String getDisplayName() {
-		return this.displayName.getText();
+		return this.showing.getText();
 	}
 
 	public void setDisplayName(String displayName) {
@@ -256,7 +263,7 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	}
 
 	public void setDisplayNameDirectly(String displayName) {
-		this.displayName.setText(displayName);
+		this.showing.setText(displayName);
 		this.nameEditor.setText(displayName);
 	}
 

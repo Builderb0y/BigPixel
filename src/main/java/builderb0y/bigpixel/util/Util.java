@@ -150,6 +150,14 @@ public class Util {
 		return x * x;
 	}
 
+	public static float modulus_BP(float a, float b) {
+		return (a %= b) + (a < 0.0F ? b : 0.0F);
+	}
+
+	public static double modulus_BP(double a, double b) {
+		return (a %= b) + (a < 0.0D ? b : 0.0D);
+	}
+
 	public static FloatVector rgba(float red, float green, float blue, float alpha) {
 		float[] array = new float[4];
 		array[HDRImage.  RED_OFFSET] = red;
@@ -157,6 +165,15 @@ public class Util {
 		array[HDRImage. BLUE_OFFSET] = blue;
 		array[HDRImage.ALPHA_OFFSET] = alpha;
 		return FloatVector.fromArray(FloatVector.SPECIES_128, array, 0);
+	}
+
+	public static FloatVector blendAlpha(FloatVector existingColor, FloatVector newColor) {
+		float oldAlpha = existingColor.lane(HDRImage.ALPHA_OFFSET);
+		float newAlpha = newColor.lane(HDRImage.ALPHA_OFFSET);
+		float finalAlpha = 1.0F - (1.0F - oldAlpha) * (1.0F - newAlpha);
+		FloatVector result = existingColor.mul(oldAlpha - oldAlpha * newAlpha /* oldAlpha * (1 - newAlpha) */).add(newColor.mul(newAlpha));
+		if (finalAlpha != 0.0F) result = result.div(finalAlpha);
+		return result.withLane(HDRImage.ALPHA_OFFSET, finalAlpha);
 	}
 
 	public static void invokeAndWait(Runnable task) {

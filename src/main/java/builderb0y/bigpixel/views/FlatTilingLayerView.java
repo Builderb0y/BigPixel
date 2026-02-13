@@ -8,9 +8,10 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.AnimationView.DrawParams;
+import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.util.Util;
 
 public class FlatTilingLayerView extends LayerView2D {
 
@@ -55,23 +56,20 @@ public class FlatTilingLayerView extends LayerView2D {
 	}
 
 	@Override
-	public @Nullable ProjectionResult handleEdge(int projectedX, int projectedY) {
+	public @Nullable ProjectionResult handleEdge(double rawX, double rawY, int projectedX, int projectedY, int frameIndex) {
 		boolean outside = this.darkenExterior.isSelected() && (projectedX < 0 || projectedX >= this.layerWidth || projectedY < 0 || projectedY >= this.layerHeight);
+		rawX = Util.modulus_BP(rawX, this.layerWidth);
+		rawY = Util.modulus_BP(rawY, this.layerHeight);
 		projectedX = Math.floorMod(projectedX, this.layerWidth);
 		projectedY = Math.floorMod(projectedY, this.layerHeight);
 		LayerNode layer = this.views.layer;
-		HDRImage image = layer.getFrame();
+		HDRImage image = layer.getFrame(frameIndex);
 		int base = image.baseIndex(projectedX, projectedY);
 		float r = image.pixels[base | HDRImage.  RED_OFFSET];
 		float g = image.pixels[base | HDRImage.GREEN_OFFSET];
 		float b = image.pixels[base | HDRImage. BLUE_OFFSET];
 		float a = image.pixels[base | HDRImage.ALPHA_OFFSET];
-		if (outside) {
-			r *= 0.75F;
-			g *= 0.75F;
-			b *= 0.75F;
-		}
-		return new ProjectionResult(layer, projectedX, projectedY, r, g, b, a);
+		return new ProjectionResult(layer, rawX, rawY, projectedX, projectedY, r, g, b, a, outside ? 0.75F : 1.0F);
 	}
 
 	@Override

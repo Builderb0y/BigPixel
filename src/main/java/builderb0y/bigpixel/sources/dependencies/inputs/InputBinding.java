@@ -78,7 +78,7 @@ public class InputBinding {
 		this.thumbnail.visibleProperty().bind(this.selection.valueProperty().map(VaryingSampler.class::isInstance));
 		this.thumbnail.imageProperty().bind(this.selection.valueProperty().flatMap((SamplerProvider supplier) -> switch (supplier) {
 			case UniformSamplerProvider uniform -> null;
-			case VaryingSamplerProvider varying -> varying.getBackingLayer().thumbnail.frame;
+			case VaryingSamplerProvider varying -> varying.getBackingLayer().smallThumbnail.currentFrame;
 		}));
 		ChangeListener<Object> listener = Util.change(() -> {
 			if (!this.changing) owner.redrawLater();
@@ -111,23 +111,25 @@ public class InputBinding {
 		inputs.addAll(layers);
 		inputs.sort(Comparator.comparing(LayerNode::getDisplayName, String.CASE_INSENSITIVE_ORDER));
 		inputs.addFirst(this.colorBox);
-		SamplerProvider selected = this.selection.getValue();
-		boolean oldChanging = this.changing;
-		this.changing = true;
-		try {
-			this.selection.getItems().setAll(inputs);
-			this.selection.setValue(
-				selected instanceof VaryingSamplerProvider varying
-				&& layers.contains(varying.getBackingLayer())
-				? selected
-				: this.colorBox
-			);
-		}
-		finally {
-			this.changing = oldChanging;
-		}
-		if (this.selection.getValue() != selected) {
-			this.owner.redrawLater();
+		if (!this.selection.getItems().equals(inputs)) {
+			SamplerProvider selected = this.selection.getValue();
+			boolean oldChanging = this.changing;
+			this.changing = true;
+			try {
+				this.selection.getItems().setAll(inputs);
+				this.selection.setValue(
+					selected instanceof VaryingSamplerProvider varying
+					&& layers.contains(varying.getBackingLayer())
+					? selected
+					: this.colorBox
+				);
+			}
+			finally {
+				this.changing = oldChanging;
+			}
+			if (this.selection.getValue() != selected) {
+				this.owner.redrawLater();
+			}
 		}
 	}
 

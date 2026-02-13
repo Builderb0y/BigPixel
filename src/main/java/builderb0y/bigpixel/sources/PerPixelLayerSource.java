@@ -71,15 +71,18 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 							destination.setColor(x, y, main.getColor(x, y));
 						}
 						else if (oneLanes.or(zeroLanes).allTrue()) {
-							destination.setColor(x, y, main.getColor(x, y).blend(destination.getColor(x, y), oneLanes));
+							FloatVector mainColor = main.getColor(x, y);
+							destination.setColor(x, y, mainColor.blend(applicator.apply(x, y, mainColor), oneLanes));
 						}
 						else {
-							destination.setColor(x, y, carefulMix(main.getColor(x, y), destination.getColor(x, y), maskColor, zeroLanes, oneLanes));
+							FloatVector mainColor = main.getColor(x, y);
+							destination.setColor(x, y, carefulMix(mainColor, applicator.apply(x, y, mainColor), maskColor, zeroLanes, oneLanes));
 						}
 					}
 				}
 			}
 		}
+		this.clampImage(destination);
 	}
 
 	public abstract PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException;

@@ -19,8 +19,10 @@ import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.scripting.types.UtilityOperations;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
+import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.ManualLayerSource;
 import builderb0y.bigpixel.util.Util;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public class BucketTool extends Tool<BucketTool.Work> {
 
@@ -29,7 +31,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 
 	public CheckBox fillAll = new CheckBox("Fill all");
 	public CheckBox blend   = new CheckBox("Blend");
-	public HBox settingsBox = new HBox();
+	public HBox settingsBox = new HBox(this.fillAll, this.blend);
 
 	public BucketTool(ManualLayerSource source) {
 		super(TYPE, source);
@@ -39,26 +41,25 @@ public class BucketTool extends Tool<BucketTool.Work> {
 				this.spreadAutoAndRedraw(fillAll);
 			}
 		}));
-		this.settingsBox.getChildren().addAll(this.fillAll, this.blend);
 	}
 
 	@Override
-	public void mouseDown(int x, int y, MouseButton button) {
+	public void onMouseDown(ProjectionResult position, MouseButton button) {
 		if (this.work == null) {
 			this.source.beginUsingTool();
 			this.work = new Work();
 		}
-		Point clickedPoint = new Point(x, y);
+		Point clickedPoint = new Point(position.x(), position.y());
 		if (button == MouseButton.PRIMARY) {
-			this.work.start = new Start(clickedPoint, this.source.getToollessImage().getColor(x, y), null);
+			this.work.start = new Start(clickedPoint, this.source.getToollessImage().getColor(position.x(), position.y()), null);
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
 	}
 
 	@Override
-	public void mouseDragged(int x, int y, MouseButton button) {
+	public void onMouseDragged(ProjectionResult position, MouseButton button) {
 		if (this.work != null && this.work.start != null) {
-			this.work.start = this.work.start.withBorder(this.source.getToollessImage().getColor(x, y));
+			this.work.start = this.work.start.withBorder(this.source.getToollessImage().getColor(position.x(), position.y()));
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
 	}
@@ -130,7 +131,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 	}
 
 	@Override
-	public void redraw() {
+	public void redraw() throws RedrawException {
 		Work work = this.work;
 		if (work == null || work.endingPoints.isEmpty()) return;
 		LayerNode layer = this.layer();
@@ -170,7 +171,14 @@ public class BucketTool extends Tool<BucketTool.Work> {
 		}
 	}
 
-	public static record Point(int x, int y) {}
+	public static record Point(int x, int y) {
+
+		@Override
+		public int hashCode() {
+			final int bigPrime = 1183822147;
+			return ((bigPrime + this.x) * bigPrime + this.y) * bigPrime;
+		}
+	}
 
 	public static record Start(Point origin, FloatVector color, @Nullable FloatVector borderColor) {
 

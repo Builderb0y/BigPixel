@@ -11,7 +11,7 @@ import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.AnimationView.DrawParams;
+import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.ConfigParameter;
 import builderb0y.bigpixel.F3Menu;
 import builderb0y.bigpixel.LayerNode;
@@ -71,17 +71,46 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerViewTyp
 		this.views.layer.graph.openImage.imageDisplay.redrawLater();
 	}
 
-	public abstract @Nullable ProjectionResult project(double x, double y);
+	public abstract @Nullable ProjectionResult project(double x, double y, int frameIndex);
 
-	public static record ProjectionResult(SamplerProvider input, int x, int y, float r, float g, float b, float a) {
+	public static record ProjectionResult(
+		SamplerProvider input,
+		double rawX,
+		double rawY,
+		int x,
+		int y,
+		float rawR,
+		float rawG,
+		float rawB,
+		float rawA,
+		float r,
+		float g,
+		float b,
+		float a
+	) {
 
 		public static final DecimalFormat COLOR_FORMAT = new DecimalFormat();
 		static {
 			COLOR_FORMAT.setMaximumFractionDigits(3);
 		}
 
+		public ProjectionResult(
+			SamplerProvider input,
+			double rawX,
+			double rawY,
+			int x,
+			int y,
+			float r,
+			float g,
+			float b,
+			float a,
+			float shade
+		) {
+			this(input, rawX, rawY, x, y, r, g, b, a, r * shade, g * shade, b * shade, a);
+		}
+
 		public ProjectionResult(SamplerProvider input, int x, int y) {
-			this(input, x, y, 0.0F, 0.0F, 0.0F, 0.0F);
+			this(input, x, y, x, y, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
 		}
 
 		@Override

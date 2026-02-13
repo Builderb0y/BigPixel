@@ -12,7 +12,7 @@ import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.AnimationView.DrawParams;
+import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.F3Menu;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
@@ -124,7 +124,7 @@ public class CubeLayerView extends LayerView {
 	}
 
 	@Override
-	public @Nullable ProjectionResult project(double x, double y) {
+	public @Nullable ProjectionResult project(double x, double y, int frameIndex) {
 		double uvX = x / this.canvasWidth  * 2.0D - 1.0D;
 		double uvY = y / this.canvasHeight * 2.0D - 1.0D;
 		if (this.canvasWidth > this.canvasHeight) {
@@ -223,31 +223,33 @@ public class CubeLayerView extends LayerView {
 			return switch (hitBinding.getCurrent()) {
 				case UniformSamplerProvider uniform -> {
 					FloatVector color = uniform.getColor();
+					float
+						r = color.lane(HDRImage.  RED_OFFSET),
+						g = color.lane(HDRImage.GREEN_OFFSET),
+						b = color.lane(HDRImage. BLUE_OFFSET),
+						a = color.lane(HDRImage.ALPHA_OFFSET);
 					yield new ProjectionResult(
 						uniform,
+						0.0D,
+						0.0D,
 						0,
 						0,
-						color.lane(HDRImage.RED_OFFSET),
-						color.lane(HDRImage.GREEN_OFFSET),
-						color.lane(HDRImage.BLUE_OFFSET),
-						color.lane(HDRImage.ALPHA_OFFSET)
+						r, g, b, a,
+						this.shade.isSelected() ? shade : 1.0F
 					);
 				}
 				case VaryingSamplerProvider varying -> {
-					HDRImage image = varying.getBackingLayer().getFrame();
-					int projectedX = Math.clamp((int)(hitBinding.getU(resultX, resultY) * this.layerWidth), 0, this.layerWidth - 1);
-					int projectedY = Math.clamp((int)(hitBinding.getV(resultX, resultY) * this.layerHeight), 0, this.layerHeight - 1);
+					HDRImage image = varying.getBackingLayer().getFrame(frameIndex);
+					double rawX = hitBinding.getU(resultX, resultY) * this.layerWidth;
+					double rawY = hitBinding.getV(resultX, resultY) * this.layerHeight;
+					int projectedX = Math.clamp((int)(rawX), 0, this.layerWidth - 1);
+					int projectedY = Math.clamp((int)(rawY), 0, this.layerHeight - 1);
 					int baseIndex = image.baseIndex(projectedX, projectedY);
 					float r = image.pixels[baseIndex | HDRImage.  RED_OFFSET];
 					float g = image.pixels[baseIndex | HDRImage.GREEN_OFFSET];
 					float b = image.pixels[baseIndex | HDRImage. BLUE_OFFSET];
 					float a = image.pixels[baseIndex | HDRImage.ALPHA_OFFSET];
-					if (this.shade.isSelected()) {
-						r *= shade;
-						g *= shade;
-						b *= shade;
-					}
-					yield new ProjectionResult(varying, projectedX, projectedY, r, g, b, a);
+					yield new ProjectionResult(varying, rawX, rawY, projectedX, projectedY, r, g, b, a, this.shade.isSelected() ? shade : 1.0F);
 				}
 			};
 		}
@@ -262,19 +264,19 @@ public class CubeLayerView extends LayerView {
 		double nextFov = zoomIn ? Math.min(this.fov.get() + 0.0625D, 1.0D) : Math.max(this.fov.get() - 0.0625D, 0.0D);
 		if (this.fov.get() != nextFov) {
 			this.fov.set(nextFov);
-			this.views.layer.graph.openImage.imageDisplay.redrawLater();
+			//this.views.layer.graph.openImage.imageDisplay.redrawLater();
 		}
 	}
 
 	@Override
 	public void drag(double deltaX, double deltaY) {
 		ZoomableImage display = this.views.layer.graph.openImage.imageDisplay;
-		Canvas canvas = display.display.display;
+		Canvas canvas = display.canvasHolder.display;
 		this.setRotation(
 			this.yaw.get() - deltaX * Math.PI / canvas.getWidth(),
 			this.pitch.get() - deltaY * Math.PI / canvas.getHeight()
 		);
-		display.redrawLater();
+		//display.redrawLater();
 	}
 
 	@Override

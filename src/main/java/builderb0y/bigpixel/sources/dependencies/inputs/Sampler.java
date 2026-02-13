@@ -36,6 +36,7 @@ public sealed interface Sampler {
 		public abstract FloatVector getColor(int x, int y);
 
 		public static VaryingSampler of(LayerNode layer, HDRImage frame) {
+			HDRImage copy = frame.asyncCopy();
 			return new VaryingSampler() {
 
 				@Override
@@ -45,12 +46,13 @@ public sealed interface Sampler {
 
 				@Override
 				public FloatVector getColor(int x, int y) {
-					return frame.getColor(x, y);
+					return copy.getColor(x, y);
 				}
 			};
 		}
 
 		public static VaryingSampler inverted(LayerNode layer, HDRImage frame) {
+			HDRImage copy = frame.asyncCopy();
 			return new VaryingSampler() {
 
 				@Override
@@ -60,7 +62,7 @@ public sealed interface Sampler {
 
 				@Override
 				public FloatVector getColor(int x, int y) {
-					return frame.getColor(x, frame.height + ~y);
+					return copy.getColor(x, frame.height + ~y);
 				}
 			};
 		}

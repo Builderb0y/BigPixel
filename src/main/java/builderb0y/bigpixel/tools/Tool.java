@@ -9,7 +9,12 @@ import javafx.scene.input.MouseButton;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.ManualLayerSource;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public abstract class Tool<W> extends SourcelessTool<W> {
 
@@ -23,28 +28,33 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 		this.updateLabelText();
 	}
 
-	public abstract void mouseDown(int x, int y, MouseButton button);
+	public abstract void onMouseDown(ProjectionResult position, MouseButton button);
 
-	public abstract void mouseDragged(int x, int y, MouseButton button);
+	public abstract void onMouseDragged(ProjectionResult position, MouseButton button);
 
 	@Override
-	public void mouseDown(int x, int y, LayerNode layer, MouseButton button) {
-		if (this.canDraw(layer)) {
-			this.mouseDown(x, y, button);
+	public void mouseDown(ProjectionResult position, MouseButton button) {
+		if (this.canDraw(position.input())) {
+			this.onMouseDown(position, button);
 		}
 	}
 
 	@Override
-	public void mouseDragged(int x, int y, LayerNode layer, MouseButton button) {
-		if (this.canDraw(layer)) {
-			this.mouseDragged(x, y, button);
+	public void mouseDragged(ProjectionResult position, MouseButton button) {
+		if (this.canDraw(position.input())) {
+			this.onMouseDragged(position, button);
 		}
 	}
 
-	public boolean canDraw(LayerNode clicked) {
-		//very lenient check.
-		LayerNode target = this.layer();
-		return clicked.imageWidth() == target.imageWidth() && clicked.imageHeight() == target.imageHeight();
+	public boolean canDraw(SamplerProvider samplerProvider) {
+		return switch (samplerProvider) {
+			case UniformSamplerProvider uniform -> false;
+			case VaryingSamplerProvider varying -> {
+				//very lenient check.
+				LayerNode clicked = varying.getBackingLayer(), target = this.layer();
+				yield clicked.imageWidth() == target.imageWidth() && clicked.imageHeight() == target.imageHeight();
+			}
+		};
 	}
 
 	public LayerNode layer() {
@@ -71,7 +81,7 @@ public abstract class Tool<W> extends SourcelessTool<W> {
 		this.source.cancelToolAction();
 	}
 
-	public abstract void redraw();
+	public abstract void redraw() throws RedrawException;
 
 	public void requestRedraw() {
 		this.layer().requestRedraw();

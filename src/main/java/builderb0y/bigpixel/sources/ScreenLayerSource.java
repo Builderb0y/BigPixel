@@ -16,7 +16,7 @@ public class ScreenLayerSource extends MultiInputLayerSource {
 
 	public ScreenLayerSource(LayerSources sources) {
 		super(LayerSourceType.SCREEN, sources);
-		this.dependencies.getBottomPane().getChildren().add(this.alphaWeighting);
+		this.commonSourceSettings.getChildren().add(this.alphaWeighting);
 	}
 
 	@Override

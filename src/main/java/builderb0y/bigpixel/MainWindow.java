@@ -769,9 +769,9 @@ public class MainWindow {
 		Tab tab = new Tab(name, openImage.getMainNode());
 		tab.setUserData(openImage);
 		ImageView thumbnail = new ImageView();
-		thumbnail.imageProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.imageProperty()));
-		thumbnail.fitWidthProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitWidthProperty()));
-		thumbnail.fitHeightProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.thumbnailView.fitHeightProperty()));
+		thumbnail.imageProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.smallThumbnailView.imageProperty()));
+		thumbnail.fitWidthProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.smallThumbnailView.fitWidthProperty()));
+		thumbnail.fitHeightProperty().bind(openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.smallThumbnailView.fitHeightProperty()));
 		thumbnail.setPreserveRatio(true);
 		tab.setGraphic(thumbnail);
 		tab.textProperty().bind(

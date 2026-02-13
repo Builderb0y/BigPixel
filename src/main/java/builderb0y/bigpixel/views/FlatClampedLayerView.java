@@ -6,7 +6,7 @@ import javafx.scene.Node;
 import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.AnimationView.DrawParams;
+import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 
@@ -47,22 +47,29 @@ public class FlatClampedLayerView extends LayerView2D {
 	}
 
 	@Override
-	public @Nullable ProjectionResult handleEdge(int projectedX, int projectedY) {
+	public @Nullable ProjectionResult handleEdge(double rawX, double rawY, int projectedX, int projectedY, int frameIndex) {
 		if (projectedX >= 0 && projectedX < this.layerWidth && projectedY >= 0 && projectedY < this.layerHeight) {
 			LayerNode layer = this.views.layer;
-			HDRImage image = layer.getFrame();
+			HDRImage image = layer.getFrame(frameIndex);
 			int base = image.baseIndex(projectedX, projectedY);
+			float
+				r = image.pixels[base | HDRImage.  RED_OFFSET],
+				g = image.pixels[base | HDRImage.GREEN_OFFSET],
+				b = image.pixels[base | HDRImage. BLUE_OFFSET],
+				a = image.pixels[base | HDRImage.ALPHA_OFFSET];
 			return new ProjectionResult(
 				layer,
+				rawX,
+				rawY,
 				projectedX,
 				projectedY,
-				image.pixels[base | HDRImage.  RED_OFFSET],
-				image.pixels[base | HDRImage.GREEN_OFFSET],
-				image.pixels[base | HDRImage. BLUE_OFFSET],
-				image.pixels[base | HDRImage.ALPHA_OFFSET]
+				r, g, b, a,
+				r, g, b, a
 			);
 		}
-		return null;
+		else {
+			return null;
+		}
 	}
 
 	@Override

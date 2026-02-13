@@ -8,8 +8,10 @@ import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.ManualLayerSource;
 import builderb0y.bigpixel.util.Util;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public class RectangleTool extends Tool<RectangleTool.Work> {
 
@@ -30,7 +32,9 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 	}
 
 	@Override
-	public void mouseDown(int x, int y, MouseButton button) {
+	public void onMouseDown(ProjectionResult position, MouseButton button) {
+		int x = position.x();
+		int y = position.y();
 		Work work = this.work;
 		if (work != null) {
 			BoundaryPosition moving = BoundaryPosition.get(
@@ -56,7 +60,9 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 	}
 
 	@Override
-	public void mouseDragged(int x, int y, MouseButton button) {
+	public void onMouseDragged(ProjectionResult position, MouseButton button) {
+		int x = position.x();
+		int y = position.y();
 		Work work = this.work;
 		switch (work.moving) {
 			case CORNER_X1_Y1 -> { work.x1 = x; work.y1 = y; }
@@ -86,7 +92,7 @@ public class RectangleTool extends Tool<RectangleTool.Work> {
 	}
 
 	@Override
-	public void redraw() {
+	public void redraw() throws RedrawException {
 		Work work = this.work;
 		if (work == null) return;
 		LayerNode layer = this.layer();

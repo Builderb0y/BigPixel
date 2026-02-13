@@ -82,6 +82,7 @@ public class WFCLayerSource extends LayerSource {
 		this.symmetrySettings.add(none, 1, 4);
 
 		this.mainPane.getChildren().addAll(this.dependencies.getConfigPane(), this.mainSettings, this.symmetrySettings);
+		this.rootConfigPane.setCenter(this.mainPane);
 	}
 
 	public void setAllSymmetries(boolean selected) {
@@ -98,11 +99,6 @@ public class WFCLayerSource extends LayerSource {
 	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		new WorkerThread(this, frame).run();
-	}
-
-	@Override
-	public Node getConfigNode() {
-		return this.mainPane;
 	}
 
 	@Override
@@ -124,6 +120,8 @@ public class WFCLayerSource extends LayerSource {
 			int imageWidth,
 			int imageHeight,
 			int kernel,
+			boolean clampRGB,
+			boolean clampA,
 			Symmetry symmetry
 		) {
 			this.kernel = kernel;
@@ -132,7 +130,7 @@ public class WFCLayerSource extends LayerSource {
 				for (int x = 0; x < kernel; x++) {
 					int imageX = Math.floorMod(symmetry.getX(x, y) + baseX, imageWidth);
 					int imageY = Math.floorMod(symmetry.getY(x, y) + baseY, imageHeight);
-					input.getColor(imageX, imageY).intoArray(this.pixels, (y * kernel + x) << 2);
+					LayerSource.clamp(input.getColor(imageX, imageY), clampRGB, clampA).intoArray(this.pixels, (y * kernel + x) << 2);
 				}
 			}
 			this.hashCode = Arrays.hashCode(this.pixels);
@@ -148,7 +146,7 @@ public class WFCLayerSource extends LayerSource {
 			this.seen = 1;
 		}
 
-		public static Tile[] generate(Sampler source, int kernel, int symmetries) {
+		public static Tile[] generate(Sampler source, int kernel, int symmetries, boolean clampRGB, boolean clampA) {
 			return switch (source) {
 				case UniformSampler uniform -> {
 					yield new Tile[] { new Tile(uniform.getColor(), kernel) };
@@ -165,7 +163,7 @@ public class WFCLayerSource extends LayerSource {
 							for (Symmetry symmetry : Symmetry.VALUES) {
 								if ((symmetries & symmetry.flag()) != 0) {
 									futures.add(CompletableFuture.runAsync(() -> {
-										tiles.merge(new Tile(varying, baseX_, baseY_, width, height, kernel, symmetry), 1, Integer::sum);
+										tiles.merge(new Tile(varying, baseX_, baseY_, width, height, kernel, clampRGB, clampA, symmetry), 1, Integer::sum);
 									}));
 								}
 							}
@@ -302,6 +300,7 @@ public class WFCLayerSource extends LayerSource {
 
 		public final WFCLayerSource layerSource;
 		public final int kernel, symmetries, frame;
+		public final boolean clampRGB, clampA;
 		public Sampler source;
 		public final HDRImage intermediate, writing;
 		public boolean swapCalled;
@@ -314,6 +313,8 @@ public class WFCLayerSource extends LayerSource {
 			this.layerSource = layerSource;
 			this.kernel = layerSource.kernel.getValue();
 			this.frame = frame;
+			this.clampRGB = layerSource.clampRGB.isSelected();
+			this.clampA = layerSource.clampAlpha.isSelected();
 			this.source = layerSource.dependencies.main.getCurrent().createSamplerForFrame(frame);
 			int width = layerSource.sources.layer.imageWidth();
 			int height = layerSource.sources.layer.imageHeight();
@@ -343,9 +344,8 @@ public class WFCLayerSource extends LayerSource {
 			presentation.pixels = intermediatePixels;
 			this.swapCalled = true;
 			Platform.runLater(() -> {
-				presentation.invalidate();
 				if (layer.graph.getVisibleLayer() == layer) {
-					layer.graph.openImage.imageDisplay.invalidateAll();
+					layer.afterRedraw();
 				}
 			});
 		}
@@ -370,7 +370,7 @@ public class WFCLayerSource extends LayerSource {
 
 		public void doRun() {
 			if (this.symmetries == 0) return;
-			Tile[] tiles = Tile.generate(this.source, this.kernel, this.symmetries);
+			Tile[] tiles = Tile.generate(this.source, this.kernel, this.symmetries, this.clampRGB, this.clampA);
 			if (tiles == null) return;
 			this.tileLists = new TileList[this.writing.width * this.writing.height];
 			int index = 0;

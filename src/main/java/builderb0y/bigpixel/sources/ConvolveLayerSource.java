@@ -33,14 +33,15 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	public ChoiceBox<BlurWeight> weight = this.parameters.addEnumChoiceBox("weight_type", BlurWeight.class, BlurWeight.CUSTOM);
 	public Spinner<Integer> radius = this.parameters.addIntSpinner("radius", 1, 3, 1, 1, 64.0D);
 	public GridPane customWeights = new GridPane();
-	public SplitPane configPane = new SplitPane(this.dependencies.getConfigPane(), this.borderPane);
+	public CheckBox normalizeCustomWeights = this.parameters.addCheckbox("normalize", "Normalize", true);
+	public SplitPane splitPane = new SplitPane();
 	public HDRImage separableScratch;
 
 	@Override
 	public JsonMap save() {
 		JsonMap map = super.save();
 		if (this.weight.getValue() == BlurWeight.CUSTOM) {
-			float[] weights = BlurWeight.CUSTOM.getWeights(this);
+			float[] weights = BlurWeight.CUSTOM.getWeights(this, false);
 			JsonArray jsonWeights = new JsonArray(weights.length);
 			for (float weight : weights) jsonWeights.add(weight);
 			map.put("custom_weights", jsonWeights);
@@ -73,9 +74,14 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	public ConvolveLayerSource(LayerSources sources) {
 		super(LayerSourceType.CONVOLVE, sources);
 		this.layout();
-		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius, this.linear));
+		this.normalizeCustomWeights.visibleProperty().bind(this.weight.valueProperty().isEqualTo(BlurWeight.CUSTOM));
+		this.borderPane.setTop(new HBox(this.shape, this.weight, this.radius, this.normalizeCustomWeights));
 		this.borderPane.setCenter(this.customWeights);
-		this.configPane.setOrientation(Orientation.VERTICAL);
+		this.splitPane.setOrientation(Orientation.VERTICAL);
+		this.commonSourceSettings.getChildren().add(this.linear);
+		this.rootConfigPane.setCenter(null);
+		this.splitPane.getItems().setAll(this.dependencies.getConfigPane(), this.borderPane);
+		this.rootConfigPane.setCenter(this.splitPane);
 		((IntegerSpinnerValueFactory)(this.radius.getValueFactory())).maxProperty().bind(
 			new When(this.weight.valueProperty().isEqualTo(BlurWeight.CUSTOM))
 			.then(3)
@@ -132,7 +138,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 			case HORIZONTAL, SEPARABLE, CONCENTRIC -> {
 				sizeX = diameter;
 				weights = switch (this.weight.getValue()) {
-					case BOX, GAUSSIAN -> this.weight.getValue().getWeights(this);
+					case BOX, GAUSSIAN -> this.weight.getValue().getWeights(this, this.normalizeCustomWeights.isSelected());
 					case CUSTOM -> {
 						editable = true;
 						float[] w = new float[diameter];
@@ -144,7 +150,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 			case VERTICAL -> {
 				sizeY = diameter;
 				weights = switch (this.weight.getValue()) {
-					case BOX, GAUSSIAN -> this.weight.getValue().getWeights(this);
+					case BOX, GAUSSIAN -> this.weight.getValue().getWeights(this, this.normalizeCustomWeights.isSelected());
 					case CUSTOM -> {
 						editable = true;
 						float[] w = new float[diameter];
@@ -188,7 +194,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 			},
 			value
 		));
-		textField.setPrefWidth(40.0D);
+		textField.setPrefWidth(48.0D);
 		textField.setEditable(editable);
 		textField.setOnScroll((ScrollEvent event) -> {
 			if (textField.isEditable()) {
@@ -214,7 +220,9 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		if (this.separableScratch == null) {
 			this.separableScratch = new HDRImage(width, height);
 		}
-		this.separableScratch.checkSize(width, height, false);
+		else {
+			this.separableScratch.checkSize(width, height, false);
+		}
 		return this.separableScratch;
 	}
 
@@ -230,7 +238,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
 		int radius = this.radius.getValue();
 		boolean linear = this.linear.isSelected();
-		float[] weights = this.weight.getValue().getWeights(this);
+		float[] weights = this.weight.getValue().getWeights(this, this.normalizeCustomWeights.isSelected());
 		switch (this.shape.getValue()) {
 			case HORIZONTAL -> {
 				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
@@ -240,7 +248,9 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
 							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-								sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offset, destination.width), y), linear).mul(weights[index]));
+								if (weights[index] != 0.0F) {
+									sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offset, destination.width), y), linear).mul(weights[index]));
+								}
 							}
 							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
@@ -258,7 +268,9 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
 							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-								sum = sum.add(maybeSquare(main.getColor(x, Math.floorMod(y + offset, destination.height)), linear).mul(weights[index]));
+								if (weights[index] != 0.0F) {
+									sum = sum.add(maybeSquare(main.getColor(x, Math.floorMod(y + offset, destination.height)), linear).mul(weights[index]));
+								}
 							}
 							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
@@ -274,7 +286,9 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 					for (int x = 0; x < destination.width; x++) {
 						FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 						for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-							sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offset, destination.width), y), linear).mul(weights[index]));
+							if (weights[index] != 0.0F) {
+								sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offset, destination.width), y), linear).mul(weights[index]));
+							}
 						}
 						scratch.setColor(x, y, sum);
 					}
@@ -286,7 +300,9 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
 							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-								sum = sum.add(scratch.getColor(x, Math.floorMod(y + offset, scratch.height)).mul(weights[index]));
+								if (weights[index] != 0.0F) {
+									sum = sum.add(scratch.getColor(x, Math.floorMod(y + offset, scratch.height)).mul(weights[index]));
+								}
 							}
 							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
@@ -311,8 +327,10 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 						if (maskColor.compare(VectorOperators.GE, 0.0F).anyTrue()) {
 							FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 							for (int offset = -radius, index = 0; offset <= radius; offset++, index++) {
-								packedPos = concentricPos(destination.width, destination.height, ring, Math.floorMod(start + offset, pixelsInRing));
-								sum = sum.add(maybeSquare(main.getColor(unpackX(packedPos), unpackY(packedPos)), linear).mul(weights[index]));
+								if (weights[index] != 0.0F) {
+									packedPos = concentricPos(destination.width, destination.height, ring, Math.floorMod(start + offset, pixelsInRing));
+									sum = sum.add(maybeSquare(main.getColor(unpackX(packedPos), unpackY(packedPos)), linear).mul(weights[index]));
+								}
 							}
 							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
 						}
@@ -332,7 +350,10 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 							int index = 0;
 							for (int offsetY = -radius; offsetY <= radius; offsetY++) {
 								for (int offsetX = -radius; offsetX <= radius; offsetX++) {
-									sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offsetX, destination.width), Math.floorMod(y + offsetY, destination.height)), linear).mul(weights[index++]));
+									if (weights[index] != 0.0F) {
+										sum = sum.add(maybeSquare(main.getColor(Math.floorMod(x + offsetX, destination.width), Math.floorMod(y + offsetY, destination.height)), linear).mul(weights[index]));
+									}
+									index++;
 								}
 							}
 							destination.setColor(x, y, carefulMix(mainColor, maybeSqrt(sum, linear), maskColor));
@@ -344,6 +365,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 				});
 			}
 		}
+		this.clampImage(destination);
 	}
 
 	public static int pixelsInRing(int width, int height, int ring) {
@@ -369,11 +391,6 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 
 	public static int unpackY(int packed) {
 		return packed >> 16;
-	}
-
-	@Override
-	public Node getConfigNode() {
-		return this.configPane;
 	}
 
 	public static enum ConvolveShape {
@@ -402,17 +419,17 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		BOX {
 
 			@Override
-			public float[] getWeights(ConvolveLayerSource source) {
+			public float[] getWeights(ConvolveLayerSource source, boolean normalize) {
 				int diameter = source.radius.getValue() * 2 + 1;
 				float[] result = new float[diameter];
-				Arrays.fill(result, 1.0F / diameter);
+				Arrays.fill(result, normalize ? 1.0F / diameter : 1.0F);
 				return result;
 			}
 		},
 		GAUSSIAN {
 
 			@Override
-			public float[] getWeights(ConvolveLayerSource source) {
+			public float[] getWeights(ConvolveLayerSource source, boolean normalize) {
 				int diameter = source.radius.getValue() * 2 + 1;
 				float[] result = new float[diameter];
 				result[0] = 1.0F;
@@ -432,7 +449,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		CUSTOM {
 
 			@Override
-			public float[] getWeights(ConvolveLayerSource source) {
+			public float[] getWeights(ConvolveLayerSource source, boolean normalize) {
 				ObservableList<Node> children = source.customWeights.getChildren();
 				int length = children.size();
 				float[] weights = new float[length];
@@ -440,8 +457,10 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 				for (int index = 0; index < length; index++) {
 					weightSum += (weights[index] = ((Float)(((TextField)(children.get(index))).getTextFormatter().getValue())).floatValue());
 				}
-				for (int index = 0; index < length; index++) {
-					weights[index] /= weightSum;
+				if (normalize) {
+					for (int index = 0; index < length; index++) {
+						weights[index] /= weightSum;
+					}
 				}
 				return weights;
 			}
@@ -461,6 +480,6 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 			return this.titleCaseName;
 		}
 
-		public abstract float[] getWeights(ConvolveLayerSource source);
+		public abstract float[] getWeights(ConvolveLayerSource source, boolean normalize);
 	}
 }

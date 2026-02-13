@@ -4,26 +4,83 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import javafx.scene.Node;
+import javafx.beans.value.ChangeListener;
+import javafx.scene.control.CheckBox;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorOperators;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.ConfigParameter;
+import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.LayerSource.LayerSourceType;
+import builderb0y.bigpixel.util.Util;
 
 public abstract class LayerSource implements OrganizedSelection.Value<LayerSourceType> {
 
 	public final LayerSourceType type;
 	public final LayerSources sources;
 	public final SourceParameters parameters;
+	public final BorderPane rootConfigPane;
+	public final CheckBox clampRGB, clampAlpha;
+	public final HBox commonSourceSettings;
 
 	public LayerSource(LayerSourceType type, LayerSources sources) {
 		this.type = type;
 		this.sources = sources;
 		this.parameters = new SourceParameters(this);
+		this.rootConfigPane = new BorderPane();
+		this.clampRGB = this.parameters.addCheckbox("clampRGB", "Clamp RGB", true);
+		this.clampAlpha = this.parameters.addCheckbox("clampA", "Clamp Alpha", true);
+		this.commonSourceSettings = new HBox(this.clampRGB, this.clampAlpha);
+		this.rootConfigPane.setBottom(this.commonSourceSettings);
+		ChangeListener<Object> listener = Util.change(this::redrawLater);
+		this.clampRGB.selectedProperty().addListener(listener);
+		this.clampAlpha.selectedProperty().addListener(listener);
+	}
+
+	public static FloatVector clamp(FloatVector color, boolean clampRGB, boolean clampAlpha) {
+		if (clampRGB) {
+			if (clampAlpha) {
+				color = color.max(0.0F).min(1.0F);
+				return color.blend(0.0F, color.test(VectorOperators.IS_NAN));
+			}
+			else {
+				color = color.lanewise(VectorOperators.MAX, 0.0F, Util.RGB_MASK).lanewise(VectorOperators.MIN, 1.0F, Util.RGB_MASK);
+				return color.blend(0.0F, color.test(VectorOperators.IS_NAN).and(Util.RGB_MASK));
+			}
+		}
+		else {
+			if (clampAlpha) {
+				float alpha = color.lane(HDRImage.ALPHA_OFFSET);
+				if (!(alpha >= 0.0F)) alpha = 0.0F;
+				if (!(alpha <= 1.0F)) alpha = 1.0F;
+				return color.withLane(HDRImage.ALPHA_OFFSET, alpha);
+			}
+			else {
+				return color;
+			}
+		}
+	}
+
+	public FloatVector clampColor(FloatVector color) {
+		return clamp(color, this.clampRGB.isSelected(), this.clampAlpha.isSelected());
+	}
+
+	public void clampImage(HDRImage destination) {
+		boolean clampRGB = this.clampRGB.isSelected();
+		boolean clampA = this.clampAlpha.isSelected();
+		if (clampRGB || clampA) {
+			IntStream.range(0, destination.pixels.length >> 2).parallel().map((int index) -> index << 2).forEach((int index) -> {
+				clamp(FloatVector.fromArray(FloatVector.SPECIES_128, destination.pixels, index), clampRGB, clampA).intoArray(destination.pixels, index);
+			});
+		}
 	}
 
 	@Override
@@ -55,14 +112,12 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		this.parameters.copyFrom(that.parameters);
 	}
 
-	public Node getConfigNode() {
-		return this.getDependencies().getConfigPane();
-	}
-
 	@Override
 	public void redrawLater() {
 		this.sources.layer.requestRedraw();
 	}
+
+	public void resizeIfNecessary() throws RedrawException {}
 
 	public abstract void doRedraw(int frame) throws RedrawException;
 
@@ -127,7 +182,9 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		COLOR_MATRIX  (LayerSourceCategory.MEDIUM,  "color_matrix",   "Color Matrix",     ColorMatrixLayerSource::new),
 		CLIFF_CURVE   (LayerSourceCategory.MEDIUM,  "cliff",          "Cliff Curve",       CliffCurveLayerSource::new),
 		TILE          (LayerSourceCategory.MEDIUM,  "tile",           "Tile",                    TileLayerSource::new),
+		RESCALE       (LayerSourceCategory.MEDIUM,  "rescale",        "Rescale",              RescaleLayerSource::new),
 
+		MODE_BLUR     (LayerSourceCategory.COMPLEX, "mode_blur",      "Mode Blur",           ModeBlurLayerSource::new),
 		CONVOLVE      (LayerSourceCategory.COMPLEX, "convolve",       "Convolve",            ConvolveLayerSource::new),
 		K_MEANS       (LayerSourceCategory.COMPLEX, "kmeans",         "K-Means",               KMeansLayerSource::new),
 		DENOISE       (LayerSourceCategory.COMPLEX, "denoise",        "De-noise",             DeNoiseLayerSource::new),

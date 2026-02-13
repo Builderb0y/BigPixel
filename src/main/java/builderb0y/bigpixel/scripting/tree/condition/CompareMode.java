@@ -37,12 +37,12 @@ public enum CompareMode {
 
 	public void ifNonZero(CodeEmitter.Context context, Label label) {
 		switch (this) {
-			case GT -> context.codeBuilder.ifICmp(IF_ICMPGT, label);
-			case GE -> context.codeBuilder.ifICmp(IF_ICMPGE, label);
-			case LT -> context.codeBuilder.ifICmp(IF_ICMPLT, label);
-			case LE -> context.codeBuilder.ifICmp(IF_ICMPLE, label);
-			case EQ -> context.codeBuilder.ifICmp(IF_ICMPEQ, label);
-			case NE -> context.codeBuilder.ifICmp(IF_ICMPNE, label);
+			case GT -> context.codeBuilder.ifICmp(IFGT, label);
+			case GE -> context.codeBuilder.ifICmp(IFGE, label);
+			case LT -> context.codeBuilder.ifICmp(IFLT, label);
+			case LE -> context.codeBuilder.ifICmp(IFLE, label);
+			case EQ -> context.codeBuilder.ifICmp(IFEQ, label);
+			case NE -> context.codeBuilder.ifICmp(IFNE, label);
 		}
 	}
 

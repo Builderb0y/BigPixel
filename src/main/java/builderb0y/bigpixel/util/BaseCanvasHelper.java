@@ -65,6 +65,6 @@ public class BaseCanvasHelper extends BorderHelper<Canvas> {
 	public void blit(WritableImage image) {
 		GraphicsContext context = this.display.getGraphicsContext2D();
 		context.clearRect(0.0D, 0.0D, this.display.getWidth(), this.display.getHeight());
-		context.drawImage(image, 0.0D, 0.0D);
+		if (image != null) context.drawImage(image, 0.0D, 0.0D);
 	}
 }

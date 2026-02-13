@@ -39,7 +39,6 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 
 	@Override
 	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
-		//todo: support mask.
 		switch (main) {
 			case UniformSampler uniform -> {
 				FloatVector color = uniform.getColor();
@@ -50,6 +49,8 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 				}
 			}
 			case VaryingSampler varying -> {
+				boolean clampRGB = this.clampRGB.isSelected();
+				boolean clampA = this.clampAlpha.isSelected();
 				int radius = this.radius.getValue();
 				double sensitivity = this.sensitivity.getValue();
 				int iterations = this.iterations.getValue();
@@ -60,7 +61,7 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 						for (int iteration = 0; iteration < iterations; iteration++) {
 							color = iterate(color, varying, x, y, radius, sensitivity, linear);
 						}
-						store(destination, x, y, color, linear);
+						store(destination, x, y, color, varying.getColor(x, y), mask.getColor(x, y), linear, clampRGB, clampA);
 					}
 				});
 			}
@@ -98,9 +99,9 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 		return color;
 	}
 
-	public static void store(HDRImage image, int x, int y, DoubleVector color, boolean linear) {
+	public static void store(HDRImage image, int x, int y, DoubleVector color, FloatVector originalColor, FloatVector mask, boolean linear, boolean clampRGB, boolean clampA) {
 		if (linear) color = color.sqrt();
-		image.setColor(x, y, (FloatVector)(color.convertShape(VectorOperators.D2F, FloatVector.SPECIES_128, 0)));
+		image.setColor(x, y, clamp(carefulMix(originalColor, (FloatVector)(color.convertShape(VectorOperators.D2F, FloatVector.SPECIES_128, 0)), mask), clampRGB, clampA));
 	}
 
 	public static DoubleVector offset(DoubleVector color, DoubleVector start) {

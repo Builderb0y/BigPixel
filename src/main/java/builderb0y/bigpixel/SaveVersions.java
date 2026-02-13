@@ -6,7 +6,7 @@ import builderb0y.bigpixel.json.*;
 
 public class SaveVersions {
 
-	public static final int CURRENT = 8;
+	public static final int CURRENT = 10;
 
 	@SuppressWarnings({ "fallthrough", "DefaultNotLastCaseInSwitch" })
 	public static void process(JsonMap root) {
@@ -21,7 +21,9 @@ public class SaveVersions {
 			case 5: process5(root);
 			case 6: process6(root);
 			case 7: process7(root);
-			case 8:
+			case 8: process8(root);
+			case 9: process9(root);
+			case 10:
 		}
 	}
 
@@ -141,6 +143,23 @@ public class SaveVersions {
 
 	public static void addMissingFaceData(JsonMap binding) {
 		binding.with("minU", 0.0D).with("minV", 0.0D).with("maxU", 16.0D).with("maxV", 16.0D).with("rotation", "IDENTITY");
+	}
+
+	public static void process8(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap sources = layer.asMap().getMap("sources");
+			if (sources.getString("type").equals("convolve")) {
+				sources.put("normalize", true);
+			}
+		}
+	}
+
+	public static void process9(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap sources = layer.asMap().getMap("sources");
+			sources.putIfAbsent("clampRGB", JsonBoolean.TRUE);
+			sources.putIfAbsent("clampA", JsonBoolean.TRUE);
+		}
 	}
 
 	public static int findMaxDepthOfLayerTree(JsonMap layer) {

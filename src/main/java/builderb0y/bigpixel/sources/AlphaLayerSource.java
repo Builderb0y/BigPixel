@@ -17,7 +17,7 @@ public class AlphaLayerSource extends MultiInputLayerSource {
 
 	public AlphaLayerSource(LayerSources sources) {
 		super(LayerSourceType.ALPHA, sources);
-		this.dependencies.getBottomPane().getChildren().add(this.linear);
+		this.commonSourceSettings.getChildren().add(this.linear);
 	}
 
 	@Override
@@ -41,13 +41,7 @@ public class AlphaLayerSource extends MultiInputLayerSource {
 		@Override
 		public FloatVector accumulate(FloatVector existingColor, FloatVector newColor) {
 			if (this.linear) newColor = newColor.mul(newColor, Util.RGB_MASK);
-			float oldAlpha = existingColor.lane(HDRImage.ALPHA_OFFSET);
-			float newAlpha = newColor.lane(HDRImage.ALPHA_OFFSET);
-			float finalAlpha = 1.0F - (1.0F - oldAlpha) * (1.0F - newAlpha);
-			FloatVector result = existingColor.mul(oldAlpha - oldAlpha * newAlpha /* oldAlpha * (1 - newAlpha) */).add(newColor.mul(newAlpha));
-			if (finalAlpha != 0.0F) result = result.div(finalAlpha);
-			result = result.withLane(HDRImage.ALPHA_OFFSET, finalAlpha);
-			return result;
+			return Util.blendAlpha(existingColor, newColor);
 		}
 
 		@Override

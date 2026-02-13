@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.tools.Tool.ToolType;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public abstract class SourcelessTool<W> {
 
@@ -16,9 +17,9 @@ public abstract class SourcelessTool<W> {
 		this.type = type;
 	}
 
-	public abstract void mouseDown(int x, int y, LayerNode layer, MouseButton button);
+	public abstract void mouseDown(ProjectionResult position, MouseButton button);
 
-	public abstract void mouseDragged(int x, int y, LayerNode layer, MouseButton button);
+	public abstract void mouseDragged(ProjectionResult position, MouseButton button);
 
 	public abstract void colorChanged();
 

@@ -17,9 +17,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MultipleSelectionModel;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
 
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.LayerNode;
@@ -27,6 +24,7 @@ import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
+import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.MovableInputBinding;
@@ -39,8 +37,6 @@ public class MultiLayerDependencies extends LayerDependencies {
 	public ListView<MovableInputBinding> listView = new ListView<>();
 	public AnimatedBinding animated = new AnimatedBinding(this.listView.getItems());
 	public Button addButton = new Button("+");
-	public HBox bottomPane = new HBox(this.addButton);
-	public BorderPane configView = new BorderPane();
 
 	@Override
 	public JsonMap save() {
@@ -64,7 +60,7 @@ public class MultiLayerDependencies extends LayerDependencies {
 		while (inputs.size() > index) inputs.removeLast();
 	}
 
-	public MultiLayerDependencies(OrganizedSelection.Value<?> owner) {
+	public MultiLayerDependencies(LayerSource owner) {
 		this.owner = owner;
 		super();
 		ColorHelper colorHelper = owner.getLayer().graph.openImage.mainWindow.colorPicker.currentColor;
@@ -91,8 +87,7 @@ public class MultiLayerDependencies extends LayerDependencies {
 			}
 			owner.redrawLater();
 		});
-		this.configView.setCenter(this.listView);
-		this.configView.setBottom(this.bottomPane);
+		owner.commonSourceSettings.getChildren().addFirst(this.addButton);
 		this.addButton.setOnAction((ActionEvent _) -> this.addInput());
 	}
 
@@ -132,13 +127,9 @@ public class MultiLayerDependencies extends LayerDependencies {
 		return this.listView.getItems().stream().map((InputBinding binding) -> binding.curve);
 	}
 
-	public Pane getBottomPane() {
-		return this.bottomPane;
-	}
-
 	@Override
 	public Parent getConfigPane() {
-		return this.configView;
+		return this.listView;
 	}
 
 	public static class AnimatedBinding extends BooleanBinding implements InvalidationListener {

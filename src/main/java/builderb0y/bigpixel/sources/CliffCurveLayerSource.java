@@ -70,9 +70,9 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 	}
 
 	@Override
-	public void doRedraw(int frame) throws RedrawException {
-		this.gradient.redraw();
-		super.doRedraw(frame);
+	public void redrawLater() {
+		if (this.gradient != null) this.gradient.redraw();
+		super.redrawLater();
 	}
 
 	@Override

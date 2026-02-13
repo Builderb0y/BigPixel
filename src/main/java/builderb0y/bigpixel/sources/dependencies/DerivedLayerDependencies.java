@@ -64,11 +64,15 @@ public class DerivedLayerDependencies extends LayerDependencies {
 
 	@Override
 	public void retainAll(List<LayerNode> layers) {
-		this.potentialDependencies.clear();
+		Map<String, LayerNode> potentialDependencies = new HashMap<>();
 		for (LayerNode layer : layers) {
-			this.potentialDependencies.put(layer.getDisplayName(), layer);
+			potentialDependencies.put(layer.getDisplayName(), layer);
 		}
-		this.source.recompile();
+		if (!this.potentialDependencies.equals(potentialDependencies)) {
+			this.potentialDependencies.clear();
+			this.potentialDependencies.putAll(potentialDependencies);
+			this.source.recompile();
+		}
 	}
 
 	@Override

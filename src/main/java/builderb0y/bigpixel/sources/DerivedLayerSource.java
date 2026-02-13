@@ -6,12 +6,12 @@ import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
@@ -32,20 +32,28 @@ import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.scripting.parsing.ExpressionParser;
 import builderb0y.bigpixel.scripting.parsing.ScriptEnvironment;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers;
+import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.FunctionHandler;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.KeywordHandler;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.UsageTracker;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.VariableHandler;
 import builderb0y.bigpixel.scripting.parsing.ScriptParsingException;
-import builderb0y.bigpixel.scripting.tree.InsnTree;
-import builderb0y.bigpixel.scripting.tree.SampleInsnTree;
+import builderb0y.bigpixel.scripting.tree.*;
+import builderb0y.bigpixel.scripting.types.RngOperations;
+import builderb0y.bigpixel.scripting.types.UtilityOperations;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.scripting.types.VectorType;
+import builderb0y.bigpixel.scripting.types.VectorType.ComponentType;
+import builderb0y.bigpixel.scripting.types.VectorType.GroupShape;
 import builderb0y.bigpixel.scripting.types.VectorType.Vec;
+import builderb0y.bigpixel.scripting.util.MethodInfo;
 import builderb0y.bigpixel.sources.dependencies.DerivedLayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.util.RateLimiter;
 import builderb0y.bigpixel.util.RateLimiter.NonPeriodicRateLimiter;
+import builderb0y.bigpixel.util.Result;
+import builderb0y.bigpixel.util.Result.Failure;
+import builderb0y.bigpixel.util.Result.Success;
 import builderb0y.bigpixel.util.Util;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -55,7 +63,7 @@ public class DerivedLayerSource extends LayerSource {
 	public TextArea textArea = this.parameters.addCode("code");
 	public RateLimiter recompiler = new NonPeriodicRateLimiter(500L, () -> this.doRecompile(true));
 	public DerivedLayerDependencies dependencies = new DerivedLayerDependencies(this);
-	public @Nullable DerivedImageScriptFactory scriptFactory;
+	public @Nullable Result<DerivedImageScriptFactory, ScriptParsingException> scriptFactory;
 	public boolean loading;
 
 	@Override
@@ -72,6 +80,7 @@ public class DerivedLayerSource extends LayerSource {
 	public DerivedLayerSource(LayerSources sources) {
 		super(LayerSourceType.DERIVED, sources);
 		this.textArea.textProperty().addListener(Util.change(this::recompile));
+		this.rootConfigPane.setCenter(this.textArea);
 	}
 
 	@Override
@@ -80,15 +89,14 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	@Override
-	public Node getConfigNode() {
-		return this.textArea;
-	}
-
-	@Override
 	public void doRedraw(int frame) throws RedrawException {
-		if (this.scriptFactory == null) throw new RedrawException("Script failed to compile");
+		DerivedImageScriptFactory factory = switch (this.scriptFactory) {
+			case Success(DerivedImageScriptFactory result) -> result;
+			case Failure(ScriptParsingException exception) -> throw new RedrawException(exception.getLocalizedMessage());
+			case null -> throw new RedrawException("Script was never compiled");
+		};
 		Map<String, LayerNode> layersByName = this.sources.layer.graph.layersByName;
-		DerivedImageScript script = this.scriptFactory.create((String name) -> {
+		DerivedImageScript script = factory.create((String name) -> {
 			return layersByName.get(name).createInvertedInput(frame);
 		});
 		AnimationSource animation = this.sources.layer.graph.openImage.animationSource;
@@ -100,22 +108,28 @@ public class DerivedLayerSource extends LayerSource {
 		int frames = animation.frameCount.get();
 		float seconds = animation.getSeconds(frame);
 		float fraction = animation.getFraction(frame);
-		for (int y = 0; y < height; y++) {
+		boolean clampRGB = this.clampRGB.isSelected();
+		boolean clampA = this.clampAlpha.isSelected();
+		IntStream.range(0, height).parallel().forEach((int y) -> {
 			for (int x = 0; x < width; x++) {
 				IntVector UV = VectorOperations.int2_from_int_int(x, height + ~y);
 				FloatVector uv = VectorOperations.float2_from_int2(UV).add(0.5F).mul(fRcpResolution);
-				script.compute(
-					UV,
-					uv,
-					iResolution,
-					frames,
-					frame,
-					seconds,
-					fraction
+				clamp(
+					script.compute(
+						UV,
+						uv,
+						iResolution,
+						frames,
+						frame,
+						seconds,
+						fraction
+					),
+					clampRGB,
+					clampA
 				)
 				.intoArray(destination.pixels, destination.baseIndex(x, y));
 			}
-		}
+		});
 	}
 
 	public void recompile() {
@@ -124,42 +138,38 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	public void doRecompile(boolean redraw) {
-		try {
-			this.assembleScriptFactory();
-			if (redraw) this.redrawLater();
-			this.sources.layer.redrawException.set(null);
-		}
-		catch (Throwable throwable) {
-			//throwable.printStackTrace();
-			this.scriptFactory = null;
-			this.dependencies.setActualDependencies(Collections.emptySet(), false);
-			//throwable.printStackTrace();
-			this.sources.layer.redrawException.set(throwable);
-		}
+		this.assembleScriptFactory();
+		if (redraw) this.redrawLater();
 	}
 
-	public void assembleScriptFactory() throws ScriptParsingException {
+	public void assembleScriptFactory() {
 		Map<String, LayerNode> layerMap = this.sources.layer.graph.layersByName;
 		DerivedParser parser = new DerivedParser(this.textArea.getText());
 		UsageTracker animationTracer = new UsageTracker();
-		this.scriptFactory = (
-			parser
-			.addBuiltins()
-			.addLayers(this.dependencies.potentialDependencies.values())
-			.configureEnvironment((ScriptEnvironment environment) -> {
-				environment
-				.addKeyword("return", KeywordHandler.returner(VectorType.FLOAT4))
-				.addVariable("uv", VariableHandler.builtinParameter("uv", VectorType.FLOAT2))
-				.addVariable("UV", VariableHandler.builtinParameter("UV", VectorType.INT2))
-				.addVariable("resolution", VariableHandler.builtinParameter("resolution", VectorType.INT2))
-				.addVariable("animationFrame", VariableHandler.builtinParameter("animationFrame", VectorType.INT, animationTracer))
-				.addVariable("animationFrames", VariableHandler.builtinParameter("animationFrames", VectorType.INT, animationTracer))
-				.addVariable("animationSeconds", VariableHandler.builtinParameter("animationSeconds", VectorType.FLOAT, animationTracer))
-				.addVariable("animationFraction", VariableHandler.builtinParameter("animationFraction", VectorType.FLOAT, animationTracer))
-				;
-			})
-			.parse()
-		);
+		try {
+			this.scriptFactory = Result.success(
+				parser
+				.addBuiltins()
+				.addLayers(this.dependencies.potentialDependencies.values())
+				.configureEnvironment((ScriptEnvironment environment) -> {
+					environment
+					.addKeyword("return", KeywordHandler.returner(VectorType.FLOAT4))
+					.addVariable("uv", VariableHandler.builtinParameter("uv", VectorType.FLOAT2))
+					.addVariable("UV", VariableHandler.builtinParameter("UV", VectorType.INT2))
+					.addVariable("resolution", VariableHandler.builtinParameter("resolution", VectorType.INT2))
+					.addVariable("animationFrame", VariableHandler.builtinParameter("animationFrame", VectorType.INT, animationTracer))
+					.addVariable("animationFrames", VariableHandler.builtinParameter("animationFrames", VectorType.INT, animationTracer))
+					.addVariable("animationSeconds", VariableHandler.builtinParameter("animationSeconds", VectorType.FLOAT, animationTracer))
+					.addVariable("animationFraction", VariableHandler.builtinParameter("animationFraction", VectorType.FLOAT, animationTracer))
+					;
+				})
+				.parse()
+			);
+		}
+		catch (ScriptParsingException exception) {
+			this.dependencies.setActualDependencies(Collections.emptySet(), false);
+			this.scriptFactory = Result.failure(exception);
+		}
 		this.dependencies.setActualDependencies(parser.usedLayers.keySet().stream().map(layerMap::get).collect(Collectors.toSet()), animationTracer.used);
 	}
 
@@ -174,7 +184,90 @@ public class DerivedLayerSource extends LayerSource {
 
 		@Override
 		public DerivedParser addBuiltins() {
-			return (DerivedParser)(super.addBuiltins());
+			super.addBuiltins();
+			for (VectorType type : VectorType.VALUES) {
+				this.scope.environment.addFunction(type.name, (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
+					VectorType[] types = InsnTree.flattenTypes(params);
+					String fullName = name + "_from_" + Arrays.stream(types).map((VectorType paramType) -> paramType.name).collect(Collectors.joining("_"));
+					try {
+						MethodInfo model = new MethodInfo(VectorOperations.class, fullName);
+						return new VectorConstructorInsnTree(type, params, model);
+					}
+					catch (IllegalArgumentException exception) {
+						return null;
+					}
+				});
+				if (type.shape != GroupShape.UNIT) {
+					this.scope.environment.addIndex(type, (ExpressionParser<?> parser, InsnTree receiver, InsnTree[] params) -> {
+						InsnTree[] castArguments = ScriptHandlers.multiCast(params, VectorType.INT);
+						if (castArguments == null) return null;
+						return new IndexInsnTree(
+							VectorType.get(receiver.type().componentType, GroupShape.UNIT),
+							receiver,
+							castArguments,
+							new MethodInfo(
+								receiver.type().holderClass(),
+								receiver.type().componentType == ComponentType.BOOLEAN ? "laneIsSet" : "lane",
+								int.class
+							)
+						);
+					});
+				}
+			}
+			for (String name : new String[] { "dot", "lengthSquared", "length", "normalize", "mix", "unmix", "reverseBits" }) {
+				this.scope.environment.addFunction(name, (ExpressionParser<?> parser, String name_, InsnTree[] params) -> {
+					String fullName = name_ + '_' + Arrays.stream(params).map(InsnTree::types).flatMap(Arrays::stream).map((VectorType t) -> t.name).collect(Collectors.joining("_"));
+					try {
+						MethodInfo model = new MethodInfo(VectorOperations.class, fullName);
+						return new InvokeInsnTree(model.vectorReturnType(), params, model);
+					}
+					catch (IllegalArgumentException exception) {
+						return null;
+					}
+				});
+			}
+			this.scope.environment.addFunction("rng", (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
+				for (InsnTree tree : params) {
+					for (VectorType type : tree.types()) {
+						if (type.shape != GroupShape.UNIT) {
+							return null;
+						}
+					}
+				}
+				return new RandomInsnTree(params);
+			});
+			for (String sign : new String[] { "positive", "uniform", "bounded", "ranged" }) {
+				for (VectorType outType : VectorType.VALUES) {
+					if (outType.componentType != ComponentType.BOOLEAN && outType != VectorType.VOID) {
+						MethodInfo method = new MethodInfo(RngOperations.class, "rng_to_" + sign + '_' + outType.name);
+						this.scope.environment.addMethod(
+							VectorType.LONG,
+							"next" + Util.capitalize(sign) + Util.capitalize(outType.name),
+							(ExpressionParser<?> parser, InsnTree receiver, String name, InsnTree[] params) -> {
+								try {
+									return new InvokeInsnTree(method.vectorReturnType(), receiver, params, method);
+								}
+								catch (IllegalArgumentException exception) {
+									return null;
+								}
+							}
+						);
+					}
+				}
+			}
+			for (Method method : UtilityOperations.class.getMethods()) {
+				if (Modifier.isStatic(method.getModifiers())) { //exclude equals(), hashCode(), toString().
+					int index = method.getName().indexOf('_');
+					this.scope.environment.addFunction(
+						index >= 0 ? method.getName().substring(0, index) : method.getName(),
+						FunctionHandler.invoker(new MethodInfo(method))
+					);
+				}
+			}
+			this.scope.environment.addKeyword("if", KeywordHandler.makeIf());
+			this.scope.environment.addKeyword("unless", KeywordHandler.makeIf());
+			this.scope.environment.addKeyword("switch", KeywordHandler.switcher());
+			return this;
 		}
 
 		@Override

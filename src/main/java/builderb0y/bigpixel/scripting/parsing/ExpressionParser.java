@@ -63,35 +63,6 @@ public class ExpressionParser<I> {
 	}
 
 	public ExpressionParser<I> addBuiltins() {
-		for (VectorType type : VectorType.VALUES) {
-			this.scope.environment.addFunction(type.name, (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
-				VectorType[] types = InsnTree.flattenTypes(params);
-				String fullName = name + "_from_" + Arrays.stream(types).map((VectorType paramType) -> paramType.name).collect(Collectors.joining("_"));
-				try {
-					MethodInfo model = new MethodInfo(VectorOperations.class, fullName);
-					return new VectorConstructorInsnTree(type, params, model);
-				}
-				catch (IllegalArgumentException exception) {
-					return null;
-				}
-			});
-			if (type.shape != GroupShape.UNIT) {
-				this.scope.environment.addIndex(type, (ExpressionParser<?> parser, InsnTree receiver, InsnTree[] params) -> {
-					InsnTree[] castArguments = ScriptHandlers.multiCast(params, VectorType.INT);
-					if (castArguments == null) return null;
-					return new IndexInsnTree(
-						VectorType.get(receiver.type().componentType, GroupShape.UNIT),
-						receiver,
-						castArguments,
-						new MethodInfo(
-							receiver.type().holderClass(),
-							receiver.type().componentType == ComponentType.BOOLEAN ? "laneIsSet" : "lane",
-							int.class
-						)
-					);
-				});
-			}
-		}
 		for (UnaryOperatorWrapper operator : UnaryOperatorWrapper.VALUES) {
 			this.scope.environment.addFunction(operator.name().toLowerCase(Locale.ROOT), (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
 				if (params.length != 1) return null;
@@ -107,56 +78,6 @@ public class ExpressionParser<I> {
 				};
 			});
 		}
-		for (String name : new String[] { "dot", "lengthSquared", "length", "normalize", "mix", "unmix", "reverseBits" }) {
-			this.scope.environment.addFunction(name, (ExpressionParser<?> parser, String name_, InsnTree[] params) -> {
-				String fullName = name_ + '_' + Arrays.stream(params).map(InsnTree::types).flatMap(Arrays::stream).map((VectorType t) -> t.name).collect(Collectors.joining("_"));
-				try {
-					MethodInfo model = new MethodInfo(VectorOperations.class, fullName);
-					return new InvokeInsnTree(model.vectorReturnType(), params, model);
-				}
-				catch (IllegalArgumentException exception) {
-					return null;
-				}
-			});
-		}
-		this.scope.environment.addFunction("rng", (ExpressionParser<?> parser, String name, InsnTree[] params) -> {
-			for (InsnTree tree : params) {
-				for (VectorType type : tree.types()) {
-					if (type.shape != GroupShape.UNIT) {
-						return null;
-					}
-				}
-			}
-			return new RandomInsnTree(params);
-		});
-		for (String sign : new String[] { "positive", "uniform", "bounded", "ranged" }) {
-			for (VectorType outType : VectorType.VALUES) {
-				if (outType.componentType != ComponentType.BOOLEAN && outType != VectorType.VOID) {
-					MethodInfo method = new MethodInfo(RngOperations.class, "rng_to_" + sign + '_' + outType.name);
-					this.scope.environment.addMethod(
-						VectorType.LONG,
-						"next" + Util.capitalize(sign) + Util.capitalize(outType.name),
-						(ExpressionParser<?> parser, InsnTree receiver, String name, InsnTree[] params) -> {
-							try {
-								return new InvokeInsnTree(method.vectorReturnType(), receiver, params, method);
-							}
-							catch (IllegalArgumentException exception) {
-								return null;
-							}
-						}
-					);
-				}
-			}
-		}
-		for (Method method : UtilityOperations.class.getMethods()) {
-			if (Modifier.isStatic(method.getModifiers())) { //exclude equals(), hashCode(), toString().
-				int index = method.getName().indexOf('_');
-				this.scope.environment.addFunction(
-					index >= 0 ? method.getName().substring(0, index) : method.getName(),
-					FunctionHandler.invoker(new MethodInfo(method))
-				);
-			}
-		}
 		this.scope.environment.addVariable("e", VariableHandler.constant(VectorType.DOUBLE, Math.E));
 		this.scope.environment.addVariable("pi", VariableHandler.constant(VectorType.DOUBLE, Math.PI));
 		this.scope.environment.addVariable("tau", VariableHandler.constant(VectorType.DOUBLE, Math.TAU));
@@ -164,9 +85,6 @@ public class ExpressionParser<I> {
 		this.scope.environment.addVariable("false", VariableHandler.constant(VectorType.BOOLEAN, Boolean.FALSE));
 		this.scope.environment.addVariable("goldenRatio", VariableHandler.constant(VectorType.DOUBLE, 1.618033988749895D));
 		this.scope.environment.addVariable("goldenAngle", VariableHandler.constant(VectorType.DOUBLE, 2.399963229728653D));
-		this.scope.environment.addKeyword("if", KeywordHandler.makeIf());
-		this.scope.environment.addKeyword("unless", KeywordHandler.makeIf());
-		this.scope.environment.addKeyword("switch", KeywordHandler.switcher());
 		return this;
 	}
 
@@ -176,6 +94,10 @@ public class ExpressionParser<I> {
 	public ExpressionParser<I> configureEnvironment(Consumer<ScriptEnvironment> configurator) {
 		configurator.accept(this.scope.environment);
 		return this;
+	}
+
+	public InsnTree implicitReturn(InsnTree script) throws ScriptParsingException {
+		throw new ScriptParsingException("Missing return statement", this.reader);
 	}
 
 	public ClassNode parseBasic() throws ScriptParsingException {
@@ -194,7 +116,7 @@ public class ExpressionParser<I> {
 			throw new ScriptParsingException("Unexpected trailing character", this.reader);
 		}
 		if (!tree.jumpsUnconditionally()) {
-			throw new ScriptParsingException("Missing return statement", this.reader);
+			tree = this.implicitReturn(tree);
 		}
 		ClassNode clazz = new ClassNode();
 		clazz.visit(

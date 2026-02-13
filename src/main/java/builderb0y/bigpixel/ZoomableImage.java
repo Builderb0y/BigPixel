@@ -1,20 +1,12 @@
 package builderb0y.bigpixel;
 
-import java.util.stream.IntStream;
-
 import javafx.application.Platform;
-import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
-import javafx.beans.binding.ListBinding;
-import javafx.beans.binding.ObjectBinding;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
 import javafx.scene.canvas.Canvas;
-import javafx.scene.image.PixelFormat;
-import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.*;
 import javafx.scene.layout.BorderPane;
@@ -22,11 +14,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.sources.ManualLayerSource;
-import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.tools.SourcelessTool;
-import builderb0y.bigpixel.tools.Tool;
-import builderb0y.bigpixel.tools.Tool.Selection;
 import builderb0y.bigpixel.util.BaseCanvasHelper;
 import builderb0y.bigpixel.util.Util;
 import builderb0y.bigpixel.views.LayerView;
@@ -34,26 +22,23 @@ import builderb0y.bigpixel.views.LayerView.LayerViewType;
 import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 import builderb0y.bigpixel.views.LayerViews;
 
-public class ZoomableImage extends AnimationView {
+public class ZoomableImage {
 
 	public OpenImage openImage;
-	public BaseCanvasHelper display;
+	public BaseCanvasHelper canvasHolder;
 	public F3Menu f3;
 	public StackPane displayWithF3;
 	public double previousMouseX, previousMouseY;
 	public @Nullable ProjectionResult previousProjectionResult;
-	public Selection previousSelection;
-	public ListBinding<HDRImage> visibleAnimation;
-	public ObservableValue<DrawParams> drawParams;
 	public ChangeListener<Number> centerer;
-	public InvalidationListener redrawListener;
+	public DisplayRenderer displayRenderer;
+	public ObservableValue<DrawParams> drawParams;
 	public Runnable redrawer;
 	public boolean redrawRequested;
 
 	public ZoomableImage(OpenImage openImage) {
-		super(openImage.animationSource);
 		this.openImage = openImage;
-		this.display = new BaseCanvasHelper() {
+		this.canvasHolder = new BaseCanvasHelper() {
 
 			@Override
 			public void redraw() {
@@ -63,22 +48,10 @@ public class ZoomableImage extends AnimationView {
 		.checkerboard()
 		.resizeable();
 		this.f3 = new F3Menu();
-		this.displayWithF3 = new StackPane(this.display.getRootPane(), this.f3.rootNode());
+		this.displayWithF3 = new StackPane(this.canvasHolder.getRootPane(), this.f3.rootNode());
 		this.centerer = Util.change(this::centerOnce);
+		this.displayRenderer = new DisplayRenderer(this);
 		this.redrawer = this::redrawImmediately;
-		this.redrawListener = (Observable _) -> this.redrawLater();
-		this.visibleAnimation = new ListBinding<>() {
-
-			{
-				this.bind(openImage.layerGraph.visibleLayerProperty);
-			}
-
-			@Override
-			public ObservableList<HDRImage> computeValue() {
-				LayerNode layer = openImage.layerGraph.getVisibleLayer();
-				return layer != null ? layer.animation.frames : null;
-			}
-		};
 		this.drawParams = (
 			openImage
 			.layerGraph
@@ -86,19 +59,14 @@ public class ZoomableImage extends AnimationView {
 			.flatMap((LayerNode layer) -> layer.views.selectedValue)
 			.flatMap(LayerView::drawParamsProperty)
 		);
+		this.drawParams.addListener(Util.change(this.displayRenderer::invalidateAll));
+		this.displayRenderer.currentFrame.addListener((Observable _) -> this.redrawLater());
 	}
 
 	public void init() {
-		this.display.innerPane. widthProperty().addListener(this.centerer);
-		this.display.innerPane.heightProperty().addListener(this.centerer);
-		Canvas canvas = this.display.display;
-		ObservableValue<HDRImage> imageBeingDisplayed = this.openImage.layerGraph.visibleLayerProperty.flatMap((LayerNode layer) -> layer.animation.currentFrame);
-		imageBeingDisplayed.getValue().addListener(this.redrawListener);
-		imageBeingDisplayed.addListener(Util.change((HDRImage oldImage, HDRImage newImage) -> {
-			oldImage.removeListener(this.redrawListener);
-			newImage.addListener(this.redrawListener);
-			this.redrawLater();
-		}));
+		this.canvasHolder.innerPane. widthProperty().addListener(this.centerer);
+		this.canvasHolder.innerPane.heightProperty().addListener(this.centerer);
+		Canvas canvas = this.canvasHolder.display;
 		canvas.setOnScroll((ScrollEvent event) -> {
 			LayerView projector = this.getView();
 			if (projector != null) {
@@ -110,7 +78,7 @@ public class ZoomableImage extends AnimationView {
 				}
 			}
 		});
-		this.display.getRootPane().cursorProperty().bind(this.openImage.cursorProperty);
+		this.canvasHolder.getRootPane().cursorProperty().bind(this.openImage.cursorProperty);
 		EventHandler<MouseEvent> handler = new EventHandler<>() {
 
 			public double pressX, pressY;
@@ -118,7 +86,7 @@ public class ZoomableImage extends AnimationView {
 
 			@Override
 			public void handle(MouseEvent event) {
-				Canvas canvas = ZoomableImage.this.display.display;
+				Canvas canvas = ZoomableImage.this.canvasHolder.display;
 				canvas.requestFocus();
 				if (event.getButton() == MouseButton.MIDDLE) {
 					if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
@@ -136,7 +104,7 @@ public class ZoomableImage extends AnimationView {
 						this.pressY = event.getY();
 					}
 					else if (event.getEventType() == MouseEvent.MOUSE_RELEASED) {
-						ZoomableImage.this.redrawLater();
+						//ZoomableImage.this.redrawLater();
 						canvas.setCursor(null);
 					}
 				}
@@ -145,20 +113,20 @@ public class ZoomableImage extends AnimationView {
 					if (tool != null) {
 						LayerView projector = ZoomableImage.this.getView();
 						if (projector != null) {
-							ProjectionResult projected = projector.project(event.getX(), event.getY());
-							if (projected != null && projected.input() instanceof VaryingSamplerProvider varying) {
+							ProjectionResult projected = projector.project(event.getX(), event.getY(), 0);
+							if (projected != null) {
 								int x = projected.x();
 								int y = projected.y();
 								if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
 									this.toolX = x;
 									this.toolY = y;
-									tool.mouseDown(x, y, varying.getBackingLayer(), event.getButton());
+									tool.mouseDown(projected, event.getButton());
 								}
 								else if (event.getEventType() == MouseEvent.MOUSE_DRAGGED) {
 									if (this.toolX != x || this.toolY != y) {
 										this.toolX = x;
 										this.toolY = y;
-										tool.mouseDragged(x, y, varying.getBackingLayer(), event.getButton());
+										tool.mouseDragged(projected, event.getButton());
 									}
 								}
 							}
@@ -191,10 +159,10 @@ public class ZoomableImage extends AnimationView {
 			view.beforeRedraw(
 				layer.imageWidth(),
 				layer.imageHeight(),
-				(int)(this.display.display.getWidth()),
-				(int)(this.display.display.getHeight())
+				(int)(this.canvasHolder.display.getWidth()),
+				(int)(this.canvasHolder.display.getHeight())
 			);
-			this.previousProjectionResult = view.project(mouseX, mouseY);
+			this.previousProjectionResult = view.project(mouseX, mouseY, layer.animation.getFrameIndex());
 		}
 		else {
 			this.previousProjectionResult = null;
@@ -206,34 +174,9 @@ public class ZoomableImage extends AnimationView {
 		return visibleLayer != null ? visibleLayer.views.selectedValue.get() : null;
 	}
 
-	public WritableImage getImage() {
-		int width = (int)(this.display.display.getWidth());
-		int height = (int)(this.display.display.getHeight());
-		if (width > 0 && height > 0) return this.getImage(new DrawKey(
-			this.openImage.layerGraph.getVisibleLayer(),
-			width,
-			height,
-			this.animationSource.getFrameIndex(),
-			this.drawParams.getValue()
-		));
-		else return null;
-	}
-
-	@Override
-	public CachedImage createCachedImage(int frame) {
-		CachedImage cached = super.createCachedImage(frame);
-		ObjectBinding<HDRImage> binding = this.visibleAnimation.valueAt(frame);
-		binding.get().addListener(cached);
-		binding.addListener(Util.change((HDRImage oldImage, HDRImage newImage) -> {
-			oldImage.removeListener(cached);
-			newImage.addListener(cached);
-		}));
-		return cached;
-	}
-
 	public void centerOnce() {
 		if (this.centerer != null && this.center()) {
-			BorderPane canvas = this.display.innerPane;
+			BorderPane canvas = this.canvasHolder.innerPane;
 			canvas. widthProperty().removeListener(this.centerer);
 			canvas.heightProperty().removeListener(this.centerer);
 			this.centerer = null;
@@ -241,7 +184,7 @@ public class ZoomableImage extends AnimationView {
 	}
 
 	public boolean center() {
-		Canvas canvas = this.display.display;
+		Canvas canvas = this.canvasHolder.display;
 		int canvasWidth = (int)(canvas.getWidth());
 		int canvasHeight = (int)(canvas.getHeight());
 		if (canvasWidth == 0 || canvasHeight == 0) return false;
@@ -268,7 +211,7 @@ public class ZoomableImage extends AnimationView {
 				projector.center();
 			}
 		}
-		this.redrawLater();
+		//this.redrawLater();
 		return true;
 	}
 
@@ -279,112 +222,19 @@ public class ZoomableImage extends AnimationView {
 		}
 	}
 
-	@Override
-	public void invalidateAll() {
-		super.invalidateAll();
-		this.redrawLater();
-	}
-
-	@Override
-	public void invalidate(int frame) {
-		super.invalidate(frame);
-		if (this.animationSource.getFrameIndex() == frame) {
-			this.redrawLater();
-		}
-	}
-
-	@Override
-	public void draw(DrawKey key, WritableImage image) {
-		int width = key.width();
-		int height = key.height();
-		PixelWriter writer = image.getPixelWriter();
-		if (writer.getPixelFormat() != PixelFormat.getByteBgraPreInstance()) {
-			throw new IllegalStateException("Pixel format changed");
-		}
-		LayerNode visibleLayer = this.openImage.layerGraph.visibleLayerProperty.getValue();
-		if (visibleLayer == null) {
-			byte[] row = new byte[width * 4];
-			writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), row, 0, 0);
-			return;
-		}
-		int imageWidth = visibleLayer.imageWidth();
-		int imageHeight = visibleLayer.imageHeight();
-		byte[] pixels = new byte[width * height * 4];
-		LayerView projector = this.getView();
-		if (projector != null) {
-			projector.beforeRedraw(imageWidth, imageHeight, width, height);
-			IntStream.range(0, height).parallel().forEach((int y) -> {
-				for (int x = 0; x < width; x++) {
-					float r = 0.0F, g = 0.0F, b = 0.0F, a = 0.0F;
-					ProjectionResult mapped = projector.project(x, y);
-					if (mapped != null) {
-						r = mapped.r();
-						g = mapped.g();
-						b = mapped.b();
-						a = mapped.a();
-					}
-					int baseIndex = (y * width + x) << 2;
-					float clampedAlpha = Util.clampF(a);
-					r *= clampedAlpha;
-					g *= clampedAlpha;
-					b *= clampedAlpha;
-					pixels[baseIndex    ] = Util.clampB(b);
-					pixels[baseIndex | 1] = Util.clampB(g);
-					pixels[baseIndex | 2] = Util.clampB(r);
-					pixels[baseIndex | 3] = Util.clampB(a);
-				}
-			});
-			if (projector.drawOutline.isSelected()) {
-				projector.drawLayerOutline(
-					pixels,
-					imageWidth,
-					imageHeight,
-					width,
-					height
-				);
-			}
-			LayerNode selectedLayer = this.openImage.layerGraph.selectedLayer.get();
-			if (selectedLayer != null && selectedLayer.sources.selectedValue.get() instanceof ManualLayerSource manual) {
-				Selection selection = new Selection();
-				Tool<?> tool = manual.toolWithoutColorPicker.get();
-				if (tool != null && tool.getSelection(selection)) {
-					this.previousSelection = selection;
-					projector.drawSelectionOutline(
-						visibleLayer,
-						pixels,
-						selection.minX,
-						selection.minY,
-						selection.maxX + 1,
-						selection.maxY + 1,
-						imageWidth,
-						imageHeight,
-						width,
-						height
-					);
-				}
-				else {
-					this.previousSelection = null;
-				}
-			}
-			else {
-				this.previousSelection = null;
-			}
-		}
-		writer.setPixels(0, 0, width, height, PixelFormat.getByteBgraPreInstance(), pixels, 0, width << 2);
-	}
-
 	public void redrawImmediately() {
 		this.redrawRequested = false;
-		WritableImage image = this.getImage();
-		if (image == null) return;
-		this.display.blit(image);
+		WritableImage image = this.displayRenderer.currentFrame.getValue();
+		this.canvasHolder.blit(image);
 	}
 
 	public void updateF3(F3Menu f3) {
 		this.updateProjectionResult(this.previousMouseX, this.previousMouseY);
 		f3.add("Hover: " + this.previousProjectionResult);
-		f3.add("Selection: " + this.previousSelection);
+		f3.add("Selection: " + this.displayRenderer.previousSelection);
 		LayerView projector = this.getView();
 		if (projector != null) projector.updateF3(f3);
 	}
+
+	public static interface DrawParams {}
 }

@@ -23,6 +23,7 @@ public class TileLayerSource extends LayerSource {
 		super(LayerSourceType.TILE, sources);
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Offset X: "), this.offsetX));
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Offset Y: "), this.offsetY));
+		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
 	}
 
 	@Override
@@ -33,9 +34,11 @@ public class TileLayerSource extends LayerSource {
 	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		HDRImage destination = this.sources.layer.getFrame(frame);
+		boolean clampRGB = this.clampRGB.isSelected();
+		boolean clampA = this.clampAlpha.isSelected();
 		switch (this.dependencies.main.getCurrent().createSamplerForFrame(frame)) {
 			case UniformSampler uniform -> {
-				FloatVector color = uniform.getColor();
+				FloatVector color = clamp(uniform.getColor(), clampRGB, clampA);
 				for (int index = 0; index < destination.pixels.length; index += 4) {
 					color.intoArray(destination.pixels, index);
 				}
@@ -49,7 +52,7 @@ public class TileLayerSource extends LayerSource {
 					int modY = Math.floorMod(y - offsetY, srcHeight);
 					for (int x = 0; x < destination.width; x++) {
 						int modX = Math.floorMod(x - offsetX, srcWidth);
-						destination.setColor(x, y, varying.getColor(modX, modY));
+						destination.setColor(x, y, clamp(varying.getColor(modX, modY), clampRGB, clampA));
 					}
 				}
 			}

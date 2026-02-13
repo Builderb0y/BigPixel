@@ -7,6 +7,7 @@ import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
+import builderb0y.bigpixel.util.Util;
 
 public class ColorMatrixLayerSource extends PerPixelLayerSource {
 
@@ -19,6 +20,9 @@ public class ColorMatrixLayerSource extends PerPixelLayerSource {
 
 		public Dependencies(LayerSource source) {
 			super(source);
+			this.toRed.colorBox.color.set(Util.rgba(1.0F, 0.0F, 0.0F, 1.0F));
+			this.toGreen.colorBox.color.set(Util.rgba(0.0F, 1.0F, 0.0F, 1.0F));
+			this.toBlue.colorBox.color.set(Util.rgba(0.0F, 0.0F, 1.0F, 1.0F));
 		}
 	}
 

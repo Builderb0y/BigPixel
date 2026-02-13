@@ -2,6 +2,7 @@ package builderb0y.bigpixel.sources;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import jdk.incubator.vector.FloatVector;
 
@@ -19,14 +20,15 @@ public abstract class MultiInputLayerSource extends LayerSource {
 
 	public MultiInputLayerSource(LayerSourceType type, LayerSources sources) {
 		super(type, sources);
+		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
 	}
 
-	public List<InputBinding> ensureSameSize() throws RedrawException {
+	@Override
+	public void resizeIfNecessary() throws RedrawException {
 		List<MovableInputBinding> inputs = this.dependencies.listView.getItems();
 		if (inputs.isEmpty()) {
 			throw new RedrawException("No inputs");
 		}
-		List<InputBinding> filtered = new ArrayList<>(inputs.size());
 		int width = -1, height = -1;
 		for (MovableInputBinding input : inputs) {
 			if (input.selection.getValue() instanceof VaryingSamplerProvider varying) {
@@ -40,15 +42,25 @@ public abstract class MultiInputLayerSource extends LayerSource {
 					throw new RedrawException("All layer-based dependencies must have the same resolution");
 				}
 			}
+		}
+		if (width >= 0) {
+			this.sources.layer.animation.checkSize(width, height, false);
+		}
+	}
+
+	public List<InputBinding> filterInputs() throws RedrawException {
+		List<MovableInputBinding> inputs = this.dependencies.listView.getItems();
+		if (inputs.isEmpty()) {
+			throw new RedrawException("No inputs");
+		}
+		List<InputBinding> filtered = new ArrayList<>(inputs.size());
+		for (MovableInputBinding input : inputs) {
 			if (input.enabled.isSelected()) {
 				filtered.add(input);
 			}
 		}
 		if (filtered.isEmpty()) {
 			throw new RedrawException("No enabled inputs");
-		}
-		if (width >= 0) {
-			this.sources.layer.animation.checkSize(width, height, false, false);
 		}
 		return filtered;
 	}
@@ -57,13 +69,13 @@ public abstract class MultiInputLayerSource extends LayerSource {
 
 	@Override
 	public void doRedraw(int frame) throws RedrawException {
-		List<? extends InputBinding> bindings = this.ensureSameSize();
+		List<? extends InputBinding> bindings = this.filterInputs();
 		MultiInputAccumulator accumulator = this.getAccumulator();
 		HDRImage destination = this.sources.layer.getFrame(frame);
 		accumulator.preprocess(destination, bindings);
 		for (int index = bindings.size(); --index >= 0;) {
 			Sampler next = bindings.get(index).getCurrent().createSamplerForFrame(frame);
-			for (int y = 0; y < destination.height; y++) {
+			IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 				for (int x = 0; x < destination.width; x++) {
 					destination.setColor(
 						x,
@@ -74,9 +86,10 @@ public abstract class MultiInputLayerSource extends LayerSource {
 						)
 					);
 				}
-			}
+			});
 		}
 		accumulator.postProcess(destination, bindings);
+		this.clampImage(destination);
 	}
 
 	@Override

@@ -3,11 +3,10 @@ package builderb0y.bigpixel.tools;
 import javafx.scene.input.MouseButton;
 
 import builderb0y.bigpixel.Assets;
-import builderb0y.bigpixel.HDRImage;
-import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OpenImage;
 import builderb0y.bigpixel.tools.ColorPickerTool.ColorPickerCallback;
 import builderb0y.bigpixel.tools.Tool.ToolType;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 
@@ -21,25 +20,21 @@ public class ColorPickerTool extends SourcelessTool<ColorPickerCallback> {
 	}
 
 	@Override
-	public void mouseDown(int x, int y, LayerNode layer, MouseButton button) {
+	public void mouseDown(ProjectionResult position, MouseButton button) {
 		if (this.work == null) {
 			this.escape();
 			return;
 		}
-		HDRImage image = layer.getFrame();
-		if (x >= 0 && x < image.width && y >= 0 && y < image.height) {
-			int baseIndex = image.baseIndex(x, y);
-			this.work.onColorPicked(
-				image.pixels[baseIndex | HDRImage.  RED_OFFSET],
-				image.pixels[baseIndex | HDRImage.GREEN_OFFSET],
-				image.pixels[baseIndex | HDRImage. BLUE_OFFSET],
-				image.pixels[baseIndex | HDRImage.ALPHA_OFFSET]
-			);
-		}
+		this.work.onColorPicked(
+			position.rawR(),
+			position.rawG(),
+			position.rawB(),
+			position.rawA()
+		);
 	}
 
 	@Override
-	public void mouseDragged(int x, int y, LayerNode layer, MouseButton button) {
+	public void mouseDragged(ProjectionResult position, MouseButton button) {
 		//no-op.
 	}
 

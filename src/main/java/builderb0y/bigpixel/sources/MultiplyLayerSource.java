@@ -16,7 +16,7 @@ public class MultiplyLayerSource extends MultiInputLayerSource {
 
 	public MultiplyLayerSource(LayerSources sources) {
 		super(LayerSourceType.MULTIPLY, sources);
-		this.dependencies.getBottomPane().getChildren().add(this.alphaWeighting);
+		this.commonSourceSettings.getChildren().add(this.alphaWeighting);
 	}
 
 	@Override

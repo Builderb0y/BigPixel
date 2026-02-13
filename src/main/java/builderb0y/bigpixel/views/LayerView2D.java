@@ -61,14 +61,16 @@ public abstract class LayerView2D extends LayerView {
 	}
 
 	@Override
-	public @Nullable ProjectionResult project(double x, double y) {
+	public @Nullable ProjectionResult project(double x, double y, int frameIndex) {
 		double zoom = this.zoom.get();
-		int projectedX = (int)(Math.floor((x - this.offsetX.get()) / zoom));
-		int projectedY = (int)(Math.floor((y - this.offsetY.get()) / zoom));
-		return this.handleEdge(projectedX, projectedY);
+		double rawX = (x - this.offsetX.get()) / zoom;
+		double rawY = (y - this.offsetY.get()) / zoom;
+		int projectedX = (int)(Math.floor(rawX));
+		int projectedY = (int)(Math.floor(rawY));
+		return this.handleEdge(rawX, rawY, projectedX, projectedY, frameIndex);
 	}
 
-	public abstract @Nullable ProjectionResult handleEdge(int projectedX, int projectedY);
+	public abstract @Nullable ProjectionResult handleEdge(double rawX, double rawY, int projectedX, int projectedY, int frameIndex);
 
 	@Override
 	public void zoom(double x, double y, boolean zoomIn) {
@@ -98,15 +100,15 @@ public abstract class LayerView2D extends LayerView {
 		double height = layer.imageHeight();
 		double zoom = this.zoom.get();
 		ZoomableImage zoomableImage = this.views.layer.graph.openImage.imageDisplay;
-		double canvasWidth = zoomableImage.display.display.getWidth();
-		double canvasHeight = zoomableImage.display.display.getHeight();
+		double canvasWidth = zoomableImage.canvasHolder.display.getWidth();
+		double canvasHeight = zoomableImage.canvasHolder.display.getHeight();
 		if (posX + width  * zoom < 0) posX = width  * -zoom;
 		if (posY + height * zoom < 0) posY = height * -zoom;
 		if (posX > canvasWidth ) posX = canvasWidth ;
 		if (posY > canvasHeight) posY = canvasHeight;
 		this.offsetX.set(posX);
 		this.offsetY.set(posY);
-		zoomableImage.redrawLater();
+		//zoomableImage.redrawLater();
 	}
 
 	@Override

@@ -22,11 +22,10 @@ import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.json.JsonMap;
-import builderb0y.bigpixel.util.Notifier;
 import builderb0y.bigpixel.util.Util;
 
 //serializable for the sole purpose of allowing HDRImage's to be copy-pasted with a Clipboard.
-public class HDRImage extends Notifier implements Serializable {
+public class HDRImage implements Serializable, Cloneable {
 
 	@Serial
 	private static final long serialVersionUID = 0xBE5393B55731DD65L;
@@ -219,6 +218,15 @@ public class HDRImage extends Notifier implements Serializable {
 
 	public static int packRgbaToArgb(float red, float green, float blue, float alpha) {
 		return (Util.clampI(alpha) << 24) | (Util.clampI(red) << 16) | (Util.clampI(green) << 8) | Util.clampI(blue);
+	}
+
+	public HDRImage asyncCopy() {
+		try {
+			return (HDRImage)(this.clone());
+		}
+		catch (CloneNotSupportedException exception) {
+			throw new AssertionError(exception);
+		}
 	}
 
 	@Serial

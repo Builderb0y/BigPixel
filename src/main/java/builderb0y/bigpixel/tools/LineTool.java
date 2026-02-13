@@ -8,8 +8,10 @@ import builderb0y.bigpixel.Assets;
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.ManualLayerSource;
 import builderb0y.bigpixel.util.Util;
+import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 
 public class LineTool extends Tool<LineTool.Work> {
 
@@ -33,7 +35,9 @@ public class LineTool extends Tool<LineTool.Work> {
 	public static double square(double n) { return n * n; }
 
 	@Override
-	public void mouseDown(int x, int y, MouseButton button) {
+	public void onMouseDown(ProjectionResult position, MouseButton button) {
+		int x = position.x();
+		int y = position.y();
 		Work work = this.work;
 		if (work != null) {
 			work.prevX = x;
@@ -67,7 +71,9 @@ public class LineTool extends Tool<LineTool.Work> {
 	}
 
 	@Override
-	public void mouseDragged(int x, int y, MouseButton button) {
+	public void onMouseDragged(ProjectionResult position, MouseButton button) {
+		int x = position.x();
+		int y = position.y();
 		Work work = this.work;
 		if (work.moving2) {
 			work.x2 += x - work.prevX;
@@ -88,7 +94,7 @@ public class LineTool extends Tool<LineTool.Work> {
 	}
 
 	@Override
-	public void redraw() {
+	public void redraw() throws RedrawException {
 		Work work = this.work;
 		if (work == null) return;
 		LayerNode layer = this.layer();
