@@ -8,6 +8,7 @@ import java.util.stream.IntStream;
 import javafx.application.Platform;
 import javafx.beans.binding.When;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
 import javafx.scene.Parent;
@@ -22,13 +23,17 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.json.JsonString;
 import builderb0y.bigpixel.sources.LayerSource;
+import builderb0y.bigpixel.sources.LayerSource.LayerSourceType;
 import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.LayerSources;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
+import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.views.LayerView;
+import builderb0y.bigpixel.views.LayerView.LayerViewType;
 import builderb0y.bigpixel.views.LayerViews;
 
 public class LayerNode implements LayerPosition, VaryingSamplerProvider {
@@ -64,6 +69,8 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		);
 	public RadioButton
 		showing = new RadioButton();
+	public ObservableValue<InputBinding.SaveData>
+		infoProperty = this.showing.textProperty().map(InputBinding.VaryingSaveData::new);
 	public ImageView
 		smallThumbnailView,
 		bigThumbnailView;
@@ -124,7 +131,7 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		this.configPane.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
 		this.showing.setText(name);
 		this.nameEditor.setText(name);
-		this.innerPreview.getStyleClass().add("layer-preview");
+		this.innerPreview.getStyleClass().add("selectable");
 		this.outerPreview.setMinWidth(PREVIEW_WIDTH);
 		this.outerPreview.setMaxWidth(PREVIEW_WIDTH);
 		this.outerPreview.setMinHeight(PREVIEW_HEIGHT);
@@ -197,6 +204,11 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 
 	public VaryingSampler createInvertedInput(int frame) {
 		return VaryingSampler.inverted(this, this.getFrame(frame));
+	}
+
+	@Override
+	public ObservableValue<InputBinding.SaveData> serializedForm() {
+		return this.infoProperty;
 	}
 
 	public void requestRedraw() {

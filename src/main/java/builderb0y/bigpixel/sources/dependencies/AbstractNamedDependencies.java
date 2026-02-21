@@ -9,7 +9,6 @@ import javafx.beans.Observable;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.value.ObservableBooleanValue;
 
-import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.OrganizedSelection.Value;
@@ -28,8 +27,7 @@ public abstract class AbstractNamedDependencies extends LayerDependencies {
 	public AbstractNamedDependencies(Value<?> owner) {
 		this.owner = owner;
 		this.allBindings = new HashMap<>();
-		ColorHelper colorHelper = owner.getLayer().graph.openImage.mainWindow.colorPicker.currentColor;
-		this.colorBoxGroup = new ColorBoxGroup(colorHelper, this.getConfigPane());
+		this.colorBoxGroup = new ColorBoxGroup(owner.getLayer().graph.openImage, this.getConfigPane());
 		this.animated = new AnimatedBinding();
 	}
 

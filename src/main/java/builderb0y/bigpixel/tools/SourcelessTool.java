@@ -4,7 +4,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.tools.Tool.ToolType;
 import builderb0y.bigpixel.views.LayerView.ProjectionResult;
 

@@ -11,6 +11,7 @@ import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.dependencies.AbstractNamedDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.views.CubeDimensions.CubeSize;
 import builderb0y.bigpixel.views.FaceInputBinding.Face;
 
 public class CubeDependencies extends AbstractNamedDependencies {
@@ -37,7 +38,7 @@ public class CubeDependencies extends AbstractNamedDependencies {
 		FaceInputBinding.Params south,
 		FaceInputBinding.Params east,
 		FaceInputBinding.Params west,
-		CubeDimensions.Params dimensions
+		CubeSize dimensions
 	) {}
 
 	@Override
@@ -71,7 +72,7 @@ public class CubeDependencies extends AbstractNamedDependencies {
 				this.south.drawParams.get(),
 				this.east.drawParams.get(),
 				this.west.drawParams.get(),
-				this.dimensions.drawParams.get()
+				this.dimensions.sizeProperty.get()
 			),
 			this.up.drawParams,
 			this.down.drawParams,
@@ -79,7 +80,7 @@ public class CubeDependencies extends AbstractNamedDependencies {
 			this.south.drawParams,
 			this.east.drawParams,
 			this.west.drawParams,
-			this.dimensions.drawParams
+			this.dimensions.sizeProperty
 		);
 	}
 

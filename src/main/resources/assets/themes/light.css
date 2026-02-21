@@ -8,12 +8,12 @@
 	-fx-tab-size: 4;
 }
 
-.layer-preview {
+.selectable {
     -fx-background-color: #FFFFFF;
     -fx-text-fill: black;
 }
 
-.layer-preview:selected {
+.selectable:selected {
     -fx-background-color: derive(-fx-accent, 90%);
     -fx-text-fill: black;
 }

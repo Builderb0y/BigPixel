@@ -4,7 +4,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import javafx.beans.binding.Bindings;
@@ -13,7 +16,6 @@ import javafx.beans.binding.ObjectBinding;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.HPos;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
@@ -166,7 +168,13 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 			boolean linear = this.linear.isSelected();
 			if (linear) color = color.mul(color, Util.RGB_MASK);
 			for (int index = 0, length = work.distanceMap.length; index < length; index++) {
-				float brushAlpha = brush.apply(work.distanceMap[index]);
+				float brushAlpha;
+				try {
+					brushAlpha = brush.apply(work.distanceMap[index]);
+				}
+				catch (Throwable throwable) {
+					throw new RedrawException(throwable.getLocalizedMessage());
+				}
 				if (brushAlpha > 0.0F) {
 					FloatVector oldColor = FloatVector.fromArray(FloatVector.SPECIES_128, destination.pixels, index << 2);
 					if (linear) oldColor = oldColor.mul(oldColor, Util.RGB_MASK);
@@ -290,7 +298,7 @@ public class FreehandTool extends Tool<FreehandTool.Work> {
 	@FunctionalInterface
 	public static interface BrushCurveScript {
 
-		public abstract float apply(float distance);
+		public abstract float apply(float distance) throws Throwable;
 	}
 
 	@FunctionalInterface

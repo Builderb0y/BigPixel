@@ -10,7 +10,6 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 
-import builderb0y.bigpixel.util.BaseCanvasHelper;
 import builderb0y.bigpixel.util.CanvasHelper;
 import builderb0y.bigpixel.util.Util;
 

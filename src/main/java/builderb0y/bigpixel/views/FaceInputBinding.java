@@ -2,9 +2,16 @@ package builderb0y.bigpixel.views;
 
 import java.util.Locale;
 
+import com.sun.javafx.binding.ExpressionHelper;
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
+import javafx.beans.WeakInvalidationListener;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.ObjectBinding;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -13,14 +20,15 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 
-import builderb0y.bigpixel.Assets;
-import builderb0y.bigpixel.OrganizedSelection;
-import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.*;
+import builderb0y.bigpixel.JsonConverter.EnumJsonConverter;
+import builderb0y.bigpixel.JsonConverter.UvJsonConverter;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.tools.Symmetry;
+import builderb0y.bigpixel.util.AggregateProperty;
 import builderb0y.bigpixel.util.Util;
 
 public class FaceInputBinding extends InputBinding {
@@ -57,45 +65,30 @@ public class FaceInputBinding extends InputBinding {
 		titledPane = new TitledPane();
 	public SimpleObjectProperty<Symmetry>
 		rotation = new SimpleObjectProperty<>(this, "rotation", Symmetry.IDENTITY);
+	public UvParamsProperty
+		uvParams = this.new UvParamsProperty();
+	public ParameterMultiStorage<UvParams>
+		uvParamsStorage = new ParameterMultiStorage<>(this.uvParams, this.owner.getLayer().graph.openImage.parameterSet);
 	public ObjectBinding<Params>
 		drawParams;
-	public static record Params(
+	public static record UvParams(
 		double minU,
 		double minV,
 		double maxU,
 		double maxV,
-		Symmetry rotation,
+		Symmetry rotation
+	) {}
+	public static record Params(
+		UvParams uv,
 		boolean enabled,
 		SamplerProvider input
 	) {}
-
-	@Override
-	public JsonMap save() {
-		return (
-			super
-			.save()
-			.with("minU", this.minUSpinner.getValue())
-			.with("minV", this.minVSpinner.getValue())
-			.with("maxU", this.maxUSpinner.getValue())
-			.with("maxV", this.maxVSpinner.getValue())
-			.with("rotation", this.rotation.get().name())
-		);
-	}
-
-	@Override
-	public void load(JsonMap map) {
-		super.load(map);
-		this.minUSpinner.getValueFactory().setValue(map.getDouble("minU"));
-		this.minVSpinner.getValueFactory().setValue(map.getDouble("minV"));
-		this.maxUSpinner.getValueFactory().setValue(map.getDouble("maxU"));
-		this.maxVSpinner.getValueFactory().setValue(map.getDouble("maxV"));
-		this.rotation.set(Symmetry.valueOf(map.getString("rotation")));
-	}
 
 	public FaceInputBinding(OrganizedSelection.Value<?> owner, CubeDimensions dimensions, Face face, ColorBoxGroup group) {
 		this.dimensions = dimensions;
 		this.face = face;
 		super(owner, group, CurveHelper.VIEW);
+		this.configParameters.addParameter(new ConfigParameter<>(this.uvParamsStorage, "uv", UvParams.class, UvJsonConverter.INSTANCE));
 		this.minUSpinner.valueProperty().addListener(Util.change((Double value) -> {
 			this.minU = value * 0.0625D;
 			this.owner.redrawLater();
@@ -116,6 +109,11 @@ public class FaceInputBinding extends InputBinding {
 		this.autoUVButton.setMinWidth(64.0D);
 		this.autoUVButton.setMaxWidth(64.0D);
 		this.autoUVButton.setTooltip(new Tooltip("Set UVs of this face automatically"));
+		ParameterSetTop top = owner.getLayer().graph.openImage.parameterSet;
+		ConfigParameters.setupContextMenu(top, this.minUSpinner, this.uvParamsStorage);
+		ConfigParameters.setupContextMenu(top, this.minVSpinner, this.uvParamsStorage);
+		ConfigParameters.setupContextMenu(top, this.maxUSpinner, this.uvParamsStorage);
+		ConfigParameters.setupContextMenu(top, this.maxVSpinner, this.uvParamsStorage);
 		this.uvPane.add(this.minUSpinner, 0, 1);
 		this.uvPane.add(this.minVSpinner, 1, 0);
 		this.uvPane.add(this.maxUSpinner, 2, 1);
@@ -143,19 +141,11 @@ public class FaceInputBinding extends InputBinding {
 		this.titledPane.setAnimated(false);
 		this.drawParams = Bindings.createObjectBinding(
 			() -> new Params(
-				this.minUSpinner.getValue(),
-				this.minVSpinner.getValue(),
-				this.maxUSpinner.getValue(),
-				this.maxVSpinner.getValue(),
-				this.rotation.get(),
+				this.uvParams.get(),
 				this.enabled.isSelected(),
 				this.selection.getValue()
 			),
-			this.minUSpinner.valueProperty(),
-			this.minVSpinner.valueProperty(),
-			this.maxUSpinner.valueProperty(),
-			this.maxVSpinner.valueProperty(),
-			this.rotation,
+			this.uvParams,
 			this.enabled.selectedProperty(),
 			this.selection.valueProperty()
 		);
@@ -214,7 +204,7 @@ public class FaceInputBinding extends InputBinding {
 		return Util.mix(
 			this.minU,
 			this.maxU,
-			switch (this.rotation.get()) {
+			switch (this.rotation.getValue()) {
 				case IDENTITY -> rawX;
 				case ROTATE_CW -> rawY;
 				case ROTATE_CCW -> -rawY;
@@ -230,7 +220,7 @@ public class FaceInputBinding extends InputBinding {
 		return Util.mix(
 			this.minV,
 			this.maxV,
-			switch (this.rotation.get()) {
+			switch (this.rotation.getValue()) {
 				case IDENTITY -> rawY;
 				case ROTATE_CW -> -rawX;
 				case ROTATE_CCW -> rawX;
@@ -246,7 +236,7 @@ public class FaceInputBinding extends InputBinding {
 		return Util.unmix(
 			this.minU,
 			this.maxU,
-			switch (this.rotation.get()) {
+			switch (this.rotation.getValue()) {
 				case IDENTITY -> rawX;
 				case ROTATE_CW -> 1.0D - rawY;
 				case ROTATE_CCW -> rawY;
@@ -260,7 +250,7 @@ public class FaceInputBinding extends InputBinding {
 		return Util.unmix(
 			this.minV,
 			this.maxV,
-			switch (this.rotation.get()) {
+			switch (this.rotation.getValue()) {
 				case IDENTITY -> rawY;
 				case ROTATE_CW -> rawX;
 				case ROTATE_CCW -> 1.0D - rawX;
@@ -291,8 +281,8 @@ public class FaceInputBinding extends InputBinding {
 			}
 			case FLIP_L -> {
 				this.flipU();
-				this.rotation.set(
-					switch (this.rotation.get()) {
+				this.rotation.setValue(
+					switch (this.rotation.getValue()) {
 						case IDENTITY -> Symmetry.ROTATE_CW;
 						case ROTATE_CW -> Symmetry.IDENTITY;
 						case ROTATE_180 -> Symmetry.ROTATE_CCW;
@@ -304,8 +294,8 @@ public class FaceInputBinding extends InputBinding {
 			}
 			case FLIP_R -> {
 				this.flipU();
-				this.rotation.set(
-					switch (this.rotation.get()) {
+				this.rotation.setValue(
+					switch (this.rotation.getValue()) {
 						case IDENTITY -> Symmetry.ROTATE_CCW;
 						case ROTATE_CCW -> Symmetry.IDENTITY;
 						case ROTATE_180 -> Symmetry.ROTATE_CW;
@@ -333,7 +323,7 @@ public class FaceInputBinding extends InputBinding {
 	}
 
 	public void rotate(Symmetry symmetry) {
-		this.rotation.set(this.rotation.get().andThen(symmetry));
+		this.rotation.setValue(this.rotation.getValue().andThen(symmetry));
 	}
 
 	public static enum Face {
@@ -346,5 +336,52 @@ public class FaceInputBinding extends InputBinding {
 
 		public final String saveName = this.name().toLowerCase(Locale.ROOT);
 		public final String displayName = this.name().charAt(0) + this.saveName.substring(1);
+	}
+
+	public class UvParamsProperty extends AggregateProperty<UvParams> implements InvalidationListener {
+
+		public UvParamsProperty() {
+			WeakInvalidationListener listener = new WeakInvalidationListener(this);
+			FaceInputBinding.this.minUSpinner.valueProperty().addListener(listener);
+			FaceInputBinding.this.minVSpinner.valueProperty().addListener(listener);
+			FaceInputBinding.this.maxUSpinner.valueProperty().addListener(listener);
+			FaceInputBinding.this.maxVSpinner.valueProperty().addListener(listener);
+			FaceInputBinding.this.rotation.addListener(listener);
+		}
+
+		@Override
+		public UvParams get() {
+			return new UvParams(
+				FaceInputBinding.this.minUSpinner.getValue(),
+				FaceInputBinding.this.minVSpinner.getValue(),
+				FaceInputBinding.this.maxUSpinner.getValue(),
+				FaceInputBinding.this.maxVSpinner.getValue(),
+				FaceInputBinding.this.rotation.get()
+			);
+		}
+
+		@Override
+		public void doSet(UvParams value) {
+			FaceInputBinding.this.minUSpinner.getValueFactory().setValue(value.minU);
+			FaceInputBinding.this.minVSpinner.getValueFactory().setValue(value.minV);
+			FaceInputBinding.this.maxUSpinner.getValueFactory().setValue(value.maxU);
+			FaceInputBinding.this.maxVSpinner.getValueFactory().setValue(value.maxV);
+			FaceInputBinding.this.rotation.set(value.rotation);
+		}
+
+		@Override
+		public void invalidated(Observable observable) {
+			this.fireValueChangedEvent();
+		}
+
+		@Override
+		public Object getBean() {
+			return FaceInputBinding.this;
+		}
+
+		@Override
+		public String getName() {
+			return "uvParamsProperty";
+		}
 	}
 }

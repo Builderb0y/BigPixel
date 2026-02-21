@@ -15,7 +15,7 @@ public class LayerViews extends OrganizedSelection<LayerView, LayerViewType, Lay
 	}
 
 	public void init() {
-		this.selectedValue.addListener(Util.change(this.layer.graph.openImage.imageDisplay::redrawLater));
+
 	}
 
 	@Override

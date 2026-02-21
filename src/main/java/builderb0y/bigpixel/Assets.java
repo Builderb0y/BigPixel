@@ -5,7 +5,8 @@ import javafx.scene.image.Image;
 public class Assets {
 
 	public static final Image
-		ICON = of("/assets/icon.png");
+		ICON = of("/assets/icon.png"),
+		DRAGBAR = of("/assets/dragbar.png");
 
 	public static class Tools {
 

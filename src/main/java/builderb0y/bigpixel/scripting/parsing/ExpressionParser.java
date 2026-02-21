@@ -7,7 +7,6 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
@@ -16,24 +15,17 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import builderb0y.bigpixel.CommonReader.CursorPos;
-import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.FunctionHandler;
-import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.KeywordHandler;
 import builderb0y.bigpixel.scripting.parsing.ScriptHandlers.VariableHandler;
 import builderb0y.bigpixel.scripting.tree.*;
 import builderb0y.bigpixel.scripting.tree.InsnTree.Assigner;
 import builderb0y.bigpixel.scripting.tree.condition.*;
-import builderb0y.bigpixel.scripting.types.RngOperations;
-import builderb0y.bigpixel.scripting.types.UtilityOperations;
-import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.scripting.types.VectorType;
-import builderb0y.bigpixel.scripting.types.VectorType.ComponentType;
 import builderb0y.bigpixel.scripting.types.VectorType.GroupShape;
 import builderb0y.bigpixel.scripting.util.BinaryOperatorWrapper;
 import builderb0y.bigpixel.scripting.util.LocalVariable;
 import builderb0y.bigpixel.scripting.util.MethodInfo;
 import builderb0y.bigpixel.scripting.util.UnaryOperatorWrapper;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
-import builderb0y.bigpixel.util.Util;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -121,7 +113,7 @@ public class ExpressionParser<I> {
 		ClassNode clazz = new ClassNode();
 		clazz.visit(
 			V24,
-			ACC_PUBLIC | ACC_FINAL | ACC_SYNTHETIC,
+			ACC_PUBLIC | ACC_FINAL | ACC_SYNTHETIC | ACC_SUPER,
 			this.getClass().getName().replace('.', '/') + "$Generated_" + UNIQUIFIER.getAndIncrement(),
 			null,
 			Type.getInternalName(Object.class),

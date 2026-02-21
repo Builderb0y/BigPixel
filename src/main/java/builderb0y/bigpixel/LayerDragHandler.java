@@ -1,6 +1,5 @@
 package builderb0y.bigpixel;
 
-import javafx.animation.Interpolator;
 import javafx.animation.Transition;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -10,6 +9,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.util.Duration;
+
+import builderb0y.bigpixel.util.Util;
 
 public class LayerDragHandler {
 
@@ -113,13 +114,7 @@ public class LayerDragHandler {
 		public double fromX, fromY, toX, toY;
 
 		public MoveAnimation() {
-			this.setInterpolator(new Interpolator() {
-
-				@Override
-				public double curve(double v) {
-					return v * v * (v * -2.0D + 3.0D);
-				}
-			});
+			this.setInterpolator(Util.SMOOTH_INTERPOLATOR);
 			this.setCycleDuration(Duration.seconds(0.25D));
 			this.setOnFinished((ActionEvent _) -> LayerDragHandler.this.layer.getPreviewNode().relocate(this.toX, this.toY));
 		}

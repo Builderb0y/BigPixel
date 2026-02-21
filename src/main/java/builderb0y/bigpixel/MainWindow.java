@@ -89,7 +89,7 @@ public class MainWindow {
 	public Histogram
 		histogram = new Histogram(this);
 	public TabPane
-		histogramAndAnimation = new TabPane();
+		leftTabs = new TabPane();
 	public File
 		lastOpenedDirectory = new File(System.getProperty("user.dir"));
 	public ScheduledFuture<?>
@@ -122,10 +122,16 @@ public class MainWindow {
 				(OpenImage image) -> image.animationSource.getRootNode()
 			)
 		);
-		this.histogramAndAnimation.getTabs().addAll(colorPickerTab, histogramTab, animationTab);
-		this.histogramAndAnimation.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
+		Tab parameterSetTab = new Tab("Parameters");
+		parameterSetTab.contentProperty().bind(
+			this.currentOpenImage.map(
+				(OpenImage image) -> image.parameterSet.rootPane
+			)
+		);
+		this.leftTabs.getTabs().addAll(colorPickerTab, histogramTab, animationTab, parameterSetTab);
+		this.leftTabs.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
 		this.leftPane.setTop(this.menuBar);
-		this.leftPane.setCenter(this.histogramAndAnimation);
+		this.leftPane.setCenter(this.leftTabs);
 		this.topHalf.setLeft(this.leftPane);
 		this.topHalf.setCenter(this.openImages);
 		this.bottomSplit.setOrientation(Orientation.VERTICAL);
@@ -249,7 +255,7 @@ public class MainWindow {
 					}
 					case C -> {
 						if (openImage != null) {
-							LayerNode layer = openImage.layerGraph.selectedLayer.get();
+							LayerNode layer = openImage.layerGraph.getVisibleLayer();
 							if (layer != null) {
 								this.copyToClipboard(layer);
 							}
@@ -550,11 +556,11 @@ public class MainWindow {
 		dialog.getDialogPane().setContent(gridPane);
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 		if (dialog.showAndWait().orElse(null) == ButtonType.OK) {
-			OpenImage image = new OpenImage(this);
-			LayerNode layer = new LayerNode(image.layerGraph, 0, 0, width.getValue(), height.getValue(), nameField.getText());
-			image.layerGraph.addLayer(layer, false);
-			image.layerGraph.visibleLayer.selectToggle(layer.showing);
-			this.addOpenImage(nameField.getText(), image);
+			OpenImage openImage = new OpenImage(this);
+			LayerNode layer = new LayerNode(openImage.layerGraph, 0, 0, width.getValue(), height.getValue(), nameField.getText());
+			openImage.layerGraph.addLayer(layer, false);
+			openImage.layerGraph.visibleLayer.selectToggle(layer.showing);
+			this.addOpenImage(nameField.getText(), openImage);
 		}
 	}
 

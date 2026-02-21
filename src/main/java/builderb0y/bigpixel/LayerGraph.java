@@ -310,6 +310,7 @@ public class LayerGraph {
 		this.mainGrid.getChildren().addFirst(layer.getPreviewNode());
 		this.updateFlow();
 		this.selectedLayer.set(layer);
+		this.visibleLayer.selectToggle(layer.showing);
 		this.buttons.getChildren().set(0, this.addLayerButton);
 		if (fadeIn) {
 			layer.getPreviewNode().setOpacity(0.0D);

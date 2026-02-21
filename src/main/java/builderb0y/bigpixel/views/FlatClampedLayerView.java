@@ -6,9 +6,9 @@ import javafx.scene.Node;
 import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.ZoomableImage.DrawParams;
 
 public class FlatClampedLayerView extends LayerView2D {
 

@@ -4,26 +4,31 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import com.sun.javafx.binding.ExpressionHelper;
+import javafx.beans.InvalidationListener;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableBooleanValue;
+import javafx.beans.value.ObservableValue;
+import javafx.beans.value.WeakChangeListener;
 import javafx.collections.FXCollections;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.image.ImageView;
 import javafx.scene.paint.Color;
+import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.ConfigParameter;
-import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.OrganizedSelection;
-import builderb0y.bigpixel.SaveException;
+import builderb0y.bigpixel.*;
+import builderb0y.bigpixel.JsonConverter.InputBindingSaveDataJsonConverter;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBox;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
-import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
+import builderb0y.bigpixel.util.AggregateProperty;
 import builderb0y.bigpixel.util.Util;
 
 public class InputBinding {
@@ -32,42 +37,26 @@ public class InputBinding {
 	public ColorBox colorBox;
 	public ImageView thumbnail;
 	public ChoiceBox<SamplerProvider> selection;
+	public SaveDataProperty saveDataProperty;
+	public ParameterMultiStorage<SaveData> saveDataStorage;
+	public ConfigParameters configParameters;
 	public ObservableBooleanValue animated;
 	public CurveHelper curve;
 	public boolean changing;
 
 	public JsonMap save() {
-		return switch (this.selection.getValue()) {
-			case UniformSamplerProvider uniform -> new JsonMap().with("type", "color").with("color", ConfigParameter.colorToJson(uniform.getColor()));
-			case VaryingSamplerProvider varying -> new JsonMap().with("type", "layer").with("layer", varying.getBackingLayer().getDisplayName());
-		};
+		JsonMap map = new JsonMap();
+		this.configParameters.save(map);
+		return map;
 	}
 
 	public void load(JsonMap map) {
-		String type = map.getString("type");
-		switch (type) {
-			case "color" -> {
-				this.colorBox.color.set(ConfigParameter.colorFromJson(map.getArray("color")));
-				this.selection.setValue(this.colorBox);
-			}
-			case "layer" -> {
-				String layerName = map.getString("layer");
-				LayerNode self = this.owner.getLayer();
-				LayerNode layer = self.graph.getLayerByName(layerName);
-				if (layer == null) {
-					throw new SaveException("Unknown layer dependency: " + layerName + " for dependent layer " + self.getDisplayName());
-				}
-				this.selection.setValue(layer);
-			}
-			default -> {
-				throw new SaveException("Unknown dependency type: " + type);
-			}
-		}
+		this.configParameters.load(map);
 	}
 
 	public InputBinding(OrganizedSelection.Value<?> owner, ColorBoxGroup group, Color curveColor) {
 		this.owner = owner;
-		this.colorBox  = group.addBox(new ColorBox(Util.WHITE));
+		this.colorBox = group.addBox(Util.WHITE);
 		this.thumbnail = new ImageView();
 		this.selection = new ChoiceBox<>(FXCollections.observableArrayList(this.colorBox));
 		this.selection.setValue(this.colorBox);
@@ -80,14 +69,18 @@ public class InputBinding {
 			case UniformSamplerProvider uniform -> null;
 			case VaryingSamplerProvider varying -> varying.getBackingLayer().smallThumbnail.currentFrame;
 		}));
-		ChangeListener<Object> listener = Util.change(() -> {
-			if (!this.changing) owner.redrawLater();
-		});
-		this.selection.valueProperty().addListener(listener);
-		this.colorBox.color.addListener(listener);
 		this.curve = new CurveHelper(owner.getLayer(), curveColor);
 		this.selection.valueProperty().addListener(Util.change(this.curve::setOtherEnd));
 		this.selection.setPrefWidth(128.0D);
+		this.saveDataProperty = this.new SaveDataProperty();
+		this.saveDataStorage = new ParameterMultiStorage<>(this.saveDataProperty, owner.getLayer().graph.openImage.parameterSet);
+		ConfigParameters.setupContextMenu(this.saveDataStorage.top, this.selection, this.saveDataStorage);
+		this.configParameters = new ConfigParameters(owner.getLayer().graph.openImage.parameterSet, Util.change(() -> {
+			if (!this.changing) {
+				this.owner.getLayer().requestRedraw();
+			}
+		}));
+		this.configParameters.addParameter(new ConfigParameter<>(this.saveDataStorage, "input", SaveData.class, InputBindingSaveDataJsonConverter.INSTANCE));
 		this.animated = Util.toBoolean(
 			this
 			.selection
@@ -127,6 +120,7 @@ public class InputBinding {
 			finally {
 				this.changing = oldChanging;
 			}
+			this.saveDataProperty.fireValueChangedEvent();
 			if (this.selection.getValue() != selected) {
 				this.owner.redrawLater();
 			}
@@ -135,5 +129,58 @@ public class InputBinding {
 
 	public SamplerProvider getCurrent() {
 		return this.selection.getValue();
+	}
+
+	public static sealed interface SaveData {}
+
+	public static record UniformSaveData(FloatVector color) implements SaveData {}
+
+	public static record VaryingSaveData(String layerName) implements SaveData {}
+
+	public class SaveDataProperty extends AggregateProperty<SaveData> implements ChangeListener<SaveData> {
+
+		public SaveDataProperty() {
+			InputBinding.this.selection.valueProperty().flatMap(SamplerProvider::serializedForm).addListener(new WeakChangeListener<>(this));
+		}
+
+		@Override
+		public SaveData get() {
+			return switch (InputBinding.this.selection.getValue()) {
+				case UniformSamplerProvider uniform -> new UniformSaveData(uniform.getColor());
+				case VaryingSamplerProvider varying -> new VaryingSaveData(varying.getBackingLayer().getDisplayName());
+			};
+		}
+
+		@Override
+		public void doSet(SaveData value) {
+			switch (value) {
+				case UniformSaveData(FloatVector color) -> {
+					InputBinding.this.colorBox.color.set(color);
+					InputBinding.this.selection.setValue(InputBinding.this.colorBox);
+				}
+				case VaryingSaveData(String name) -> {
+					LayerNode layer = InputBinding.this.owner.getLayer().graph.getLayerByName(name);
+					if (layer == null) throw new IllegalArgumentException("Unknown layer: " + name);
+					InputBinding.this.selection.setValue(layer);
+				}
+			}
+		}
+
+		@Override
+		public void changed(ObservableValue<? extends SaveData> observable, SaveData oldValue, SaveData newValue) {
+			if (!InputBinding.this.changing) {
+				this.fireValueChangedEvent();
+			}
+		}
+
+		@Override
+		public Object getBean() {
+			return InputBinding.this;
+		}
+
+		@Override
+		public String getName() {
+			return "saveProperty";
+		}
 	}
 }

@@ -14,7 +14,7 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.ConfigParameter;
+import builderb0y.bigpixel.ConfigParameters;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
@@ -26,7 +26,7 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 
 	public final LayerSourceType type;
 	public final LayerSources sources;
-	public final SourceParameters parameters;
+	public final ConfigParameters parameters;
 	public final BorderPane rootConfigPane;
 	public final CheckBox clampRGB, clampAlpha;
 	public final HBox commonSourceSettings;
@@ -34,7 +34,7 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	public LayerSource(LayerSourceType type, LayerSources sources) {
 		this.type = type;
 		this.sources = sources;
-		this.parameters = new SourceParameters(this);
+		this.parameters = new ConfigParameters(sources.layer.graph.openImage.parameterSet, Util.change(this::redrawLater));
 		this.rootConfigPane = new BorderPane();
 		this.clampRGB = this.parameters.addCheckbox("clampRGB", "Clamp RGB", true);
 		this.clampAlpha = this.parameters.addCheckbox("clampA", "Clamp Alpha", true);
@@ -86,17 +86,13 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	@Override
 	public JsonMap save() {
 		JsonMap map = new JsonMap().with("type", this.type.saveName);
-		for (ConfigParameter<?, ?> parameter : this.parameters) {
-			parameter.save(map);
-		}
+		this.parameters.save(map);
 		return map.with("dependencies", this.getDependencies().save());
 	}
 
 	@Override
 	public void load(JsonMap map) {
-		for (ConfigParameter<?, ?> parameter : this.parameters) {
-			parameter.load(map);
-		}
+		this.parameters.load(map);
 		this.getDependencies().load(map.getMap("dependencies"));
 	}
 

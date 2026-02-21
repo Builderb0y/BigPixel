@@ -1,5 +1,6 @@
 package builderb0y.bigpixel.sources;
 
+import javafx.beans.value.ChangeListener;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
@@ -10,11 +11,11 @@ import builderb0y.bigpixel.Gradient;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
+import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding.SaveData;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.UnmovableInputBinding;
-import builderb0y.bigpixel.util.CanvasHelper;
 import builderb0y.bigpixel.util.Util;
 
 public class CliffCurveLayerSource extends PerPixelLayerSource {
@@ -53,6 +54,10 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 		this.dependencies().midpoint.bindDisabled(this.dual.selectedProperty().not());
 		this.dependencies().addExtraNodeRow(new HBox(this.linear, this.dual));
 		this.dependencies().addExtraNodeRow(this.gradient.getRootPane());
+		ChangeListener<SaveData> listener = Util.change(this.gradient::redraw);
+		this.dependencies().strength.saveDataProperty.addListener(listener);
+		this.dependencies().midpoint.saveDataProperty.addListener(listener);
+		this.gradient.redraw();
 	}
 
 	public CliffCurver getCurver(boolean requireUniform, int frame) {
@@ -67,12 +72,6 @@ public class CliffCurveLayerSource extends PerPixelLayerSource {
 		else {
 			return new SingleCliffCurver(strength.createSamplerForFrame(frame), linear);
 		}
-	}
-
-	@Override
-	public void redrawLater() {
-		if (this.gradient != null) this.gradient.redraw();
-		super.redrawLater();
 	}
 
 	@Override

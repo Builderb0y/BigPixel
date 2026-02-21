@@ -31,7 +31,7 @@ public abstract class MultiInputLayerSource extends LayerSource {
 		}
 		int width = -1, height = -1;
 		for (MovableInputBinding input : inputs) {
-			if (input.selection.getValue() instanceof VaryingSamplerProvider varying) {
+			if (input.getCurrent() instanceof VaryingSamplerProvider varying) {
 				int imageWidth = varying.getBackingLayer().imageWidth();
 				int imageHeight = varying.getBackingLayer().imageHeight();
 				if (width < 0) {

@@ -9,6 +9,8 @@ import org.jetbrains.annotations.NotNull;
 
 public class JsonMap extends LinkedHashMap<@NotNull String, @NotNull JsonValue> implements JsonValue {
 
+	public boolean inline;
+
 	public JsonMap() {}
 
 	public JsonMap(int initialCapacity) {
@@ -17,6 +19,11 @@ public class JsonMap extends LinkedHashMap<@NotNull String, @NotNull JsonValue> 
 
 	public JsonMap(Map<String, ? extends JsonValue> map) {
 		super(map);
+	}
+
+	public JsonMap inline(boolean inline) {
+		this.inline = inline;
+		return this;
 	}
 
 	@Override
@@ -222,18 +229,30 @@ public class JsonMap extends LinkedHashMap<@NotNull String, @NotNull JsonValue> 
 			appendable.append("{}");
 			return;
 		}
-		appendable.append('{');
-		String indentString = "\t".repeat(indentation + 1);
 		Iterator<Map.Entry<String, JsonValue>> iterator = this.entrySet().iterator();
-		while (true) {
+		if (this.inline || indentation < 0) {
+			appendable.append("{ ");
 			Map.Entry<String, JsonValue> entry = iterator.next();
-			appendable.append('\n').append(indentString).append(JsonString.escape(entry.getKey())).append(": ");
-			entry.getValue().write(appendable, indentation + 1);
-			if (!iterator.hasNext()) {
-				appendable.append('\n').append(indentString, 0, indentation).append("}");
-				return;
+			entry.getValue().write(appendable.append(JsonString.escape(entry.getKey())).append(": "), -1);
+			while (iterator.hasNext()) {
+				entry = iterator.next();
+				entry.getValue().write(appendable.append(", ").append(JsonString.escape(entry.getKey())).append(": "), -1);
 			}
-			appendable.append(',');
+			appendable.append(" }");
+		}
+		else {
+			appendable.append('{');
+			String indentString = "\t".repeat(indentation + 1);
+			while (true) {
+				Map.Entry<String, JsonValue> entry = iterator.next();
+				appendable.append('\n').append(indentString).append(JsonString.escape(entry.getKey())).append(": ");
+				entry.getValue().write(appendable, indentation + 1);
+				if (!iterator.hasNext()) {
+					appendable.append('\n').append(indentString, 0, indentation).append("}");
+					break;
+				}
+				appendable.append(',');
+			}
 		}
 	}
 }

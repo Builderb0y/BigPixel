@@ -11,28 +11,28 @@ import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import org.jetbrains.annotations.Nullable;
 
+import builderb0y.bigpixel.*;
 import builderb0y.bigpixel.ZoomableImage.DrawParams;
-import builderb0y.bigpixel.ConfigParameter;
-import builderb0y.bigpixel.F3Menu;
-import builderb0y.bigpixel.LayerNode;
-import builderb0y.bigpixel.OrganizedSelection;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.util.Util;
 import builderb0y.bigpixel.views.LayerView.LayerViewType;
 
 public abstract class LayerView implements OrganizedSelection.Value<LayerViewType> {
 
 	public final LayerViewType type;
 	public final LayerViews views;
-	public final ViewParameters parameters = new ViewParameters(this);
-	public CheckBox drawOutline = this.parameters.addCheckbox("draw_outline", "Draw Outline", true);
+	public final ConfigParameters parameters;
+	public CheckBox drawOutline;
 	public double canvasWidth, canvasHeight;
 	public int layerWidth, layerHeight;
 
 	public LayerView(LayerViewType type, LayerViews views) {
 		this.type = type;
 		this.views = views;
-		super();
+		OpenImage image = this.getLayer().graph.openImage;
+		this.parameters = new ConfigParameters(image.parameterSet, Util.change(image.imageDisplay::redrawLater));
+		this.drawOutline = this.parameters.addCheckbox("draw_outline", "Draw Outline", true);
 	}
 
 	@Override
@@ -43,7 +43,7 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerViewTyp
 	@Override
 	public JsonMap save() {
 		JsonMap map = new JsonMap().with("type", this.type.saveName);
-		for (ConfigParameter<?, ?> parameter : this.parameters) {
+		for (ConfigParameter<?> parameter : this.parameters) {
 			parameter.save(map);
 		}
 		return map.with("dependencies", this.getDependencies().save());
@@ -51,7 +51,7 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerViewTyp
 
 	@Override
 	public void load(JsonMap root) {
-		for (ConfigParameter<?, ?> parameter : this.parameters) {
+		for (ConfigParameter<?> parameter : this.parameters) {
 			parameter.load(root);
 		}
 		this.getDependencies().load(root.getMap("dependencies"));

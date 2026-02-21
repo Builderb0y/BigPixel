@@ -1,5 +1,6 @@
 package builderb0y.bigpixel.sources;
 
+import com.sun.javafx.scene.TreeShowingProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
 import javafx.scene.input.MouseEvent;
@@ -7,17 +8,23 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.ColorHelper;
 import builderb0y.bigpixel.HDRImage;
+import builderb0y.bigpixel.OpenImage;
+import builderb0y.bigpixel.ParameterSetTop;
 import builderb0y.bigpixel.util.Util;
 
 public class ColorBoxGroup {
 
-	public SimpleObjectProperty<ColorBox> selected = new SimpleObjectProperty<>();
+	public ParameterSetTop top;
+	public SimpleObjectProperty<ColorBox> selected;
 	public boolean updateColor;
 
-	public ColorBoxGroup(ColorHelper color, Node rootPane) {
+	public ColorBoxGroup(OpenImage image, Node rootPane) {
+		this.top = image.parameterSet;
+		ColorHelper color = image.mainWindow.colorPicker.currentColor;
+		this.selected = new SimpleObjectProperty<>();
 		this.selected.addListener(Util.change((ColorBox oldValue, ColorBox newValue) -> {
 			if (oldValue != null) {
-				oldValue.color.unbind();
+				oldValue.color.unbindBidirectional(color.rgba);
 			}
 			if (newValue != null) {
 				if (this.updateColor) {
@@ -30,16 +37,17 @@ public class ColorBoxGroup {
 					);
 					color.markDirty();
 				}
-				newValue.color.bind(color.rgba);
+				newValue.color.bindBidirectional(color.rgba);
+				image.mainWindow.leftTabs.getSelectionModel().select(0);
 			}
 		}));
-		new com.sun.javafx.scene.TreeShowingProperty(rootPane).addListener(Util.change((Boolean visible) -> {
+		new TreeShowingProperty(rootPane).addListener(Util.change((Boolean visible) -> {
 			if (!visible) this.selected.set(null);
 		}));
 	}
 
-	public ColorBoxGroup(ColorHelper color, Node rootPane, ColorBox... boxes) {
-		this(color, rootPane);
+	public ColorBoxGroup(OpenImage image, Node rootPane, ColorBox... boxes) {
+		this(image, rootPane);
 		for (ColorBox box : boxes) {
 			this.add(box);
 		}
@@ -65,12 +73,8 @@ public class ColorBoxGroup {
 		});
 	}
 
-	public ColorBoxGroup addGroup(ColorBox box) {
-		this.add(box);
-		return this;
-	}
-
-	public ColorBox addBox(ColorBox box) {
+	public ColorBox addBox(FloatVector color) {
+		ColorBox box = new ColorBox(color);
 		this.add(box);
 		return box;
 	}

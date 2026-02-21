@@ -1,233 +1,73 @@
 package builderb0y.bigpixel;
 
-import java.util.stream.Collectors;
-
-import javafx.beans.property.Property;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.TextArea;
 import jdk.incubator.vector.FloatVector;
 
-import builderb0y.bigpixel.json.JsonArray;
+import builderb0y.bigpixel.JsonConverter.*;
 import builderb0y.bigpixel.json.JsonMap;
-import builderb0y.bigpixel.json.JsonString;
-import builderb0y.bigpixel.json.JsonValue;
-import builderb0y.bigpixel.sources.ColorBox;
 
-public abstract class ConfigParameter<T_Value, T_Holder> {
+public class ConfigParameter<T_Value> {
 
-	public final T_Holder holder;
-	public final String name;
+	public final ParameterMultiStorage<T_Value> storage;
+	public final String saveName;
 	public final Class<T_Value> valueClass;
+	public final JsonConverter<T_Value> converter;
 
-	public ConfigParameter(T_Holder holder, String name, Class<T_Value> aClass) {
-		this.holder = holder;
-		this.name = name;
+	public ConfigParameter(ParameterMultiStorage<T_Value> storage, String saveName, Class<T_Value> aClass, JsonConverter<T_Value> converter) {
+		this.storage = storage;
+		this.saveName = saveName;
 		this.valueClass = aClass;
+		this.converter = converter;
 	}
 
-	public abstract Property<T_Value> value();
-
 	public T_Value get() {
-		return this.value().getValue();
+		return this.storage.property.getValue();
 	}
 
 	public void set(T_Value value) {
-		this.value().setValue(value);
+		this.storage.property.setValue(value);
 	}
 
-	public abstract void save(JsonMap map);
-
-	public abstract void load(JsonMap map);
-
-	public static ConfigParameter<Boolean, CheckBox> checkbox(CheckBox checkBox, String name) {
-		return new ConfigParameter<>(checkBox, name, Boolean.class) {
-
-			@Override
-			public Property<Boolean> value() {
-				return this.holder.selectedProperty();
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				map.put(this.name, this.get());
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				this.set(map.getBoolean(this.name));
-			}
-		};
+	public void save(JsonMap map) {
+		map.put(this.saveName, this.storage.save(this.converter));
 	}
 
-	public static ConfigParameter<Integer, Spinner<Integer>> intSpinner(Spinner<Integer> spinner, String name) {
-		return new ConfigParameter<>(spinner, name, Integer.class) {
-
-			@Override
-			public Property<Integer> value() {
-				return this.holder.getValueFactory().valueProperty();
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				map.put(this.name, this.get());
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				this.set(map.getInt(this.name));
-			}
-		};
+	public void load(JsonMap map) {
+		this.storage.load(map.getMap(this.saveName), this.converter);
 	}
 
-	public static ConfigParameter<Float, Spinner<Float>> floatSpinner(Spinner<Float> spinner, String name) {
-		return new ConfigParameter<>(spinner, name, Float.class) {
-
-			@Override
-			public Property<Float> value() {
-				return spinner.getValueFactory().valueProperty();
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				map.put(this.name, this.get());
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				this.set(map.getFloat(this.name));
-			}
-		};
+	public static ConfigParameter<Boolean> createBoolean(ParameterMultiStorage<Boolean> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, Boolean.class, BooleanJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<Double, Spinner<Double>> doubleSpinner(Spinner<Double> spinner, String name) {
-		return new ConfigParameter<>(spinner, name, Double.class) {
-
-			@Override
-			public Property<Double> value() {
-				return this.holder.getValueFactory().valueProperty();
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				map.put(this.name, this.get());
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				this.set(map.getDouble(this.name));
-			}
-		};
+	public static ConfigParameter<Integer> createInt(ParameterMultiStorage<Integer> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, Integer.class, IntJsonConverter.INSTANCE);
 	}
 
-	public static <E extends Enum<E>> ConfigParameter<E, ChoiceBox<E>> enumChoiceBox(ChoiceBox<E> box, Class<E> enumClass, String name) {
-		return new ConfigParameter<>(box, name, enumClass) {
-
-			@Override
-			public Property<E> value() {
-				return this.holder.valueProperty();
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				map.put(this.name, this.get().name());
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				this.set(Enum.valueOf(this.valueClass, map.getString(this.name)));
-			}
-		};
+	public static ConfigParameter<Long> createLong(ParameterMultiStorage<Long> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, Long.class, LongJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<String, ChoiceBox<String>> stringChoiceBox(ChoiceBox<String> box, String name) {
-		return new ConfigParameter<>(box, name, String.class) {
-
-			@Override
-			public Property<String> value() {
-				return box.valueProperty();
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				String value = this.get();
-				if (value != null) map.put(this.name, value);
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				if (map.get(this.name) instanceof JsonString string) {
-					this.set(string.value);
-				}
-			}
-		};
+	public static ConfigParameter<Float> createFloat(ParameterMultiStorage<Float> storage, String name) {
+		return new ConfigParameter<>(storage, name, Float.class, FloatJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<FloatVector, ColorBox> colorBox(ColorBox box, String name) {
-		return new ConfigParameter<>(box, name, FloatVector.class) {
-
-			@Override
-			public Property<FloatVector> value() {
-				return box.color;
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				FloatVector color = this.get();
-				map.put(this.name, colorToJson(color));
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				JsonArray array = map.getArray(this.name);
-				this.set(colorFromJson(array));
-			}
-		};
+	public static ConfigParameter<Double> createDouble(ParameterMultiStorage<Double> storage, String name) {
+		return new ConfigParameter<>(storage, name, Double.class, DoubleJsonConverter.INSTANCE);
 	}
 
-	public static JsonArray colorToJson(FloatVector color) {
-		return (
-			new JsonArray()
-			.with(color.lane(0))
-			.with(color.lane(1))
-			.with(color.lane(2))
-			.with(color.lane(3))
-		);
+	public static ConfigParameter<String> createString(ParameterMultiStorage<String> storage, String name) {
+		return new ConfigParameter<>(storage, name, String.class, StringJsonConverter.INSTANCE);
 	}
 
-	public static FloatVector colorFromJson(JsonArray array) {
-		return FloatVector.fromArray(
-			FloatVector.SPECIES_128,
-			new float[] {
-				array.getFloat(0),
-				array.getFloat(1),
-				array.getFloat(2),
-				array.getFloat(3)
-			},
-			0
-		);
+	public static ConfigParameter<String> createMultiLineString(ParameterMultiStorage<String> storage, String name) {
+		return new ConfigParameter<>(storage, name, String.class, MultiLineStringJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<String, TextArea> code(TextArea area, String name) {
-		return new ConfigParameter<>(area, name, String.class) {
+	public static ConfigParameter<FloatVector> createColor(ParameterMultiStorage<FloatVector> storage, String name) {
+		return new ConfigParameter<>(storage, name, FloatVector.class, ColorJsonConverter.INSTANCE);
+	}
 
-			@Override
-			public Property<String> value() {
-				return this.holder.textProperty();
-			}
-
-			@Override
-			public void save(JsonMap map) {
-				JsonArray array = new JsonArray();
-				this.get().lines().forEachOrdered(array::add);
-				map.put(this.name, array);
-			}
-
-			@Override
-			public void load(JsonMap map) {
-				this.set(map.getArray(this.name).stream().map(JsonValue::asString).collect(Collectors.joining(System.lineSeparator())));
-			}
-		};
+	public static <E extends Enum<E>> ConfigParameter<E> createEnum(ParameterMultiStorage<E> storage, Class<E> enumClass, String name) {
+		return new ConfigParameter<>(storage, name, enumClass, new EnumJsonConverter<>(enumClass));
 	}
 }

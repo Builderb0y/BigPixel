@@ -31,6 +31,18 @@ public class OrganizedSelection<
 	public ObjectBinding<T_Type> selectedType;
 	public ObjectBinding<T_Value> selectedValue;
 
+	public JsonMap save() {
+		return this.selectedValue.get().save();
+	}
+
+	public void load(JsonMap saveData) {
+		String typeName = saveData.getString("type");
+		T_Type type = this.saveNameToType.get(typeName);
+		if (type == null) throw new SaveException("Unknown type: " + typeName);
+		this.getOrCreateValue(type).load(saveData);
+		this.select(type);
+	}
+
 	@SuppressWarnings("unchecked")
 	public OrganizedSelection(LayerNode layer, Class<T_Type> typeClass, Class<T_Category> categoryClass) {
 		this.layer = layer;
@@ -82,18 +94,6 @@ public class OrganizedSelection<
 				}
 			}
 		));
-	}
-
-	public JsonMap save() {
-		return this.selectedValue.get().save();
-	}
-
-	public void load(JsonMap saveData) {
-		String typeName = saveData.getString("type");
-		T_Type type = this.saveNameToType.get(typeName);
-		if (type == null) throw new SaveException("Unknown type: " + typeName);
-		this.getOrCreateValue(type).load(saveData);
-		this.select(type);
 	}
 
 	public void select(T_Type type) {

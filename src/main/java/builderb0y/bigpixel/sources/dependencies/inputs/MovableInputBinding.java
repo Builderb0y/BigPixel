@@ -10,31 +10,19 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 
-import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.dependencies.MultiLayerDependencies;
 
 public class MovableInputBinding extends InputBinding {
 
 	public CheckBox
-		enabled = new CheckBox();
+		enabled = this.configParameters.addCheckbox("enabled", "Enabled", true);
 	public Button
 		up = new Button("⏶"),
 		down = new Button("⏷"),
 		delete = new Button("🗑");
 	public GridPane
 		gridPane = new GridPane();
-
-	@Override
-	public JsonMap save() {
-		return super.save().with("enabled", this.enabled.isSelected());
-	}
-
-	@Override
-	public void load(JsonMap map) {
-		super.load(map);
-		this.enabled.setSelected(map.getBoolean("enabled"));
-	}
 
 	public MovableInputBinding(MultiLayerDependencies dependencies, ColorBoxGroup group, Color color) {
 		super(dependencies.owner, group, color);

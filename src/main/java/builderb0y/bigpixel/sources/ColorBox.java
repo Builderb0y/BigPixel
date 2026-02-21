@@ -10,6 +10,7 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
+import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
 import builderb0y.bigpixel.util.TriangleHelper;
 import builderb0y.bigpixel.util.Util;
@@ -20,6 +21,7 @@ public class ColorBox implements UniformSamplerProvider {
 
 	public SimpleObjectProperty<FloatVector> color;
 	public ObservableValue<FloatVector> displayColor;
+	public ObservableValue<InputBinding.SaveData> saveDataProperty;
 	public SimpleBooleanProperty disabled;
 	public TriangleHelper box;
 
@@ -41,6 +43,7 @@ public class ColorBox implements UniformSamplerProvider {
 				return color;
 			}
 		};
+		this.saveDataProperty = this.color.map(InputBinding.UniformSaveData::new);
 		this.box = new TriangleHelper().fixedSize(24.0D, 24.0D);
 		this.box.color.bind(this.displayColor);
 	}
@@ -57,6 +60,11 @@ public class ColorBox implements UniformSamplerProvider {
 	@Override
 	public ObservableValue<FloatVector> colorProperty() {
 		return this.color;
+	}
+
+	@Override
+	public ObservableValue<InputBinding.SaveData> serializedForm() {
+		return this.saveDataProperty;
 	}
 
 	public Pane getDisplayPane() {

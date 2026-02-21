@@ -8,9 +8,9 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.layout.GridPane;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.util.Util;
 
 public class FlatTilingLayerView extends LayerView2D {

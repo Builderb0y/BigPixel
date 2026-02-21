@@ -21,7 +21,6 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
 
-import builderb0y.bigpixel.DisplayRenderer.CachedImage;
 import builderb0y.bigpixel.util.Util;
 
 public class Thumbnail {

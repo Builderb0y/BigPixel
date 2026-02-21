@@ -8,12 +8,12 @@
 	-fx-tab-size: 4;
 }
 
-.layer-preview {
+.selectable {
 	-fx-background-color: #1F2327;
 	-fx-text-fill: white;
 }
 
-.layer-preview:selected {
+.selectable:selected {
 	-fx-background-color: #00477F;
 	-fx-text-fill: white;
 }

@@ -4,7 +4,8 @@ tools:
 multi-window support.
 scripting:
 	float(boolean)
-	user-defined methods
+	user-defined methods.
+	loops.
 make animation not draw canvas when open image tab is not selected.
 better compression for history/tool actions.
 probably need to separate save file from export file.

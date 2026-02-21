@@ -46,6 +46,7 @@ public enum VectorType {
 	;
 
 	public static final VectorType[] VALUES = values();
+	public static final VectorType[] UNITS = Arrays.stream(VALUES).filter((VectorType type) -> type.shape == GroupShape.UNIT).toArray(VectorType[]::new);
 	public static final Map<String, VectorType> nameLookup = Arrays.stream(VALUES).collect(Collectors.toMap((VectorType model) -> model.name, Function.identity()));
 	public static record Key(ComponentType componentType, GroupShape shape) {}
 	public static final Map<Key, VectorType> typeLookup = Arrays.stream(VALUES).collect(Collectors.toMap((VectorType type) -> new Key(type.componentType, type.shape), Function.identity()));

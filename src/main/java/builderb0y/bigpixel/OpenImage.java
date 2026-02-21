@@ -33,6 +33,8 @@ public class OpenImage {
 		imageAndLayerConfig = new SplitPane();
 	public AnimationSource
 		animationSource = new AnimationSource(this);
+	public ParameterSetTop
+		parameterSet = new ParameterSetTop();
 	public ZoomableImage
 		imageDisplay = new ZoomableImage(this);
 	public BorderPane
@@ -67,12 +69,14 @@ public class OpenImage {
 	public JsonMap save() {
 		JsonMap root = new JsonMap();
 		root.add("version", SaveVersions.CURRENT);
+		root.add("parameter_sets", this.parameterSet.save());
 		root.put("layer_graph", this.layerGraph.save());
 		root.add("animation", this.animationSource.save());
 		return root;
 	}
 
 	public void load(JsonMap map) {
+		this.parameterSet.load(map.getMap("parameter_sets"));
 		this.layerGraph.load(map.getMap("layer_graph"));
 		this.animationSource.load(map.getMap("animation"));
 	}

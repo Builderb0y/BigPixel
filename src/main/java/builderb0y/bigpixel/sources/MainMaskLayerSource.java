@@ -6,7 +6,6 @@ import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
-import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MainMaskDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;

@@ -13,7 +13,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import javafx.scene.Node;
 import javafx.scene.control.TextArea;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -60,20 +59,21 @@ import static org.objectweb.asm.Opcodes.*;
 
 public class DerivedLayerSource extends LayerSource {
 
+	public static boolean loading;
+
 	public TextArea textArea = this.parameters.addCode("code");
 	public RateLimiter recompiler = new NonPeriodicRateLimiter(500L, () -> this.doRecompile(true));
 	public DerivedLayerDependencies dependencies = new DerivedLayerDependencies(this);
 	public @Nullable Result<DerivedImageScriptFactory, ScriptParsingException> scriptFactory;
-	public boolean loading;
 
 	@Override
 	public void load(JsonMap map) {
-		this.loading = true;
+		loading = true;
 		try {
 			super.load(map);
 		}
 		finally {
-			this.loading = false;
+			loading = false;
 		}
 	}
 
@@ -133,7 +133,7 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	public void recompile() {
-		if (this.loading) this.doRecompile(false);
+		if (loading) this.doRecompile(false);
 		else this.recompiler.run();
 	}
 

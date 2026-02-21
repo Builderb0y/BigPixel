@@ -12,11 +12,11 @@ import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
-import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.F3Menu;
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.ZoomableImage;
+import builderb0y.bigpixel.ZoomableImage.DrawParams;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;

@@ -13,6 +13,8 @@ public sealed interface SamplerProvider {
 
 	public abstract Sampler createSamplerForFrame(int frame);
 
+	public abstract ObservableValue<InputBinding.SaveData> serializedForm();
+
 	@Override
 	public String toString();
 

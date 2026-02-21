@@ -2,16 +2,25 @@ package builderb0y.bigpixel.util;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import javafx.animation.Interpolator;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.*;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.skin.TextAreaSkin;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
 
@@ -34,6 +43,18 @@ public class Util {
 		RGB_MASK = VectorMask.fromValues(FloatVector.SPECIES_128, mask);
 	}
 
+	public static final Interpolator SMOOTH_INTERPOLATOR = new Interpolator() {
+
+		@Override
+		public double curve(double value) {
+			return smooth(value);
+		}
+	};
+
+	public static double smooth(double value) {
+		return value * value * (value * -2.0D + 3.0D);
+	}
+
 	public static <T> Spinner<T> setupSpinner(Spinner<T> spinner, double width) {
 		spinner.setEditable(true);
 		spinner.setMinWidth(width);
@@ -48,16 +69,43 @@ public class Util {
 		return spinner;
 	}
 
+	public static TextArea setupCodeArea(TextArea area) {
+		area.setFont(Font.font("monospace"));
+		return setupTextArea(area);
+	}
+
+	public static TextArea setupTextArea(TextArea area) {
+		area.setSkin(new TextAreaSkin(area)); //create child components.
+		recursiveInitializeText(area); //find Text object.
+		return area;
+	}
+
+	public static void recursiveInitializeText(Node node) {
+		if (node instanceof Text text) {
+			//explicitly query to force initialization.
+			//default value is loaded from CSS during initialization.
+			text.tabSizeProperty();
+		}
+		else if (node instanceof Parent parent) {
+			for (Node child : parent.getChildrenUnmodifiable()) {
+				recursiveInitializeText(child);
+			}
+			if (node instanceof ScrollPane scroll) {
+				recursiveInitializeText(scroll.getContent());
+			}
+		}
+	}
+
 	public static <T> ChangeListener<T> change(Runnable action) {
-		return (ObservableValue<? extends T> observable, T oldValue, T newValue) -> action.run();
+		return (ObservableValue<? extends T> _, T _, T _) -> action.run();
 	}
 
 	public static <T> ChangeListener<T> change(Consumer<T> consumer) {
-		return (ObservableValue<? extends T> observable, T oldValue, T newValue) -> consumer.accept(newValue);
+		return (ObservableValue<? extends T> _, T _, T newValue) -> consumer.accept(newValue);
 	}
 
 	public static <T> ChangeListener<T> change(BiConsumer<T, T> consumer) {
-		return (ObservableValue<? extends T> observable, T oldValue, T newValue) -> consumer.accept(oldValue, newValue);
+		return (ObservableValue<? extends T> _, T oldValue, T newValue) -> consumer.accept(oldValue, newValue);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -91,6 +139,18 @@ public class Util {
 			}
 		}
 		return "";
+	}
+
+	public static String adjustName(String baseName, Set<String> existingNames) {
+		if (existingNames.contains(baseName)) {
+			for (int attempt = 1; true; attempt++) {
+				String adjusted = baseName + " (" + attempt + ")";
+				if (!existingNames.contains(adjusted)) return adjusted;
+			}
+		}
+		else {
+			return baseName;
+		}
 	}
 
 	public static <T> T[] fill(T[] array, T element) {
@@ -189,6 +249,7 @@ public class Util {
 	public static float   or(Number  number, float   nullDefault) { return number != null ? number.  floatValue() : nullDefault; }
 	public static double  or(Number  number, double  nullDefault) { return number != null ? number. doubleValue() : nullDefault; }
 	public static boolean or(Boolean bool,   boolean nullDefault) { return bool   != null ? bool  .booleanValue() : nullDefault; }
+	public static <T> T   or(T       value,  T       nullDefault) { return value  != null ? value                 : nullDefault; }
 
 	public static ObservableIntegerValue toInt(ObservableValue<? extends Number> value, int nullDefault) {
 		return (
@@ -226,6 +287,13 @@ public class Util {
 		return (
 			value instanceof ObservableBooleanValue correct ? correct :
 			Bindings.createBooleanBinding(() -> or(value.getValue(), nullDefault), value)
+		);
+	}
+
+	public static <T> ObservableObjectValue<T> toObject(ObservableValue<T> value, T nullDefault) {
+		return (
+			value instanceof ObservableObjectValue<T> correct ? correct :
+			Bindings.createObjectBinding(() -> or(value.getValue(), nullDefault), value)
 		);
 	}
 }

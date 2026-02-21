@@ -9,7 +9,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;

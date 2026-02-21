@@ -2,12 +2,10 @@ package builderb0y.bigpixel.sources;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
-import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.HDRImage;

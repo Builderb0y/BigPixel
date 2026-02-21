@@ -1,12 +1,13 @@
 package builderb0y.bigpixel;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 import builderb0y.bigpixel.json.*;
 
 public class SaveVersions {
 
-	public static final int CURRENT = 10;
+	public static final int CURRENT = 12;
 
 	@SuppressWarnings({ "fallthrough", "DefaultNotLastCaseInSwitch" })
 	public static void process(JsonMap root) {
@@ -23,7 +24,9 @@ public class SaveVersions {
 			case 7: process7(root);
 			case 8: process8(root);
 			case 9: process9(root);
-			case 10:
+			case 10: process10(root);
+			case 11: process11(root);
+			case 12:
 		}
 	}
 
@@ -159,6 +162,162 @@ public class SaveVersions {
 			JsonMap sources = layer.asMap().getMap("sources");
 			sources.putIfAbsent("clampRGB", JsonBoolean.TRUE);
 			sources.putIfAbsent("clampA", JsonBoolean.TRUE);
+		}
+	}
+
+	public static void process10(JsonMap root) {
+		root.with(
+			"parameter_sets",
+			new JsonMap()
+			.with(
+				"groups",
+				new JsonArray()
+				.with(
+					new JsonMap()
+					.with("name", "Global")
+					.with("selected", "Default")
+					.with("variations", new JsonArray().with("Default"))
+				)
+			)
+		);
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap sources = layer.asMap().getMap("sources");
+			JsonMap views = layer.asMap().getMap("views");
+			switch (sources.getString("type")) {
+				case "manual" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "passthrough" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "alpha" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "linear");
+				case "add" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "linear", "alpha_weighting");
+				case "avg" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "linear", "alpha_weighting");
+				case "mul" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "alpha_weighting");
+				case "screen" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "alpha_weighting");
+				case "min" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "max" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "invert" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "clamp" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "normalize" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "per_channel");
+				case "gradient_remap" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "per_channel", "preserve_alpha");
+				case "color_matrix" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "cliff" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "dual", "linear");
+				case "tile" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "offsetX", "offsetY");
+				case "rescale" -> bindDefaultParameterSets(sources, "clampRGB", "clampA");
+				case "mode_blur" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "iterations");
+				case "convolve" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "linear", "shape", "weight_type", "radius", "normalize");
+				case "kmeans" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "seed", "colors", "iterations", "linear");
+				case "denoise" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "Radius", "iterations", "sensitivity", "linear");
+				case "wfc" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "seed", "kernel", "identity", "rotate90", "rotate180", "rotate270", "flipH", "flipV", "flipL", "flipR");
+				case "derived" -> bindDefaultParameterSets(sources, "clampRGB", "clampA", "code");
+			}
+			sources.getMap("dependencies").replaceAll((String key, JsonValue value) -> bindDependenciesToDefaultParameterSet(value));
+			switch (views.getString("type")) {
+				case "flat_clamped" -> bindDefaultParameterSets(views, "draw_outline");
+				case "flat_tiling" -> bindDefaultParameterSets(views, "draw_outline", "darken_exterior");
+				case "cube" -> bindDefaultParameterSets(views, "draw_outline", "shade");
+			}
+			views.getMap("dependencies").replaceAll((String key, JsonValue value) -> bindDependenciesToDefaultParameterSet(value));
+		}
+	}
+
+	public static void bindDefaultParameterSets(JsonMap map, String... names) {
+		for (String name : names) {
+			map.put(name, wrapInParameterSet(map.get(name)));
+		}
+	}
+
+	public static JsonValue bindDependenciesToDefaultParameterSet(JsonValue value) {
+		return switch (value) {
+			case JsonMap map -> {
+				JsonMap result = new JsonMap();
+				JsonMap input = new JsonMap();
+				JsonMap uv = new JsonMap();
+				JsonMap size = new JsonMap();
+				for (Map.Entry<String, JsonValue> entry : map.entrySet()) {
+					switch (entry.getKey()) {
+						case "type", "layer", "color" -> input.put(entry.getKey(), entry.getValue());
+						case "minU", "minV", "maxU", "maxV", "rotation" -> uv.put(entry.getKey(), entry.getValue());
+						case "minX", "minY", "minZ", "maxX", "maxY", "maxZ" -> size.put(entry.getKey(), entry.getValue());
+						default -> result.put(entry.getKey(), wrapInParameterSet(entry.getValue()));
+					}
+				}
+				if (!input.isEmpty()) result.put("input", wrapInParameterSet(input));
+				if (!uv.isEmpty()) result.put("uv", wrapInParameterSet(uv));
+				if (!size.isEmpty()) result.put("size", wrapInParameterSet(size));
+				yield result;
+			}
+			case JsonArray array -> {
+				yield array.stream().map(SaveVersions::bindDependenciesToDefaultParameterSet).collect(JsonArray.collector());
+			}
+			default -> {
+				throw new JsonException("Don't know how to handle " + value);
+			}
+		};
+	}
+
+	public static JsonValue wrapInParameterSet(JsonValue value) {
+		return new JsonMap().with("group", "Global").with("variations", new JsonMap().with("Default", value));
+	}
+
+	public static void process11(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap source = layer.asMap().getMap("sources");
+			if (source.getString("type").equals("convolve")) {
+				//new version removes functionality from old version,
+				//so not every old case can be handled.
+				//luckily, I didn't save any images that
+				//make use of un-handleable functionality.
+				//so I don't need to worry about that.
+				String shape;
+				String preset;
+				int radius;
+				JsonMap out = (
+					new JsonMap()
+					.with("shape", shape = source.removeMap("shape").getMap("variations").getString("Default"))
+					.with("preset", (preset = source.removeMap("weight_type").getMap("variations").getString("Default")).equals("CUSTOM") ? "MANUAL" : preset)
+					.with("radius", radius = source.removeMap("radius").getMap("variations").getInt("Default"))
+				);
+				if (preset.equals("CUSTOM")) {
+					JsonArray oldWeights = source.removeArray("custom_weights");
+					int size = oldWeights.size();
+					JsonArray newWeights = new JsonArray(size);
+					switch (shape) {
+						case "HORIZONTAL", "SEPARABLE", "CONCENTRIC" -> {
+							for (int x = -radius; x <= radius; x++) {
+								newWeights.add(
+									new JsonMap()
+									.with("x", x)
+									.with("y", 0)
+									.with("weight", oldWeights.get(x + radius))
+								);
+							}
+						}
+						case "VERTICAL" -> {
+							for (int y = -radius; y <= radius; y++) {
+								newWeights.add(
+									new JsonMap()
+									.with("x", 0)
+									.with("y", y)
+									.with("weight", oldWeights.get(y + radius))
+								);
+							}
+						}
+						case "SQUARE" -> {
+							int index = 0;
+							for (int y = -radius; y <= radius; y++) {
+								for (int x = -radius; x <= radius; x++) {
+									newWeights.add(
+										new JsonMap()
+										.with("x", x)
+										.with("y", y)
+										.with("weight", oldWeights.get(index++))
+									);
+								}
+							}
+						}
+					}
+					out.put("weights", newWeights);
+				}
+				source.put("weights", wrapInParameterSet(out));
+			}
 		}
 	}
 

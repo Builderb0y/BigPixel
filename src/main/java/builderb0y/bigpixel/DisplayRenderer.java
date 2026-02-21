@@ -1,6 +1,5 @@
 package builderb0y.bigpixel;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 

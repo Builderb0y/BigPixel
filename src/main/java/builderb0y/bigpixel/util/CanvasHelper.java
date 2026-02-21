@@ -1,7 +1,5 @@
 package builderb0y.bigpixel.util;
 
-import java.util.function.Consumer;
-
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.ObjectBinding;
 import javafx.beans.value.ObservableValue;
