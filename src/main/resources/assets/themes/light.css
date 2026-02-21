@@ -4,6 +4,11 @@
 	-fx-control-inner-background: #FFFFFF;
 }
 
+.layer-graph > .viewport {
+	-fx-background-image: url(/assets/themes/light_cloth.png);
+    -fx-background-repeat: repeat;
+}
+
 .text {
 	-fx-tab-size: 4;
 }
@@ -32,13 +37,13 @@
 }
 
 .popout-borders {
-	-fx-border-color: #FFFFFF #CFD3D7 #CFD3D7 #FFFFFF;
+	-fx-border-color: #FFFFFF #BFC3C7 #BFC3C7 #FFFFFF;
 	-fx-border-insets: 4;
 	-fx-border-width: 3;
 }
 
 .popin-borders {
-	-fx-border-color: #CFD3D7 #FFFFFF #FFFFFF #CFD3D7;
+	-fx-border-color: #BFC3C7 #FFFFFF #FFFFFF #BFC3C7;
 	-fx-border-insets: 4;
 	-fx-border-width: 3;
 }

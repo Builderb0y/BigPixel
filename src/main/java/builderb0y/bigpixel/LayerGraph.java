@@ -143,6 +143,7 @@ public class LayerGraph {
 	public LayerGraph(OpenImage openImage) {
 		this.openImage = openImage;
 		super();
+		this.mainScroll.getStyleClass().addFirst("layer-graph");
 		this.dragRectangle.setVisible(false);
 		this.overlay.setMouseTransparent(true);
 		ObservableDoubleValue buttonWidth = this.addLayerButton.widthProperty();
