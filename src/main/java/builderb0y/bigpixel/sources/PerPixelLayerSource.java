@@ -1,5 +1,7 @@
 package builderb0y.bigpixel.sources;
 
+import java.util.stream.IntStream;
+
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
@@ -17,7 +19,7 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 
 	@Override
 	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
-		PerPixelApplicator applicator = this.getApplicator(main, mask, frame);
+		PerPixelApplicator applicator = this.initProgressAndGetApplicator(main, mask, destination, frame);
 		switch (mask) {
 			case UniformSampler uniform -> {
 				FloatVector maskColor = uniform.getColor();
@@ -25,41 +27,45 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 				VectorMask<Float> zeroLanes = maskColor.compare(VectorOperators.LE, 0.0F);
 				if (oneLanes.allTrue()) {
 					//mask behaves as passthrough to computed color.
-					for (int y = 0; y < destination.height; y++) {
+					IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 						for (int x = 0; x < destination.width; x++) {
 							destination.setColor(x, y, applicator.apply(x, y, main.getColor(x, y)));
 						}
-					}
+						this.incrementProgress();
+					});
 				}
 				else if (zeroLanes.allTrue()) {
 					//mask blocks computed color, allowing main color to be visible.
-					for (int y = 0; y < destination.height; y++) {
+					IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 						for (int x = 0; x < destination.width; x++) {
 							destination.setColor(x, y, main.getColor(x, y));
 						}
-					}
+						this.incrementProgress();
+					});
 				}
 				else if (oneLanes.or(zeroLanes).allTrue()) {
 					//mask is either completely passthrough or completely blocking for each component.
-					for (int y = 0; y < destination.height; y++) {
+					IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 						for (int x = 0; x < destination.width; x++) {
 							FloatVector color = main.getColor(x, y);
 							destination.setColor(x, y, color.blend(applicator.apply(x, y, color), oneLanes));
 						}
-					}
+						this.incrementProgress();
+					});
 				}
 				else {
 					//mask contains at least one component which needs to be interpolated.
-					for (int y = 0; y < destination.height; y++) {
+					IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 						for (int x = 0; x < destination.width; x++) {
 							FloatVector color = main.getColor(x, y);
 							destination.setColor(x, y, carefulMix(color, applicator.apply(x, y, color), maskColor, zeroLanes, oneLanes));
 						}
-					}
+						this.incrementProgress();
+					});
 				}
 			}
 			case VaryingSampler _ -> {
-				for (int y = 0; y < destination.height; y++) {
+				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					for (int x = 0; x < destination.width; x++) {
 						FloatVector maskColor = mask.getColor(x, y);
 						VectorMask<Float> zeroLanes = maskColor.compare(VectorOperators.LE, 0.0F);
@@ -79,10 +85,16 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 							destination.setColor(x, y, carefulMix(mainColor, applicator.apply(x, y, mainColor), maskColor, zeroLanes, oneLanes));
 						}
 					}
-				}
+					this.incrementProgress();
+				});
 			}
 		}
 		this.clampImage(destination);
+	}
+
+	public PerPixelApplicator initProgressAndGetApplicator(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
+		this.startProgressing(destination.height);
+		return this.getApplicator(main, mask, frame);
 	}
 
 	public abstract PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException;

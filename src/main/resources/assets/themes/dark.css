@@ -13,6 +13,10 @@
 	-fx-tab-size: 4;
 }
 
+.layer-progress {
+	-fx-fill: linear-gradient(from 0% 0% to 0% 100%, #3FBF3F 0%, #007F00 100%);
+}
+
 .selectable {
 	-fx-background-color: #1F2327;
 	-fx-text-fill: white;

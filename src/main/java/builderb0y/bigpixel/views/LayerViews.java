@@ -4,7 +4,6 @@ import javafx.scene.canvas.Canvas;
 
 import builderb0y.bigpixel.LayerNode;
 import builderb0y.bigpixel.OrganizedSelection;
-import builderb0y.bigpixel.util.Util;
 import builderb0y.bigpixel.views.LayerView.LayerViewCategory;
 import builderb0y.bigpixel.views.LayerView.LayerViewType;
 

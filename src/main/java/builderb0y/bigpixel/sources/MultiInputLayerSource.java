@@ -73,6 +73,7 @@ public abstract class MultiInputLayerSource extends LayerSource {
 		MultiInputAccumulator accumulator = this.getAccumulator();
 		HDRImage destination = this.sources.layer.getFrame(frame);
 		accumulator.preprocess(destination, bindings);
+		this.startProgressing(bindings.size() * destination.height);
 		for (int index = bindings.size(); --index >= 0;) {
 			Sampler next = bindings.get(index).getCurrent().createSamplerForFrame(frame);
 			IntStream.range(0, destination.height).parallel().forEach((int y) -> {
@@ -86,6 +87,7 @@ public abstract class MultiInputLayerSource extends LayerSource {
 						)
 					);
 				}
+				this.incrementProgress();
 			});
 		}
 		accumulator.postProcess(destination, bindings);

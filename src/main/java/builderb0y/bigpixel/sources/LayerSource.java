@@ -2,6 +2,7 @@ package builderb0y.bigpixel.sources;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -30,6 +31,8 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	public final BorderPane rootConfigPane;
 	public final CheckBox clampRGB, clampAlpha;
 	public final HBox commonSourceSettings;
+	public final AtomicInteger currentProgress = new AtomicInteger();
+	public int maxProgress = 0;
 
 	public LayerSource(LayerSourceType type, LayerSources sources) {
 		this.type = type;
@@ -43,6 +46,27 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		ChangeListener<Object> listener = Util.change(this::redrawLater);
 		this.clampRGB.selectedProperty().addListener(listener);
 		this.clampAlpha.selectedProperty().addListener(listener);
+	}
+
+	public void startProgressing(int maxProgress) {
+		this.currentProgress.set(1);
+		this.maxProgress = maxProgress;
+		this.getLayer().progressChangedAsync();
+	}
+
+	public void incrementProgress() {
+		this.currentProgress.incrementAndGet();
+		this.getLayer().progressChangedAsync();
+	}
+
+	public void setProgress(int oneIndexedProgress) {
+		this.currentProgress.set(oneIndexedProgress);
+		this.getLayer().progressChangedAsync();
+	}
+
+	public double getProgress() {
+		if (this.maxProgress == 0) return 0.0D;
+		return this.currentProgress.doubleValue() / this.maxProgress;
 	}
 
 	public static FloatVector clamp(FloatVector color, boolean clampRGB, boolean clampAlpha) {

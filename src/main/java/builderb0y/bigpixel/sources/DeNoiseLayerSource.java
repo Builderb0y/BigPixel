@@ -55,6 +55,7 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 				double sensitivity = this.sensitivity.getValue();
 				int iterations = this.iterations.getValue();
 				boolean linear = this.linear.isSelected();
+				this.startProgressing(destination.height);
 				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					for (int x = 0; x < destination.width; x++) {
 						DoubleVector color = sample(varying, x, y, linear);
@@ -63,6 +64,7 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 						}
 						store(destination, x, y, color, varying.getColor(x, y), mask.getColor(x, y), linear, clampRGB, clampA);
 					}
+					this.incrementProgress();
 				});
 			}
 		}

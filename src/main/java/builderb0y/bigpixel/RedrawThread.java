@@ -30,6 +30,7 @@ public class RedrawThread extends Thread {
 							return layerNode;
 						}
 						catch (RedrawException exception) {
+							layerNode.sources.currentSource().setProgress(0);
 							layerNode.redrawException.set(exception.getLocalizedMessage());
 						}
 					}

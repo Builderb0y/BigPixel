@@ -9,7 +9,6 @@ import javafx.event.ActionEvent;
 import javafx.scene.control.*;
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory;
 import javafx.scene.input.ContextMenuEvent;
-import javafx.scene.text.Font;
 import org.jetbrains.annotations.NotNull;
 
 import builderb0y.bigpixel.json.JsonMap;

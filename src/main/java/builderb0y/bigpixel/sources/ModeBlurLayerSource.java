@@ -36,6 +36,7 @@ public class ModeBlurLayerSource extends MainMaskLayerSource {
 			case VaryingSampler varying -> {
 				int iterations = this.iterations.getValue();
 				HDRImage tmp = iterations != 1 ? new HDRImage(destination.width, destination.height) : null;
+				this.startProgressing(destination.height * iterations);
 				this.apply(main, (iterations & 1) != 0 ? destination : tmp);
 				for (int iteration = 1; iteration < iterations; iteration++) {
 					boolean flip = (iteration & 1) == (iterations & 1);
@@ -69,6 +70,7 @@ public class ModeBlurLayerSource extends MainMaskLayerSource {
 				to.setColor(x, y, best.getKey());
 				counts.clear();
 			}
+			this.incrementProgress();
 		});
 	}
 }

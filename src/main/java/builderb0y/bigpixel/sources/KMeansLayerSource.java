@@ -8,6 +8,7 @@ import javafx.scene.control.Spinner;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 
+import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.util.FastRandom;
 
@@ -30,6 +31,12 @@ public class KMeansLayerSource extends PerPixelLayerSource {
 		this.dependencies.gridPane.add(new Label("Iterations: "), 0, ++row);
 		this.dependencies.gridPane.add(this.iterations, 1, row);
 		this.dependencies.gridPane.add(this.linear, 1, ++row);
+	}
+
+	@Override
+	public PerPixelApplicator initProgressAndGetApplicator(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
+		this.startProgressing(destination.height * (this.iterations.getValue() + 1));
+		return this.getApplicator(main, mask, frame);
 	}
 
 	@Override
@@ -57,6 +64,7 @@ public class KMeansLayerSource extends PerPixelLayerSource {
 					FloatVector.fromArray(FloatVector.SPECIES_128, swap, closestIndex << 2).add(pixel).intoArray(swap, closestIndex << 2);
 					counts[closestIndex]++;
 				}
+				this.incrementProgress();
 			}
 			for (int index = 0; index < colorCount; index++) {
 				if (counts[index] != 0) {

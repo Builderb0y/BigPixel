@@ -11,6 +11,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.TabPane.TabClosingPolicy;
@@ -21,19 +22,20 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.shape.Rectangle;
 
 import builderb0y.bigpixel.json.JsonMap;
-import builderb0y.bigpixel.json.JsonString;
 import builderb0y.bigpixel.sources.LayerSource;
-import builderb0y.bigpixel.sources.LayerSource.LayerSourceType;
 import builderb0y.bigpixel.sources.LayerSource.RedrawException;
 import builderb0y.bigpixel.sources.LayerSources;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
+import builderb0y.bigpixel.util.RateLimiter;
+import builderb0y.bigpixel.util.RateLimiter.AsyncPeriodicRateLimiter;
 import builderb0y.bigpixel.views.LayerView;
-import builderb0y.bigpixel.views.LayerView.LayerViewType;
 import builderb0y.bigpixel.views.LayerViews;
 
 public class LayerNode implements LayerPosition, VaryingSamplerProvider {
@@ -69,6 +71,15 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		);
 	public RadioButton
 		showing = new RadioButton();
+	public Rectangle
+		progressIndicator = new Rectangle();
+	public StackPane
+		progressAndLabel = new StackPane(this.progressIndicator, this.showing);
+	public RateLimiter
+		progressUpdater = new AsyncPeriodicRateLimiter(50L, () -> {
+			double progress = this.sources.currentSource().getProgress();
+			this.progressIndicator.setWidth(progress * this.progressAndLabel.getWidth());
+		});
 	public ObservableValue<InputBinding.SaveData>
 		infoProperty = this.showing.textProperty().map(InputBinding.VaryingSaveData::new);
 	public ImageView
@@ -89,13 +100,13 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	public JsonMap save() {
 		return (
 			new JsonMap(8)
-			.with("name", this.getDisplayName())
-			.with("gridX", this.getGridX())
-			.with("gridY", this.getGridY())
-			.with("width", this.imageWidth())
-			.with("height", this.imageHeight())
+			.with("name",    this.getDisplayName())
+			.with("gridX",   this.getGridX())
+			.with("gridY",   this.getGridY())
+			.with("width",   this.imageWidth())
+			.with("height",  this.imageHeight())
 			.with("sources", this.sources.save())
-			.with("views", this.views.save())
+			.with("views",   this.views.save())
 		);
 	}
 
@@ -118,13 +129,17 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	public LayerNode(LayerGraph graph, int gridX, int gridY, int width, int height, String name) {
 		this.graph = graph;
 		super();
-		this.animation = new HDRAnimation(this, width, height);
-		this.smallThumbnail = new Thumbnail(this, 32);
-		this.bigThumbnail   = new Thumbnail(this, 80);
+		StackPane.setAlignment(this.showing, Pos.CENTER_LEFT);
+		StackPane.setAlignment(this.progressIndicator, Pos.TOP_LEFT);
+		this.progressIndicator.getStyleClass().add("layer-progress");
+		this.progressIndicator.heightProperty().bind(this.progressAndLabel.heightProperty());
+		this.animation          = new HDRAnimation(this, width, height);
+		this.smallThumbnail     = new Thumbnail(this, 32);
+		this.bigThumbnail       = new Thumbnail(this, 80);
 		this.smallThumbnailView = this.smallThumbnail.createView();
 		this.bigThumbnailView   = this.bigThumbnail.createView();
 		this.innerPreview.setCenter(this.bigThumbnailView);
-		this.innerPreview.setTop(this.showing);
+		this.innerPreview.setTop(this.progressAndLabel);
 		this.sources.init();
 		this.views.init();
 		this.dragHandler.init();
@@ -166,6 +181,10 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 		this.sourceConfigPane.centerProperty().bind(this.sources.selectedValue.map((LayerSource source) -> source.rootConfigPane));
 		this.viewConfigPane.setTop(this.views.rootButton);
 		this.viewConfigPane.centerProperty().bind(this.views.selectedValue.map(LayerView::getRootConfigPane));
+	}
+
+	public void progressChangedAsync() {
+		this.progressUpdater.run();
 	}
 
 	public HDRImage getFrame() {

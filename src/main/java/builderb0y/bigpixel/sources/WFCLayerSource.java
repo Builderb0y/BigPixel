@@ -364,6 +364,7 @@ public class WFCLayerSource extends LayerSource {
 			}
 			finally {
 				Platform.runLater(this.presentationSwapper::stop);
+				this.layerSource.setProgress(this.layerSource.maxProgress);
 			}
 		}
 
@@ -379,7 +380,9 @@ public class WFCLayerSource extends LayerSource {
 				}
 			}
 			if (this.shouldAbort()) return;
+			this.layerSource.startProgressing(this.tileLists.length);
 			this.processList(this.tileLists[this.random.nextInt(this.tileLists.length)]);
+			this.layerSource.incrementProgress();
 			//this.processList(this.nextList());
 			//*
 			while (true) {
@@ -387,6 +390,7 @@ public class WFCLayerSource extends LayerSource {
 				if (list == null) break;
 				this.processList(list);
 				if (this.shouldAbort()) return;
+				this.layerSource.incrementProgress();
 			}
 			//*/
 			this.swapWriting(true);
@@ -394,6 +398,7 @@ public class WFCLayerSource extends LayerSource {
 
 		public boolean shouldAbort() {
 			LayerNode self = this.layerSource.sources.layer;
+			//todo: iterating over the layer list while running is not thread-safe!
 			for (LayerNode layer : self.graph.layerList) {
 				if (layer.redrawRequested) return true;
 				if (layer == self) return false;

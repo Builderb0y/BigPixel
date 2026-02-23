@@ -49,6 +49,7 @@ public class RescaleLayerSource extends LayerSource {
 				int toHeight = destination.height;
 				int fromWidth = varying.getBackingLayer().imageWidth();
 				int fromHeight = varying.getBackingLayer().imageHeight();
+				this.startProgressing(toHeight);
 				IntStream.range(0, toHeight).parallel().forEach((int toY) -> {
 					for (int toX = 0; toX < toWidth; toX++) {
 						double fromMinX = ((double)(toX    )) * ((double)(fromWidth )) / ((double)(toWidth ));
@@ -79,6 +80,7 @@ public class RescaleLayerSource extends LayerSource {
 						if (linear) sum = sum.lanewise(VectorOperators.SQRT, Util.RGB_MASK);
 						destination.setColor(toX, toY,  clamp(sum, clampRGB, clampA));
 					}
+					this.incrementProgress();
 				});
 			}
 		};

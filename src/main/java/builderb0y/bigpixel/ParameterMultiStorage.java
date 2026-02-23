@@ -1,6 +1,5 @@
 package builderb0y.bigpixel;
 
-import java.util.Comparator;
 import java.util.Map;
 import java.util.WeakHashMap;
 

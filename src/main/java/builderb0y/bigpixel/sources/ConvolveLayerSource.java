@@ -241,6 +241,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 				}
 			}
 			case VaryingSampler varying -> {
+				this.startProgressing(destination.height);
 				ConvolveWeightType type = this.preset.getValue();
 				WeightProvider weightProvider = type != ConvolveWeightType.SCRIPTED ? null : switch (this.scriptedWeightProvider.getValue()) {
 					case Success(WeightProvider provider) -> provider;
@@ -281,6 +282,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 						this.convolve(main, destination, helper.weights);
 					}
 					case SEPARABLE -> {
+						this.startProgressing(destination.height * 2);
 						int diameter = radius * 2 + 1;
 						Helper helper = new Helper(diameter);
 						HDRImage scratch = new HDRImage(destination.width, destination.height);
@@ -409,7 +411,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		return packed >>> 16;
 	}
 
-	public void convolve(Sampler in, HDRImage out, PackedWeightList weights) throws RedrawException {
+	public void convolve(Sampler in, HDRImage out, PackedWeightList weights) {
 		if (this.normalizeCustomWeights.isSelected()) {
 			weights.normalize();
 		}
@@ -422,6 +424,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 				}
 				out.setColor(x, y, maybeSqrt(sum, linear));
 			}
+			this.incrementProgress();
 		});
 	}
 
