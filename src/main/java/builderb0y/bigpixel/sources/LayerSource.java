@@ -49,13 +49,16 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	}
 
 	public void startProgressing(int maxProgress) {
-		this.currentProgress.set(1);
+		this.currentProgress.set(0);
 		this.maxProgress = maxProgress;
 		this.getLayer().progressChangedAsync();
 	}
 
 	public void incrementProgress() {
-		this.currentProgress.incrementAndGet();
+		int progress = this.currentProgress.incrementAndGet();
+		if (progress > this.maxProgress) {
+			new Throwable("Too much progress! " + progress + " > " + this.maxProgress).printStackTrace();
+		}
 		this.getLayer().progressChangedAsync();
 	}
 
