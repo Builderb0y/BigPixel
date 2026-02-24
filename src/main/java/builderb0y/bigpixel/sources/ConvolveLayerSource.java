@@ -290,10 +290,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 							helper.addPos(x, 0);
 						}
 						this.convolve(main, scratch, helper.weights);
-						helper.weights.clear();
-						for (int y = -radius; y <= radius; y++) {
-							helper.addPos(0, y);
-						}
+						helper.weights.transpose();
 						this.convolve(VaryingSampler.of(varying.getBackingLayer(), scratch), destination, helper.weights);
 					}
 					case HORIZONTAL -> {
@@ -647,6 +644,12 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 				bits = Float.floatToRawIntBits(value);
 				packed = (packed & 0xFFFF_FFFF_0000_0000L) | Integer.toUnsignedLong(bits);
 				this.values[index] = packed;
+			}
+		}
+
+		public void transpose() {
+			for (int index = 0; index < this.size; index++) {
+				this.set(index, this.getY(index), this.getX(index), this.getWeight(index));
 			}
 		}
 
