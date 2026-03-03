@@ -10,7 +10,7 @@ import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MultiLayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
-import builderb0y.bigpixel.sources.dependencies.inputs.MovableInputBinding;
+import builderb0y.bigpixel.sources.dependencies.inputs.MoveableInputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 
@@ -20,17 +20,16 @@ public abstract class MultiInputLayerSource extends LayerSource {
 
 	public MultiInputLayerSource(LayerSourceType type, LayerSources sources) {
 		super(type, sources);
-		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
 	}
 
 	@Override
 	public void resizeIfNecessary() throws RedrawException {
-		List<MovableInputBinding> inputs = this.dependencies.listView.getItems();
+		List<MoveableInputBinding> inputs = this.dependencies.inputs;
 		if (inputs.isEmpty()) {
 			throw new RedrawException("No inputs");
 		}
 		int width = -1, height = -1;
-		for (MovableInputBinding input : inputs) {
+		for (MoveableInputBinding input : inputs) {
 			if (input.getCurrent() instanceof VaryingSamplerProvider varying) {
 				int imageWidth = varying.getBackingLayer().imageWidth();
 				int imageHeight = varying.getBackingLayer().imageHeight();
@@ -49,12 +48,12 @@ public abstract class MultiInputLayerSource extends LayerSource {
 	}
 
 	public List<InputBinding> filterInputs() throws RedrawException {
-		List<MovableInputBinding> inputs = this.dependencies.listView.getItems();
+		List<MoveableInputBinding> inputs = this.dependencies.inputs;
 		if (inputs.isEmpty()) {
 			throw new RedrawException("No inputs");
 		}
 		List<InputBinding> filtered = new ArrayList<>(inputs.size());
-		for (MovableInputBinding input : inputs) {
+		for (MoveableInputBinding input : inputs) {
 			if (input.enabled.isSelected()) {
 				filtered.add(input);
 			}

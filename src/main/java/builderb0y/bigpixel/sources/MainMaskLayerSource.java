@@ -20,7 +20,6 @@ public abstract class MainMaskLayerSource extends LayerSource {
 
 	public MainMaskLayerSource(LayerSourceType type, LayerSources sources) {
 		super(type, sources);
-		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
 	}
 
 	public MainMaskDependencies createDependencies() {

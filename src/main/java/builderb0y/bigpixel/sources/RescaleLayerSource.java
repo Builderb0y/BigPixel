@@ -20,8 +20,7 @@ public class RescaleLayerSource extends LayerSource {
 
 	public RescaleLayerSource(LayerSources sources) {
 		super(LayerSourceType.RESCALE, sources);
-		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
-		this.commonSourceSettings.getChildren().add(this.linear);
+		this.extraSettings.getChildren().add(this.linear);
 		this.linear.setSelected(true);
 		this.linear.selectedProperty().addListener(Util.change(this::redrawLater));
 	}

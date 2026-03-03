@@ -7,7 +7,7 @@ import builderb0y.bigpixel.json.*;
 
 public class SaveVersions {
 
-	public static final int CURRENT = 12;
+	public static final int CURRENT = 13;
 
 	@SuppressWarnings({ "fallthrough", "DefaultNotLastCaseInSwitch" })
 	public static void process(JsonMap root) {
@@ -26,7 +26,8 @@ public class SaveVersions {
 			case 9: process9(root);
 			case 10: process10(root);
 			case 11: process11(root);
-			case 12:
+			case 12: process12(root);
+			case 13:
 		}
 	}
 
@@ -317,6 +318,15 @@ public class SaveVersions {
 					out.put("weights", newWeights);
 				}
 				source.put("weights", wrapInParameterSet(out));
+			}
+		}
+	}
+
+	public static void process12(JsonMap root) {
+		for (JsonValue layer : root.getMap("layer_graph").getArray("layers")) {
+			JsonMap source = layer.asMap().getMap("sources");
+			if (source.getString("type").equals("convolve")) {
+				source.putIfAbsent("alpha_weighting", wrapInParameterSet(JsonBoolean.FALSE));
 			}
 		}
 	}

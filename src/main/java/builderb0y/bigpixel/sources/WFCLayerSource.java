@@ -16,6 +16,7 @@ import javafx.animation.Interpolator;
 import javafx.animation.Transition;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
@@ -81,7 +82,11 @@ public class WFCLayerSource extends LayerSource {
 		this.symmetrySettings.add(none, 1, 4);
 
 		this.mainPane.getChildren().addAll(this.dependencies.getConfigPane(), this.mainSettings, this.symmetrySettings);
-		this.rootConfigPane.setCenter(this.mainPane);
+	}
+
+	@Override
+	public Node getConfigPane() {
+		return this.mainPane;
 	}
 
 	public void setAllSymmetries(boolean selected) {

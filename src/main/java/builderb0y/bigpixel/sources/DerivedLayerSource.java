@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import javafx.scene.Node;
 import javafx.scene.control.TextArea;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -80,7 +81,11 @@ public class DerivedLayerSource extends LayerSource {
 	public DerivedLayerSource(LayerSources sources) {
 		super(LayerSourceType.DERIVED, sources);
 		this.textArea.textProperty().addListener(Util.change(this::recompile));
-		this.rootConfigPane.setCenter(this.textArea);
+	}
+
+	@Override
+	public Node getConfigPane() {
+		return this.textArea;
 	}
 
 	@Override

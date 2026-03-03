@@ -13,13 +13,13 @@ import javafx.scene.layout.HBox;
 import javafx.scene.text.Font;
 
 import builderb0y.bigpixel.EditableLabel.NameAdjuster;
-import builderb0y.bigpixel.ParameterMoveHelper.MoveableComponent;
+import builderb0y.bigpixel.MoveHelper.NamedMoveableComponent;
 import builderb0y.bigpixel.json.JsonString;
 import builderb0y.bigpixel.json.JsonValue;
 import builderb0y.bigpixel.util.Notifier;
 import builderb0y.bigpixel.util.Util;
 
-public class ParameterSetBottom implements MoveableComponent {
+public class ParameterSetBottom implements NamedMoveableComponent {
 
 	public static final double HEIGHT = 32.0D;
 
@@ -51,7 +51,6 @@ public class ParameterSetBottom implements MoveableComponent {
 		this.rootPane.centerProperty().bind(this.name.getRootPane());
 		this.dragBarImage = new ImageView(Assets.DRAGBAR);
 		this.dragBarPane = new BorderPane(this.dragBarImage);
-		this.dragBarPane.setCursor(Cursor.MOVE);
 		this.dragBarPane.visibleProperty().bind(this.rootPane.hoverProperty());
 		this.deleteButton = new Button("🗑");
 		this.deleteButton.setFont(new Font(20.0D));

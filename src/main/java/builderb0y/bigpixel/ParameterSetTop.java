@@ -21,13 +21,14 @@ import javafx.scene.layout.Pane;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
 
-import builderb0y.bigpixel.ParameterMoveHelper.MoveableContainer;
+import builderb0y.bigpixel.MoveHelper.MoveableContainer;
+import builderb0y.bigpixel.MoveHelper.NamedMoveableContainer;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.json.JsonValue;
 import builderb0y.bigpixel.util.Util;
 
-public class ParameterSetTop implements MoveableContainer<ParameterSetMiddle> {
+public class ParameterSetTop implements NamedMoveableContainer<ParameterSetMiddle> {
 
 	public final Map<String, ParameterSetMiddle> middles = new HashMap<>();
 	public final Pane middlePane = new Pane();
@@ -47,8 +48,8 @@ public class ParameterSetTop implements MoveableContainer<ParameterSetMiddle> {
 	}
 
 	public void load(JsonMap map) {
-		while (!this.getMoveableComponents().isEmpty()) {
-			this.remove(this.getMoveableComponents().values().iterator().next(), false);
+		while (!this.getComponentsByName().isEmpty()) {
+			this.remove(this.getComponentsByName().values().iterator().next(), false);
 		}
 		for (JsonValue middleData : map.getArray("groups")) {
 			this.add(middleData.asMap());
@@ -75,7 +76,7 @@ public class ParameterSetTop implements MoveableContainer<ParameterSetMiddle> {
 	}
 
 	@Override
-	public Map<String, ParameterSetMiddle> getMoveableComponents() {
+	public Map<String, ParameterSetMiddle> getComponentsByName() {
 		return this.middles;
 	}
 
@@ -89,20 +90,13 @@ public class ParameterSetTop implements MoveableContainer<ParameterSetMiddle> {
 		return this.addRemoveAnimation;
 	}
 
-	public void layout() {
-		for (ParameterSetMiddle middle : this.getMoveableComponents().values()) {
-			if (middle.getHeight() == 0.0D) return;
-		}
-		double offset = 0.0D;
-		for (ParameterSetMiddle component : this.getSortedMoveableComponents()) {
-			component.getSlideAnimation().stop();
-			component.setPosition(offset);
-			offset += component.getHeight();
-		}
-		if (this.buttonAnimation.getStatus() != Status.RUNNING) {
+	@Override
+	public double layout() {
+		double offset = NamedMoveableContainer.super.layout();
+		if (offset != 0.0D && this.buttonAnimation.getStatus() != Status.RUNNING) {
 			this.addButton.setLayoutY(offset);
 		}
-		this.middlePaneHeight.set(offset);
+		return offset;
 	}
 
 	public ParameterSetMiddle add() {
@@ -134,7 +128,7 @@ public class ParameterSetTop implements MoveableContainer<ParameterSetMiddle> {
 
 	@Override
 	public ParameterSetMiddle addComponent(Supplier<ParameterSetMiddle> supplier, boolean animate) {
-		ParameterSetMiddle middle = MoveableContainer.super.addComponent(supplier, animate);
+		ParameterSetMiddle middle = NamedMoveableContainer.super.addComponent(supplier, animate);
 		if (middle != null) {
 			middle.getRootNode().heightProperty().addListener(this.layerOuter);
 		}

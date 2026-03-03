@@ -8,9 +8,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import javafx.beans.value.ChangeListener;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 import org.jetbrains.annotations.Nullable;
@@ -28,9 +29,8 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	public final LayerSourceType type;
 	public final LayerSources sources;
 	public final ConfigParameters parameters;
-	public final BorderPane rootConfigPane;
 	public final CheckBox clampRGB, clampAlpha;
-	public final HBox commonSourceSettings;
+	public final VBox extraSettings;
 	public final AtomicInteger currentProgress = new AtomicInteger();
 	public int maxProgress = 0;
 
@@ -38,11 +38,10 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		this.type = type;
 		this.sources = sources;
 		this.parameters = new ConfigParameters(sources.layer.graph.openImage.parameterSet, Util.change(this::redrawLater));
-		this.rootConfigPane = new BorderPane();
 		this.clampRGB = this.parameters.addCheckbox("clampRGB", "Clamp RGB", true);
 		this.clampAlpha = this.parameters.addCheckbox("clampA", "Clamp Alpha", true);
-		this.commonSourceSettings = new HBox(this.clampRGB, this.clampAlpha);
-		this.rootConfigPane.setBottom(this.commonSourceSettings);
+		this.extraSettings = new VBox(this.clampRGB, this.clampAlpha);
+		this.extraSettings.setSpacing(4.0D);
 		ChangeListener<Object> listener = Util.change(this::redrawLater);
 		this.clampRGB.selectedProperty().addListener(listener);
 		this.clampAlpha.selectedProperty().addListener(listener);
@@ -143,6 +142,10 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	public void resizeIfNecessary() throws RedrawException {}
 
 	public abstract void doRedraw(int frame) throws RedrawException;
+
+	public Node getConfigPane() {
+		return this.getDependencies().getConfigPane();
+	}
 
 	@Override
 	public String toString() {

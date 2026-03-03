@@ -21,8 +21,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.text.Font;
 
 import builderb0y.bigpixel.EditableLabel.NameAdjuster;
-import builderb0y.bigpixel.ParameterMoveHelper.MoveableComponent;
-import builderb0y.bigpixel.ParameterMoveHelper.MoveableContainer;
+import builderb0y.bigpixel.MoveHelper.NamedMoveableComponent;
+import builderb0y.bigpixel.MoveHelper.NamedMoveableContainer;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.json.JsonValue;
@@ -30,7 +30,7 @@ import builderb0y.bigpixel.sources.DerivedLayerSource;
 import builderb0y.bigpixel.util.Notifier;
 import builderb0y.bigpixel.util.Util;
 
-public class ParameterSetMiddle implements MoveableContainer<ParameterSetBottom>, MoveableComponent {
+public class ParameterSetMiddle implements NamedMoveableContainer<ParameterSetBottom>, NamedMoveableComponent {
 
 	public final ParameterSetTop top;
 	public final EditableLabel name;
@@ -88,7 +88,6 @@ public class ParameterSetMiddle implements MoveableContainer<ParameterSetBottom>
 		this.addButton.setOnAction((ActionEvent _) -> this.add());
 		this.dragBarImage = new ImageView(Assets.DRAGBAR);
 		this.dragBarPane = new BorderPane(this.dragBarImage);
-		this.dragBarPane.setCursor(Cursor.MOVE);
 		this.titledPaneTopRightArea = new HBox(this.addButton, this.dragBarPane);
 		this.titledPaneTopArea = new BorderPane();
 		this.titledPaneTopArea.centerProperty().bind(this.name.getRootPane());
@@ -167,7 +166,7 @@ public class ParameterSetMiddle implements MoveableContainer<ParameterSetBottom>
 	}
 
 	@Override
-	public Map<String, ParameterSetBottom> getMoveableComponents() {
+	public Map<String, ParameterSetBottom> getComponentsByName() {
 		return this.bottoms;
 	}
 
@@ -187,7 +186,9 @@ public class ParameterSetMiddle implements MoveableContainer<ParameterSetBottom>
 	}
 
 	public ParameterSetBottom add(String name, boolean animate) {
-		return this.addComponent(() -> new ParameterSetBottom(this, name), animate);
+		ParameterSetBottom bottom = this.addComponent(() -> new ParameterSetBottom(this, name), animate);
+		if (bottom != null) this.selectedBottom.set(bottom);
+		return bottom;
 	}
 
 	public void remove(ParameterSetBottom bottom, boolean animate) {

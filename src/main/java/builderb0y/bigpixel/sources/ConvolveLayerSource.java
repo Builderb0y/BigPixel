@@ -14,6 +14,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.geometry.Orientation;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory;
 import javafx.scene.input.ScrollEvent;
@@ -69,6 +70,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	public final TextField[] customWeights = new TextField[MAX_MANUAL_AREA];
 	public final GridPane customWeightsView = new GridPane();
 	public final CheckBox normalizeCustomWeights = this.parameters.addCheckbox("normalize", "Normalize", true);
+	public final CheckBox alphaWeighting = this.parameters.addCheckbox("alpha_weighting", "Alpha Weighting", true);
 	public final TextArea scriptedWeightsEditor = Util.setupCodeArea(new TextArea());
 	public final ObservableValue<Result<WeightProvider, ScriptParsingException>> scriptedWeightProvider = this.scriptedWeightsEditor.textProperty().map((String text) -> {
 		try {
@@ -85,12 +87,12 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 
 	public ConvolveLayerSource(LayerSources sources) {
 		super(LayerSourceType.CONVOLVE, sources);
-		this.commonSourceSettings.getChildren().add(this.linear);
+		this.extraSettings.getChildren().addAll(this.linear, this.alphaWeighting);
 		((IntegerSpinnerValueFactory)(this.radius.getValueFactory())).maxProperty().bind(
 			Bindings.createIntegerBinding(() -> this.preset.getValue() == ConvolveWeightType.MANUAL ? MAX_MANUAL_RADIUS : MAX_PRESET_RADIUS, this.preset.valueProperty())
 		);
 		ChangeListener<Object> layout = Util.change(this::layoutCustomWeights);
-		this.shape.valueProperty().addListener(layout);
+		this.shape .valueProperty().addListener(layout);
 		this.preset.valueProperty().addListener(layout);
 		this.radius.valueProperty().addListener(layout);
 		this.layoutCustomWeights();
@@ -99,15 +101,13 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 			this.redrawLater();
 			this.saveDataProperty.fireValueChangedEvent();
 		});
-		this.shape.valueProperty().addListener(redraw);
+		this.shape .valueProperty().addListener(redraw);
 		this.preset.valueProperty().addListener(redraw);
 		this.radius.valueProperty().addListener(redraw);
 		this.scriptedWeightProvider.addListener(redraw);
 
 		this.splitPane.setOrientation(Orientation.VERTICAL);
-		this.rootConfigPane.setCenter(null);
 		this.splitPane.getItems().setAll(this.dependencies.getConfigPane(), this.weightConfigPane);
-		this.rootConfigPane.setCenter(this.splitPane);
 
 		this.parameters.addParameter(new ConfigParameter<>(this.saveDataStorage, "weights", SaveData.class, ConvolveSaveDataJsonConverter.INSTANCE));
 		ParameterSetTop top = sources.layer.graph.openImage.parameterSet;
@@ -115,6 +115,11 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		ConfigParameters.setupContextMenu(top, this.preset, this.saveDataStorage);
 		ConfigParameters.setupContextMenu(top, this.radius, this.saveDataStorage);
 		ConfigParameters.setupContextMenu(top, this.scriptedWeightsEditor, this.saveDataStorage);
+	}
+
+	@Override
+	public Node getConfigPane() {
+		return this.splitPane;
 	}
 
 	public void layoutCustomWeights() {
@@ -379,6 +384,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 						});
 					}
 				}
+				this.applyMask(main, mask, destination);
 			}
 		}
 	}
@@ -413,11 +419,21 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 			weights.normalize();
 		}
 		boolean linear = this.linear.isSelected();
+		boolean alphaWeighting = this.alphaWeighting.isSelected();
 		IntStream.range(0, out.height).parallel().forEach((int y) -> {
 			for (int x = 0; x < out.width; x++) {
+				float alphaSum = 0.0F;
 				FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 				for (int index = 0, size = weights.size(); index < size; index++) {
-					sum = sum.add(maybeSquare(in.getColor(Math.floorMod(x + weights.getX(index), out.width), Math.floorMod(y + weights.getY(index), out.height)), linear).mul(weights.getWeight(index)));
+					FloatVector color = in.getColor(Math.floorMod(x + weights.getX(index), out.width), Math.floorMod(y + weights.getY(index), out.height));
+					float weight = weights.getWeight(index);
+					if (alphaWeighting) {
+						alphaSum += weight *= color.lane(HDRImage.ALPHA_OFFSET);
+					}
+					sum = sum.add(maybeSquare(color, linear).mul(weight));
+				}
+				if (alphaWeighting) {
+					if (alphaSum != 0.0F) sum = sum.div(alphaSum);
 				}
 				out.setColor(x, y, maybeSqrt(sum, linear));
 			}

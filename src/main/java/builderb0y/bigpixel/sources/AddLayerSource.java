@@ -18,7 +18,7 @@ public class AddLayerSource extends MultiInputLayerSource {
 
 	public AddLayerSource(LayerSources sources) {
 		super(LayerSourceType.ADD, sources);
-		this.commonSourceSettings.getChildren().addAll(this.linear, this.alphaWeighting);
+		this.extraSettings.getChildren().addAll(this.linear, this.alphaWeighting);
 	}
 
 	@Override

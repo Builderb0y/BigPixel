@@ -204,8 +204,8 @@ public class MainWindow {
 		this.editUndoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.selectedValue.get())).history.undo());
 		this.editRedoMenuItem.setOnAction((ActionEvent _) -> ((ManualLayerSource)(this.getCurrentImage().layerGraph.selectedLayer.get().sources.selectedValue.get())).history.redo());
 
-		this.viewLightThemeMenuItem.setUserData("assets/themes/light.css");
-		this.viewDarkThemeMenuItem.setUserData("assets/themes/dark.css");
+		this.viewLightThemeMenuItem.setUserData(BigPixel.class.getResource("/assets/themes/light.css").toExternalForm());
+		this.viewDarkThemeMenuItem.setUserData(BigPixel.class.getResource("/assets/themes/dark.css").toExternalForm());
 		this.viewLightThemeMenuItem.setToggleGroup(this.themeToggleGroup);
 		this.viewDarkThemeMenuItem.setToggleGroup(this.themeToggleGroup);
 		this.themeToggleGroup.selectToggle(this.viewDarkThemeMenuItem);
@@ -214,7 +214,7 @@ public class MainWindow {
 			this.bottomSplit.getStylesheets().add((String)(newToggle.getUserData()));
 		}));
 		this.themeToggleGroup.selectToggle(this.viewDarkThemeMenuItem);
-		this.bottomSplit.getStylesheets().add("assets/themes/dark.css"); //why is this necessary?
+		this.bottomSplit.getStylesheets().add((String)(this.viewDarkThemeMenuItem.getUserData())); //why is this necessary?
 		this.colorPicker.init();
 		this.openImages.getTabs().addListener((Change<? extends Tab> change) -> {
 			while (change.next()) {

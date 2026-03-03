@@ -11,6 +11,7 @@ import javafx.beans.value.WeakChangeListener;
 import javafx.collections.FXCollections;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import jdk.incubator.vector.FloatVector;
 import org.jetbrains.annotations.Nullable;
@@ -22,7 +23,6 @@ import builderb0y.bigpixel.sources.ColorBox;
 import builderb0y.bigpixel.sources.ColorBoxGroup;
 import builderb0y.bigpixel.sources.LayerSource;
 import builderb0y.bigpixel.sources.dependencies.CurveHelper;
-import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.util.AggregateProperty;
@@ -33,6 +33,7 @@ public class InputBinding {
 	public OrganizedSelection.Value<?> owner;
 	public ColorBox colorBox;
 	public ImageView thumbnail;
+	public BorderPane previewPane;
 	public ChoiceBox<SamplerProvider> selection;
 	public SaveDataProperty saveDataProperty;
 	public ParameterMultiStorage<SaveData> saveDataStorage;
@@ -55,16 +56,19 @@ public class InputBinding {
 		this.owner = owner;
 		this.colorBox = group.addBox(Util.WHITE);
 		this.thumbnail = new ImageView();
+		this.previewPane = new BorderPane();
 		this.selection = new ChoiceBox<>(FXCollections.observableArrayList(this.colorBox));
 		this.selection.setValue(this.colorBox);
 		this.selection.valueProperty().addListener(Util.change((SamplerProvider supplier) -> {
 			if (supplier == null && !this.changing) new Throwable("stack trace").printStackTrace();
 		}));
-		this.colorBox.getDisplayPane().visibleProperty().bind(this.selection.valueProperty().isEqualTo(this.colorBox));
-		this.thumbnail.visibleProperty().bind(this.selection.valueProperty().map(VaryingSampler.class::isInstance));
 		this.thumbnail.imageProperty().bind(this.selection.valueProperty().flatMap((SamplerProvider supplier) -> switch (supplier) {
 			case UniformSamplerProvider uniform -> null;
 			case VaryingSamplerProvider varying -> varying.getBackingLayer().smallThumbnail.currentFrame;
+		}));
+		this.previewPane.centerProperty().bind(this.selection.valueProperty().map((SamplerProvider provider) -> switch (provider) {
+			case UniformSamplerProvider uniform -> this.colorBox.getDisplayPane();
+			case VaryingSamplerProvider varying -> this.thumbnail;
 		}));
 		this.curve = new CurveHelper(owner.getLayer(), curveColor);
 		this.selection.valueProperty().addListener(Util.change(this.curve::setOtherEnd));

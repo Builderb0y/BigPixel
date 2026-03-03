@@ -4,6 +4,10 @@
 	-fx-control-inner-background: #FFFFFF;
 }
 
+.popover > .border {
+	-fx-fill: -fx-base;
+}
+
 .layer-graph > .viewport {
 	-fx-background-image: url(/assets/themes/light_cloth.png);
     -fx-background-repeat: repeat;

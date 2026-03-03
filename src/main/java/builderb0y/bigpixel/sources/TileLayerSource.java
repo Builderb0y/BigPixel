@@ -23,7 +23,6 @@ public class TileLayerSource extends LayerSource {
 		super(LayerSourceType.TILE, sources);
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Offset X: "), this.offsetX));
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Offset Y: "), this.offsetY));
-		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
 	}
 
 	@Override

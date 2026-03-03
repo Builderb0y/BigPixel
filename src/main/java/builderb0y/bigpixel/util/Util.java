@@ -96,6 +96,15 @@ public class Util {
 		}
 	}
 
+	public static void dumpStyles(Node node, int indentation) {
+		System.out.println("\t".repeat(indentation) + node.getClass().getName() + ": " + node.getStyleClass());
+		if (node instanceof Parent parent) {
+			for (Node child : parent.getChildrenUnmodifiable()) {
+				dumpStyles(child, indentation + 1);
+			}
+		}
+	}
+
 	public static <T> ChangeListener<T> change(Runnable action) {
 		return (ObservableValue<? extends T> _, T _, T _) -> action.run();
 	}

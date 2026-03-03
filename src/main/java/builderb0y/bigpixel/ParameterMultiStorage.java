@@ -75,17 +75,18 @@ public class ParameterMultiStorage<T> {
 		this.middleCleaner = (Observable _) -> {
 			this.middle.set(this.top.getFirstMoveableComponent());
 		};
-		this.middle.addListener(Util.change((ParameterSetMiddle oldMiddle, ParameterSetMiddle newMiddle) -> {
-			oldMiddle.onDisposed.removeListener(this.middleCleaner);
-			newMiddle.onDisposed.addListener(this.middleCleaner);
-			this.storage.clear();
-		}));
 		this.currentStorage = (
 			this
 			.middle
 			.flatMap((ParameterSetMiddle m) -> m.selectedBottom)
 			.map(this::getStorage)
 		);
+		this.middle.addListener(Util.change((ParameterSetMiddle oldMiddle, ParameterSetMiddle newMiddle) -> {
+			oldMiddle.onDisposed.removeListener(this.middleCleaner);
+			newMiddle.onDisposed.addListener(this.middleCleaner);
+			this.storage.clear();
+			this.currentStorage.getValue();
+		}));
 		property.addListener(Util.change((T value) -> {
 			if (!this.currentChanging) this.currentStorage.getValue().set(value);
 		}));

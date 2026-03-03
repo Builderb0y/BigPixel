@@ -2,6 +2,7 @@ package builderb0y.bigpixel.sources;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -65,7 +66,11 @@ public class ManualLayerSource extends LayerSource {
 		this.toolWithoutColorPicker.addListener(Util.change((Tool<?> oldTool, Tool<?> newTool) -> {
 			if (oldTool != null) oldTool.enter();
 		}));
-		this.rootConfigPane.setCenter(this.toolSelection);
+	}
+
+	@Override
+	public Node getConfigPane() {
+		return this.toolSelection;
 	}
 
 	public Button button(Tool<?> tool) {

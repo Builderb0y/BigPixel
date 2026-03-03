@@ -9,19 +9,19 @@ import javafx.animation.Transition;
 import javafx.beans.property.DoubleProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.util.Duration;
 
-import builderb0y.bigpixel.ParameterMoveHelper.MoveableComponent.SlideAnimation;
+import builderb0y.bigpixel.MoveHelper.MoveableComponent.SlideAnimation;
+import builderb0y.bigpixel.util.MapValues;
 import builderb0y.bigpixel.util.Util;
 
-public class ParameterMoveHelper {
+public class MoveHelper {
 
 	public static interface MoveableComponent extends NodeHolder {
-
-		public abstract String getName();
 
 		public abstract DoubleProperty positionProperty();
 
@@ -49,6 +49,7 @@ public class ParameterMoveHelper {
 			}
 
 			public void install(Node node) {
+				node.setCursor(Cursor.MOVE);
 				node.setOnMouseDragged(this);
 				node.setOnMousePressed(this);
 				node.setOnMouseReleased(this);
@@ -106,22 +107,27 @@ public class ParameterMoveHelper {
 		}
 	}
 
+	public static interface NamedMoveableComponent extends MoveableComponent {
+
+		public abstract String getName();
+	}
+
 	public static interface MoveableContainer<M extends MoveableComponent> {
 
 		public abstract Pane getComponentView();
 
 		public abstract DoubleProperty viewHeightProperty();
 
-		public abstract Map<String, M> getMoveableComponents();
+		public abstract Collection<M> getMoveableComponents();
 
 		public default List<M> getSortedMoveableComponents() {
-			List<M> list = new ArrayList<>(this.getMoveableComponents().values());
+			List<M> list = new ArrayList<>(this.getMoveableComponents());
 			list.sort(Comparator.comparingDouble(MoveableComponent::getPosition));
 			return list;
 		}
 
 		public default M getFirstMoveableComponent() {
-			Iterator<M> iterator = this.getMoveableComponents().values().iterator();
+			Iterator<M> iterator = this.getMoveableComponents().iterator();
 			M first = iterator.next();
 			while (iterator.hasNext()) {
 				M next = iterator.next();
@@ -132,21 +138,25 @@ public class ParameterMoveHelper {
 			return first;
 		}
 
-		public abstract AddRemoveAnimation<M> getAddRemoveAnimation();
-
-		public default void rename(M component, String oldName, String newName) {
-			if (!this.getMoveableComponents().remove(oldName, component)) {
-				throw new IllegalStateException("Component map out of sync!");
+		public default double layout() {
+			for (MoveableComponent component : this.getMoveableComponents()) {
+				if (component.getHeight() == 0.0D) return 0.0D;
 			}
-			if (this.getMoveableComponents().putIfAbsent(newName, component) != null) {
-				this.getMoveableComponents().put(oldName, component);
-				throw new IllegalStateException("Invalid component name!");
+			double offset = 0.0D;
+			for (MoveableComponent component : this.getSortedMoveableComponents()) {
+				component.getSlideAnimation().stop();
+				component.setPosition(offset);
+				offset += component.getHeight();
 			}
+			this.viewHeightProperty().set(offset);
+			return offset;
 		}
+
+		public abstract AddRemoveAnimation<M> getAddRemoveAnimation();
 
 		public default void beginMove(M component) {
 			component.getRootNode().toFront();
-			for (M other : this.getMoveableComponents().values()) {
+			for (M other : this.getMoveableComponents()) {
 				if (other == component) continue;
 				SlideAnimation animation = other.getSlideAnimation();
 				if (other.getPosition() < component.getPosition()) {
@@ -173,7 +183,7 @@ public class ParameterMoveHelper {
 		public default void continueMove(M component) {
 			double componentSnap = component.getPosition();
 			double centerY = component.getPosition() + component.getHeight() * 0.5D;
-			for (M other : this.getMoveableComponents().values()) {
+			for (M other : this.getMoveableComponents()) {
 				if (other == component) continue;
 				SlideAnimation animation = other.getSlideAnimation();
 				if (centerY < (animation.from + animation.to + other.getHeight()) * 0.5D) {
@@ -213,7 +223,7 @@ public class ParameterMoveHelper {
 
 		public default double computeSize() {
 			double size = 0.0D;
-			for (M other : this.getMoveableComponents().values()) {
+			for (M other : this.getMoveableComponents()) {
 				size += Math.max(other.getHeight(), 1.0D);
 			}
 			return size;
@@ -225,7 +235,7 @@ public class ParameterMoveHelper {
 				M component = supplier.get();
 				double size = this.computeSize();
 				component.setPosition(size);
-				if (this.getMoveableComponents().putIfAbsent(component.getName(), component) != null) {
+				if (!this.getMoveableComponents().add(component)) {
 					throw new IllegalArgumentException("Adding " + component + " to " + this + " multiple times!");
 				}
 				this.getComponentView().getChildren().add(component.getRootNode());
@@ -247,14 +257,15 @@ public class ParameterMoveHelper {
 		}
 
 		public default void removeComponent(M component, boolean animate) {
-			if (!this.getMoveableComponents().remove(component.getName(), component)) {
+			double oldSize = this.computeSize();
+			if (!this.getMoveableComponents().remove(component)) {
 				throw new IllegalArgumentException(component + " not contained within " + this);
 			}
 			if (animate) {
 				AddRemoveAnimation<M> animation = this.getAddRemoveAnimation();
 				animation.fadingBottom = component;
-				animation.toSize = this.computeSize();
-				animation.fromSize = animation.toSize - component.getHeight();
+				animation.toSize = oldSize;
+				animation.fromSize = oldSize - component.getHeight();
 				animation.setRate(-1.0D);
 				animation.playFrom(animation.getCycleDuration());
 
@@ -314,6 +325,32 @@ public class ParameterMoveHelper {
 					this.container.viewHeightProperty().set(Util.mix(this.fromSize, this.toSize, Util.smooth(frac * 2.0D)));
 				}
 			}
+		}
+	}
+
+	public static interface NamedMoveableContainer<M extends NamedMoveableComponent> extends MoveableContainer<M> {
+
+		public abstract Map<String, M> getComponentsByName();
+
+		public default void rename(M component, String oldName, String newName) {
+			if (!this.getComponentsByName().remove(oldName, component)) {
+				throw new IllegalStateException("Component map out of sync!");
+			}
+			if (this.getComponentsByName().putIfAbsent(newName, component) != null) {
+				this.getComponentsByName().put(oldName, component);
+				throw new IllegalStateException("Invalid component name!");
+			}
+		}
+
+		@Override
+		public default Collection<M> getMoveableComponents() {
+			return new MapValues<>(this.getComponentsByName()) {
+
+				@Override
+				public String keyOf(M value) {
+					return value.getName();
+				}
+			};
 		}
 	}
 }

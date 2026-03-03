@@ -12,7 +12,6 @@ public class PassthroughLayerSource extends LayerSource {
 
 	public PassthroughLayerSource(LayerSources sources) {
 		super(LayerSourceType.PASSTHROUGH, sources);
-		this.rootConfigPane.setCenter(this.dependencies.getConfigPane());
 	}
 
 	@Override

@@ -127,7 +127,7 @@ public class FaceInputBinding extends InputBinding {
 		this.enabled.setSelected(true);
 		this.enabled.selectedProperty().addListener(Util.change(owner::redrawLater));
 		this.selection.setPrefWidth(128.0D);
-		HBox header = new HBox(this.enabled, this.selection, this.thumbnail, this.colorBox.getDisplayPane());
+		HBox header = new HBox(this.enabled, this.selection, this.previewPane);
 		header.setAlignment(Pos.CENTER);
 		this.titledPane.setGraphic(header);
 		this.titledPane.setContent(this.uvPane);

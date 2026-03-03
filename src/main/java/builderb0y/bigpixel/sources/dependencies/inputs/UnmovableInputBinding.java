@@ -32,7 +32,6 @@ public class UnmovableInputBinding extends InputBinding {
 	public void addRow(GridPane gridPane, int rowIndex) {
 		gridPane.add(this.displayName, 0, rowIndex);
 		gridPane.add(this.selection, 1, rowIndex);
-		gridPane.add(this.thumbnail, 2, rowIndex);
-		gridPane.add(this.colorBox.getDisplayPane(), 2, rowIndex);
+		gridPane.add(this.previewPane, 2, rowIndex);
 	}
 }
