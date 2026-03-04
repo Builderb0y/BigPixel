@@ -30,7 +30,7 @@ public class CubeLayerView extends LayerView {
 	public CheckBox
 		shade = this.parameters.addCheckbox("shade", "Shade", true);
 	public HBox
-		topConfigOptions = new HBox(this.drawOutline, this.shade);
+		topConfigOptions = new HBox(this.drawOutline, this.showAlpha, this.shade);
 	public CubeDependencies
 		dependencies = new CubeDependencies(this);
 	public BorderPane
@@ -71,6 +71,7 @@ public class CubeLayerView extends LayerView {
 					double fov,
 					boolean shaded,
 					boolean outline,
+					boolean showAlpha,
 					CubeDependencies.Params deps
 				)
 				implements DrawParams {}
@@ -80,6 +81,7 @@ public class CubeLayerView extends LayerView {
 					this.fov.get(),
 					this.shade.isSelected(),
 					this.drawOutline.isSelected(),
+					this.showAlpha.isSelected(),
 					this.dependencies.drawParams.get()
 				);
 			},
@@ -88,6 +90,7 @@ public class CubeLayerView extends LayerView {
 			this.fov,
 			this.shade.selectedProperty(),
 			this.drawOutline.selectedProperty(),
+			this.showAlpha.selectedProperty(),
 			this.dependencies.drawParams
 		);
 	}

@@ -18,26 +18,30 @@ public class FlatClampedLayerView extends LayerView2D {
 	public FlatClampedLayerView(LayerViews views) {
 		super(LayerViewType.FLAT_CLAMPED, views);
 		this.rootConfigPane.add(this.drawOutline, 0, 0);
+		this.rootConfigPane.add(this.showAlpha, 0, 1);
 		this.drawParams = Bindings.createObjectBinding(
 			() -> {
 				record Params(
 					double offsetX,
 					double offsetY,
 					double zoom,
-					boolean drawOutline
+					boolean drawOutline,
+					boolean showAlpha
 				)
 				implements DrawParams {}
 				return new Params(
 					this.offsetX.get(),
 					this.offsetY.get(),
 					this.zoom.get(),
-					this.drawOutline.isSelected()
+					this.drawOutline.isSelected(),
+					this.showAlpha.isSelected()
 				);
 			},
 			this.offsetX,
 			this.offsetY,
 			this.zoom,
-			this.drawOutline.selectedProperty()
+			this.drawOutline.selectedProperty(),
+			this.showAlpha.selectedProperty()
 		);
 	}
 

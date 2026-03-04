@@ -83,6 +83,7 @@ public class DisplayRenderer {
 		byte[] pixels = new byte[width * height * 4];
 		LayerView view = visibleLayer.views.currentView();
 		if (view != null) {
+			boolean showAlpha = view.showAlpha.isSelected();
 			view.beforeRedraw(layerWidth, layerHeight, width, height);
 			IntStream.range(0, height).parallel().forEach((int y) -> {
 				for (int x = 0; x < width; x++) {
@@ -92,7 +93,7 @@ public class DisplayRenderer {
 						r = mapped.r();
 						g = mapped.g();
 						b = mapped.b();
-						a = mapped.a();
+						a = showAlpha ? mapped.a() : 1.0F;
 					}
 					int baseIndex = (y * width + x) << 2;
 					float clampedAlpha = Util.clampF(a);

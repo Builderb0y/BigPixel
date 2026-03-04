@@ -24,15 +24,6 @@ import builderb0y.bigpixel.util.*;
 
 public class ColorSelector {
 
-	public static final Border INSET_BORDER = new Border(
-		new BorderStroke(
-			null,
-			BorderStrokeStyle.NONE,
-			CornerRadii.EMPTY,
-			BorderWidths.EMPTY,
-			new Insets(2.0D, 4.0D, 2.0D, 4.0D)
-		)
-	);
 	public static final int[] SNAP_POSITIONS = new int[257];
 	static {
 		for (int index = 0; index <= 256; index++) {
@@ -49,7 +40,7 @@ public class ColorSelector {
 	public static int snapRange(int value) {
 		//& 7 makes it so that 0 and 256 both map to no snapping,
 		//since it's easy to just drag your mouse outside the slider or gradient.
-		return Math.max((Integer.numberOfTrailingZeros(value) & 7) - 3, 0);
+		return Math.max((Integer.numberOfTrailingZeros(value) & 7) - 2, 0);
 	}
 
 	public MainWindow mainWindow;
@@ -148,11 +139,10 @@ public class ColorSelector {
 			for (int x = 0; x <= 256; x++) {
 				helper.setComponent(primaryComponent.horizontal(), x / 256.0F);
 				int baseIndex = (y * 257 + x) << 2;
-				float alpha = helper.alpha.get();
-				pixels[baseIndex    ] = Util.clampB(helper.blue .get() * alpha);
-				pixels[baseIndex | 1] = Util.clampB(helper.green.get() * alpha);
-				pixels[baseIndex | 2] = Util.clampB(helper.red  .get() * alpha);
-				pixels[baseIndex | 3] = Util.clampB(alpha);
+				pixels[baseIndex    ] = Util.clampB(helper.blue .get());
+				pixels[baseIndex | 1] = Util.clampB(helper.green.get());
+				pixels[baseIndex | 2] = Util.clampB(helper.red  .get());
+				pixels[baseIndex | 3] = (byte)(-1);
 			}
 		}
 		int invertX = ((int)(this.currentColor.getComponent(primaryComponent.horizontal()).get() * 256.0F));
@@ -185,7 +175,7 @@ public class ColorSelector {
 			this.currentColor.red.get(),
 			this.currentColor.green.get(),
 			this.currentColor.blue.get(),
-			this.currentColor.alpha.get()
+			1.0D
 		);
 	}
 
@@ -309,6 +299,9 @@ public class ColorSelector {
 		@Override
 		public void redraw() {
 			this.scratchColor.setFrom(ColorSelector.this.currentColor);
+			if (this.component != ColorComponent.ALPHA) {
+				this.scratchColor.setAlpha(1.0F);
+			}
 			super.redraw();
 		}
 	}

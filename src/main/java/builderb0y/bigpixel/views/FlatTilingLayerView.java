@@ -22,15 +22,17 @@ public class FlatTilingLayerView extends LayerView2D {
 	public FlatTilingLayerView(LayerViews views) {
 		super(LayerViewType.FLAT_TILING, views);
 		this.rootConfigPane.add(this.drawOutline, 0, 0);
-		this.rootConfigPane.add(this.darkenExterior, 0, 1);
+		this.rootConfigPane.add(this.showAlpha, 0, 1);
+		this.rootConfigPane.add(this.darkenExterior, 0, 2);
 		this.drawParams = Bindings.createObjectBinding(
 			() -> {
 				record Params(
 					double offsetX,
 					double offsetY,
 					double zoom,
-					boolean darkenExterior,
-					boolean drawOutline
+					boolean drawOutline,
+					boolean showAlpha,
+					boolean darkenExterior
 				)
 				implements DrawParams {}
 
@@ -38,15 +40,17 @@ public class FlatTilingLayerView extends LayerView2D {
 					this.offsetX.get(),
 					this.offsetY.get(),
 					this.zoom.get(),
-					this.darkenExterior.isSelected(),
-					this.drawOutline.isSelected()
+					this.drawOutline.isSelected(),
+					this.showAlpha.isSelected(),
+					this.darkenExterior.isSelected()
 				);
 			},
 			this.offsetX,
 			this.offsetY,
 			this.zoom,
-			this.darkenExterior.selectedProperty(),
-			this.drawOutline.selectedProperty()
+			this.drawOutline.selectedProperty(),
+			this.showAlpha.selectedProperty(),
+			this.darkenExterior.selectedProperty()
 		);
 	}
 

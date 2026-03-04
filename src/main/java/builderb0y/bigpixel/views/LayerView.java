@@ -23,7 +23,8 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerViewTyp
 	public final LayerViewType type;
 	public final LayerViews views;
 	public final ConfigParameters parameters;
-	public CheckBox drawOutline;
+	public final CheckBox drawOutline;
+	public final CheckBox showAlpha;
 	public double canvasWidth, canvasHeight;
 	public int layerWidth, layerHeight;
 
@@ -33,6 +34,7 @@ public abstract class LayerView implements OrganizedSelection.Value<LayerViewTyp
 		OpenImage image = this.getLayer().graph.openImage;
 		this.parameters = new ConfigParameters(image.parameterSet, Util.change(image.imageDisplay::redrawLater));
 		this.drawOutline = this.parameters.addCheckbox("draw_outline", "Draw Outline", true);
+		this.showAlpha = this.parameters.addCheckbox("show_alpha", "Show Alpha", true);
 	}
 
 	@Override
