@@ -22,10 +22,9 @@ public class MoveableInputBinding extends InputBinding implements MoveableCompon
 
 	public final CheckBox enabled = this.configParameters.addCheckbox("enabled", "Enabled", true);
 	public final ImageView dragBarImage = new ImageView(Assets.DRAGBAR);
-	public final BorderPane dragBarPane = new BorderPane(this.dragBarImage);
 	public final Button delete = new Button("🗑");
 	public final HBox leftPane = new HBox(this.enabled, this.selection, this.previewPane);
-	public final HBox rightPane = new HBox(this.delete, this.dragBarPane);
+	public final HBox rightPane = new HBox(this.delete, this.dragBarImage);
 	public final BorderPane rootPane = new BorderPane();
 	public final SimpleDoubleProperty position = new SimpleDoubleProperty(this, "position");
 	public final SlideAnimation slideAnimation = new SlideAnimation(this);
@@ -48,7 +47,7 @@ public class MoveableInputBinding extends InputBinding implements MoveableCompon
 			dependencies.removeInput(this, true);
 		});
 		this.rootPane.layoutYProperty().bind(this.position);
-		new MoveMouseHandler<>(this, dependencies).install(this.dragBarPane);
+		new MoveMouseHandler<>(this, dependencies).install(this.dragBarImage);
 	}
 
 	@Override

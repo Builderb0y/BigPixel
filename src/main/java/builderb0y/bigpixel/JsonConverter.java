@@ -5,6 +5,8 @@ import java.util.stream.Collectors;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.json.*;
+import builderb0y.bigpixel.sources.BoundsHandling;
+import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 import builderb0y.bigpixel.sources.ConvolveLayerSource;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding.UniformSaveData;
@@ -339,6 +341,29 @@ public abstract class JsonConverter<T_Value> {
 					yield new ConvolveLayerSource.ScriptedSaveData(shape, radius, multiLineStringFromJson(map.getArray("code")));
 				}
 			};
+		}
+	}
+
+	public static class DualBoundsHandlingJsonConverter extends JsonConverter<DualBoundsHandling> {
+
+		public static final DualBoundsHandlingJsonConverter INSTANCE = new DualBoundsHandlingJsonConverter();
+
+		@Override
+		public JsonValue toJson(DualBoundsHandling handling) {
+			return (
+				new JsonMap()
+				.with("horizontal", handling.horizontal().name())
+				.with("vertical", handling.vertical().name())
+			);
+		}
+
+		@Override
+		public DualBoundsHandling fromJson(JsonValue value) {
+			JsonMap map = value.asMap();
+			return new DualBoundsHandling(
+				BoundsHandling.valueOf(map.getString("horizontal")),
+				BoundsHandling.valueOf(map.getString("vertical"))
+			);
 		}
 	}
 }

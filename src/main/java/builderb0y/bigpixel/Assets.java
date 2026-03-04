@@ -34,6 +34,17 @@ public class Assets {
 		}
 	}
 
+	public static class BoundsHandling {
+
+		public static final Image
+			HORIZONTAL_IGNORE = of("/assets/bounds_handling/horizontal_ignore.png"),
+			HORIZONTAL_CLAMP  = of("/assets/bounds_handling/horizontal_clamp.png"),
+			HORIZONTAL_WRAP   = of("/assets/bounds_handling/horizontal_wrap.png"),
+			VERTICAL_IGNORE   = of("/assets/bounds_handling/vertical_ignore.png"),
+			VERTICAL_CLAMP    = of("/assets/bounds_handling/vertical_clamp.png"),
+			VERTICAL_WRAP     = of("/assets/bounds_handling/vertical_wrap.png");
+	}
+
 	public static Image of(String path) {
 		return new Image(Assets.class.getResourceAsStream(path));
 	}

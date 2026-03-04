@@ -12,6 +12,7 @@ import javafx.animation.Interpolator;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.*;
+import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.ScrollPane;
@@ -23,6 +24,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
+import org.controlsfx.control.PopOver;
 
 import builderb0y.bigpixel.HDRImage;
 
@@ -94,6 +96,13 @@ public class Util {
 				recursiveInitializeText(scroll.getContent());
 			}
 		}
+	}
+
+	public static PopOver setupPopOver(PopOver popOver) {
+		popOver.getRoot().getStylesheets().clear();
+		popOver.getRoot().setPadding(new Insets(10.0D));
+		popOver.setDetachable(false);
+		return popOver;
 	}
 
 	public static void dumpStyles(Node node, int indentation) {

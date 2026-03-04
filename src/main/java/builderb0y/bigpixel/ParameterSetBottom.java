@@ -3,7 +3,6 @@ package builderb0y.bigpixel;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.event.ActionEvent;
-import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
@@ -27,7 +26,6 @@ public class ParameterSetBottom implements NamedMoveableComponent {
 	public final BottomDisposer onDisposed;
 	public final BorderPane rootPane;
 	public final ImageView dragBarImage;
-	public final BorderPane dragBarPane;
 	public final EditableLabel name;
 	public final Button deleteButton;
 	public final DoubleProperty position;
@@ -50,8 +48,7 @@ public class ParameterSetBottom implements NamedMoveableComponent {
 		this.rootPane = new BorderPane();
 		this.rootPane.centerProperty().bind(this.name.getRootPane());
 		this.dragBarImage = new ImageView(Assets.DRAGBAR);
-		this.dragBarPane = new BorderPane(this.dragBarImage);
-		this.dragBarPane.visibleProperty().bind(this.rootPane.hoverProperty());
+		this.dragBarImage.visibleProperty().bind(this.rootPane.hoverProperty());
 		this.deleteButton = new Button("🗑");
 		this.deleteButton.setFont(new Font(20.0D));
 		this.deleteButton.getStyleClass().remove("button");
@@ -60,7 +57,7 @@ public class ParameterSetBottom implements NamedMoveableComponent {
 		this.deleteButton.setOnAction((ActionEvent _) -> {
 			this.middle.remove(this, true);
 		});
-		this.rootPane.setRight(new HBox(this.deleteButton, this.dragBarPane));
+		this.rootPane.setRight(new HBox(this.deleteButton, this.dragBarImage));
 		this.rootPane.getStyleClass().add("selectable");
 		this.position = new SimpleDoubleProperty(this, "position");
 		this.slideAnimation = new SlideAnimation(this);
@@ -69,7 +66,7 @@ public class ParameterSetBottom implements NamedMoveableComponent {
 		this.rootPane.prefWidthProperty().bind(middle.bottomsView.widthProperty());
 		this.rootPane.setPrefHeight(HEIGHT);
 		this.rootPane.setOnMouseClicked((MouseEvent _) -> this.middle.select(this));
-		new MoveMouseHandler<>(this, middle).install(this.dragBarPane);
+		new MoveMouseHandler<>(this, middle).install(this.dragBarImage);
 	}
 
 	public void rename(String oldName, String newName) {

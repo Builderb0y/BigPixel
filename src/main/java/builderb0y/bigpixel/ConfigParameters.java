@@ -12,6 +12,8 @@ import javafx.scene.input.ContextMenuEvent;
 import org.jetbrains.annotations.NotNull;
 
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
+import builderb0y.bigpixel.sources.BoundsHandlingChooser;
 import builderb0y.bigpixel.util.Util;
 
 public class ConfigParameters implements Iterable<ConfigParameter<?>> {
@@ -147,6 +149,14 @@ public class ConfigParameters implements Iterable<ConfigParameter<?>> {
 		this.setupContextMenu(textArea, storage);
 		this.addParameter(ConfigParameter.createMultiLineString(storage, saveName));
 		return textArea;
+	}
+
+	public BoundsHandlingChooser addDualBoundsHandling(String saveName) {
+		BoundsHandlingChooser chooser = new BoundsHandlingChooser();
+		ParameterMultiStorage<DualBoundsHandling> storage = new ParameterMultiStorage<>(chooser.dualHandling, this.top);
+		this.setupContextMenu(chooser.showButton, storage);
+		this.addParameter(ConfigParameter.createDualBoundsHandling(storage, saveName));
+		return chooser;
 	}
 
 	public void copyFrom(ConfigParameters that) {

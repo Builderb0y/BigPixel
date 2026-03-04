@@ -4,6 +4,7 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.JsonConverter.*;
 import builderb0y.bigpixel.json.JsonMap;
+import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 
 public class ConfigParameter<T_Value> {
 
@@ -47,27 +48,31 @@ public class ConfigParameter<T_Value> {
 		return new ConfigParameter<>(storage, saveName, Long.class, LongJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<Float> createFloat(ParameterMultiStorage<Float> storage, String name) {
-		return new ConfigParameter<>(storage, name, Float.class, FloatJsonConverter.INSTANCE);
+	public static ConfigParameter<Float> createFloat(ParameterMultiStorage<Float> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, Float.class, FloatJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<Double> createDouble(ParameterMultiStorage<Double> storage, String name) {
-		return new ConfigParameter<>(storage, name, Double.class, DoubleJsonConverter.INSTANCE);
+	public static ConfigParameter<Double> createDouble(ParameterMultiStorage<Double> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, Double.class, DoubleJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<String> createString(ParameterMultiStorage<String> storage, String name) {
-		return new ConfigParameter<>(storage, name, String.class, StringJsonConverter.INSTANCE);
+	public static ConfigParameter<String> createString(ParameterMultiStorage<String> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, String.class, StringJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<String> createMultiLineString(ParameterMultiStorage<String> storage, String name) {
-		return new ConfigParameter<>(storage, name, String.class, MultiLineStringJsonConverter.INSTANCE);
+	public static ConfigParameter<String> createMultiLineString(ParameterMultiStorage<String> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, String.class, MultiLineStringJsonConverter.INSTANCE);
 	}
 
-	public static ConfigParameter<FloatVector> createColor(ParameterMultiStorage<FloatVector> storage, String name) {
-		return new ConfigParameter<>(storage, name, FloatVector.class, ColorJsonConverter.INSTANCE);
+	public static ConfigParameter<FloatVector> createColor(ParameterMultiStorage<FloatVector> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, FloatVector.class, ColorJsonConverter.INSTANCE);
 	}
 
-	public static <E extends Enum<E>> ConfigParameter<E> createEnum(ParameterMultiStorage<E> storage, Class<E> enumClass, String name) {
-		return new ConfigParameter<>(storage, name, enumClass, new EnumJsonConverter<>(enumClass));
+	public static <E extends Enum<E>> ConfigParameter<E> createEnum(ParameterMultiStorage<E> storage, Class<E> enumClass, String saveName) {
+		return new ConfigParameter<>(storage, saveName, enumClass, new EnumJsonConverter<>(enumClass));
+	}
+
+	public static ConfigParameter<DualBoundsHandling> createDualBoundsHandling(ParameterMultiStorage<DualBoundsHandling> storage, String saveName) {
+		return new ConfigParameter<>(storage, saveName, DualBoundsHandling.class, DualBoundsHandlingJsonConverter.INSTANCE);
 	}
 }

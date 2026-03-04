@@ -11,16 +11,19 @@ import javafx.scene.layout.HBox;
 import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.HDRImage;
+import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 
 public class ModeBlurLayerSource extends MainMaskLayerSource {
 
-	public Spinner<Integer> iterations = this.parameters.addIntSpinner("iterations", 1, 64, 1, 1, 64.0D);
+	public final BoundsHandlingChooser bounds = this.parameters.addDualBoundsHandling("bounds");
+	public final Spinner<Integer> iterations = this.parameters.addIntSpinner("iterations", 1, 64, 1, 1, 64.0D);
 
 	public ModeBlurLayerSource(LayerSources sources) {
 		super(LayerSourceType.MODE_BLUR, sources);
+		this.dependencies.addBoundsHandlingButton(this.bounds.showButton);
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Iterations: "), this.iterations));
 	}
 
@@ -49,18 +52,18 @@ public class ModeBlurLayerSource extends MainMaskLayerSource {
 	}
 
 	public void apply(Sampler from, HDRImage to) throws RedrawException {
+		DualBoundsHandling boundsHandling = this.bounds.dualHandling.get();
 		IntStream.range(0, to.height).parallel().forEach((int y) -> {
 			Map<FloatVector, Integer> counts = new HashMap<>();
 			for (int x = 0; x < to.width; x++) {
-				counts.merge(from.getColor(Math.floorMod(x - 1, to.width), Math.floorMod(y - 1, to.height)), 1, Integer::sum);
-				counts.merge(from.getColor(              x               , Math.floorMod(y - 1, to.height)), 2, Integer::sum);
-				counts.merge(from.getColor(Math.floorMod(x + 1, to.width), Math.floorMod(y - 1, to.height)), 1, Integer::sum);
-				counts.merge(from.getColor(Math.floorMod(x - 1, to.width),               y                ), 2, Integer::sum);
-				counts.merge(from.getColor(              x               ,               y                ), 4, Integer::sum);
-				counts.merge(from.getColor(Math.floorMod(x + 1, to.width),               y                ), 2, Integer::sum);
-				counts.merge(from.getColor(Math.floorMod(x - 1, to.width), Math.floorMod(y + 1, to.height)), 1, Integer::sum);
-				counts.merge(from.getColor(              x               , Math.floorMod(y + 1, to.height)), 2, Integer::sum);
-				counts.merge(from.getColor(Math.floorMod(x + 1, to.width), Math.floorMod(y + 1, to.height)), 1, Integer::sum);
+				for (int offsetY = -1; offsetY <= 1; offsetY++) {
+					for (int offsetX = -1; offsetX <= 1; offsetX++) {
+						FloatVector color = boundsHandling.sample(from, x + offsetX, y + offsetY, to.width, to.height);
+						if (color != null) {
+							counts.merge(color, (2 - Math.abs(offsetX)) * (2 - Math.abs(offsetY)), Integer::sum);
+						}
+					}
+				}
 				Iterator<Map.Entry<FloatVector, Integer>> iterator = counts.entrySet().iterator();
 				Map.Entry<FloatVector, Integer> best = iterator.next();
 				while (iterator.hasNext()) {

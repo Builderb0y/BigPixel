@@ -10,7 +10,6 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
-import javafx.scene.Cursor;
 import javafx.scene.control.Button;
 import javafx.scene.control.TitledPane;
 import javafx.scene.image.ImageView;
@@ -39,7 +38,6 @@ public class ParameterSetMiddle implements NamedMoveableContainer<ParameterSetBo
 	public final HBox titledPaneTopRightArea;
 	public final Button addButton;
 	public final ImageView dragBarImage;
-	public final BorderPane dragBarPane;
 	public final Map<String, ParameterSetBottom> bottoms;
 	public final Pane bottomsView;
 	public final ObjectProperty<ParameterSetBottom> selectedBottom;
@@ -87,8 +85,7 @@ public class ParameterSetMiddle implements NamedMoveableContainer<ParameterSetBo
 		this.addButton.getStyleClass().add("phantom-button");
 		this.addButton.setOnAction((ActionEvent _) -> this.add());
 		this.dragBarImage = new ImageView(Assets.DRAGBAR);
-		this.dragBarPane = new BorderPane(this.dragBarImage);
-		this.titledPaneTopRightArea = new HBox(this.addButton, this.dragBarPane);
+		this.titledPaneTopRightArea = new HBox(this.addButton, this.dragBarImage);
 		this.titledPaneTopArea = new BorderPane();
 		this.titledPaneTopArea.centerProperty().bind(this.name.getRootPane());
 		this.titledPaneTopArea.setRight(this.titledPaneTopRightArea);
@@ -109,7 +106,7 @@ public class ParameterSetMiddle implements NamedMoveableContainer<ParameterSetBo
 		this.titledPane.prefWidthProperty().bind(top.middlePane.widthProperty());
 		this.slideAnimation = new SlideAnimation(this);
 		this.onDisposed = this.new MiddleDisposer();
-		new MoveMouseHandler<>(this, top).install(this.dragBarPane);
+		new MoveMouseHandler<>(this, top).install(this.dragBarImage);
 	}
 
 	public void init() {

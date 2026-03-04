@@ -21,7 +21,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
 
-import builderb0y.bigpixel.MoveHelper.MoveableContainer;
 import builderb0y.bigpixel.MoveHelper.NamedMoveableContainer;
 import builderb0y.bigpixel.json.JsonArray;
 import builderb0y.bigpixel.json.JsonMap;

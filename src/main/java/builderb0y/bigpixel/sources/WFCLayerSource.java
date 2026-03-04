@@ -28,6 +28,7 @@ import jdk.incubator.vector.FloatVector;
 
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.LayerNode;
+import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MainDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
@@ -40,6 +41,8 @@ public class WFCLayerSource extends LayerSource {
 
 	public MainDependencies
 		dependencies = new MainDependencies(this);
+	public BoundsHandlingChooser
+		bounds = this.parameters.addDualBoundsHandling("bounds");
 	public Spinner<Integer>
 		seed      = this.parameters.addIntSpinner("seed", Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 1, 80.0D),
 		kernel    = this.parameters.addIntSpinner("kernel", 2, 8, 1, 1, 80.0D);
@@ -61,6 +64,8 @@ public class WFCLayerSource extends LayerSource {
 
 	public WFCLayerSource(LayerSources sources) {
 		super(LayerSourceType.WFC, sources);
+		this.dependencies.addBoundsHandlingButton(this.bounds.showButton);
+
 		this.mainSettings.add(new Label("Seed: "), 0, 0);
 		this.mainSettings.add(this.seed, 1, 0);
 		this.mainSettings.add(new Label("Kernel: "), 0, 1);
@@ -117,27 +122,36 @@ public class WFCLayerSource extends LayerSource {
 		public final int hashCode;
 		public int seen;
 
-		public Tile(
+		public Tile(int kernel, float[] pixels, int hashCode) {
+			this.kernel = kernel;
+			this.pixels = pixels;
+			this.hashCode = hashCode;
+		}
+
+		public static Tile create(
 			Sampler input,
 			int baseX,
 			int baseY,
 			int imageWidth,
 			int imageHeight,
+			DualBoundsHandling edgeHandling,
 			int kernel,
 			boolean clampRGB,
 			boolean clampA,
 			Symmetry symmetry
 		) {
-			this.kernel = kernel;
-			this.pixels = new float[kernel * kernel * 4];
+			float[] pixels = new float[kernel * kernel * 4];
 			for (int y = 0; y < kernel; y++) {
 				for (int x = 0; x < kernel; x++) {
-					int imageX = Math.floorMod(symmetry.getX(x, y) + baseX, imageWidth);
-					int imageY = Math.floorMod(symmetry.getY(x, y) + baseY, imageHeight);
-					LayerSource.clamp(input.getColor(imageX, imageY), clampRGB, clampA).intoArray(this.pixels, (y * kernel + x) << 2);
+					int imageX = symmetry.getX(x, y) + baseX;
+					int imageY = symmetry.getY(x, y) + baseY;
+					FloatVector color = edgeHandling.sample(input, imageX, imageY, imageWidth, imageHeight);
+					if (color == null) return null;
+					LayerSource.clamp(color, clampRGB, clampA).intoArray(pixels, (y * kernel + x) << 2);
 				}
 			}
-			this.hashCode = Arrays.hashCode(this.pixels);
+			int hashCode = Arrays.hashCode(pixels);
+			return new Tile(kernel, pixels, hashCode);
 		}
 
 		public Tile(FloatVector constant, int kernel) {
@@ -150,7 +164,7 @@ public class WFCLayerSource extends LayerSource {
 			this.seen = 1;
 		}
 
-		public static Tile[] generate(Sampler source, int kernel, int symmetries, boolean clampRGB, boolean clampA) {
+		public static Tile[] generate(Sampler source, int kernel, int symmetries, DualBoundsHandling edgeHandling, boolean clampRGB, boolean clampA) {
 			return switch (source) {
 				case UniformSampler uniform -> {
 					yield new Tile[] { new Tile(uniform.getColor(), kernel) };
@@ -167,7 +181,8 @@ public class WFCLayerSource extends LayerSource {
 							for (Symmetry symmetry : Symmetry.VALUES) {
 								if ((symmetries & symmetry.flag()) != 0) {
 									futures.add(CompletableFuture.runAsync(() -> {
-										tiles.merge(new Tile(varying, baseX_, baseY_, width, height, kernel, clampRGB, clampA, symmetry), 1, Integer::sum);
+										Tile tile = Tile.create(varying, baseX_, baseY_, width, height, edgeHandling, kernel, clampRGB, clampA, symmetry);
+										if (tile != null) tiles.merge(tile, 1, Integer::sum);
 									}));
 								}
 							}
@@ -305,6 +320,7 @@ public class WFCLayerSource extends LayerSource {
 		public final WFCLayerSource layerSource;
 		public final int kernel, symmetries, frame;
 		public final boolean clampRGB, clampA;
+		public final DualBoundsHandling edgeHandling;
 		public Sampler source;
 		public final HDRImage intermediate, writing;
 		public boolean swapCalled;
@@ -319,6 +335,7 @@ public class WFCLayerSource extends LayerSource {
 			this.frame = frame;
 			this.clampRGB = layerSource.clampRGB.isSelected();
 			this.clampA = layerSource.clampAlpha.isSelected();
+			this.edgeHandling = layerSource.bounds.dualHandling.get();
 			this.source = layerSource.dependencies.main.getCurrent().createSamplerForFrame(frame);
 			int width = layerSource.sources.layer.imageWidth();
 			int height = layerSource.sources.layer.imageHeight();
@@ -375,7 +392,7 @@ public class WFCLayerSource extends LayerSource {
 
 		public void doRun() {
 			if (this.symmetries == 0) return;
-			Tile[] tiles = Tile.generate(this.source, this.kernel, this.symmetries, this.clampRGB, this.clampA);
+			Tile[] tiles = Tile.generate(this.source, this.kernel, this.symmetries, this.edgeHandling, this.clampRGB, this.clampA);
 			if (tiles == null) return;
 			this.tileLists = new TileList[this.writing.width * this.writing.height];
 			int index = 0;

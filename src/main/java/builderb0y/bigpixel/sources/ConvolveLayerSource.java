@@ -41,6 +41,7 @@ import builderb0y.bigpixel.scripting.tree.VectorConstructorInsnTree;
 import builderb0y.bigpixel.scripting.types.VectorOperations;
 import builderb0y.bigpixel.scripting.types.VectorType;
 import builderb0y.bigpixel.scripting.util.MethodInfo;
+import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
@@ -62,6 +63,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 		MAX_PRESET_RADIUS = 256;
 
 	public final CheckBox linear = this.parameters.addCheckbox("linear", "Linear", false);
+	public final BoundsHandlingChooser bounds = this.parameters.addDualBoundsHandling("bounds");
 	public final ChoiceBox<ConvolveShape> shape = new ChoiceBox<>(FXCollections.observableArrayList(ConvolveShape.VALUES));
 	{ this.shape.setValue(ConvolveShape.SQUARE); }
 	public final ChoiceBox<ConvolveWeightType> preset = new ChoiceBox<>(FXCollections.observableArrayList(ConvolveWeightType.VALUES));
@@ -87,7 +89,8 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 
 	public ConvolveLayerSource(LayerSources sources) {
 		super(LayerSourceType.CONVOLVE, sources);
-		this.extraSettings.getChildren().addAll(this.linear, this.alphaWeighting);
+		this.extraSettingsPane.getChildren().addAll(this.linear, this.alphaWeighting);
+		this.dependencies.addBoundsHandlingButton(this.bounds.showButton);
 		((IntegerSpinnerValueFactory)(this.radius.getValueFactory())).maxProperty().bind(
 			Bindings.createIntegerBinding(() -> this.preset.getValue() == ConvolveWeightType.MANUAL ? MAX_MANUAL_RADIUS : MAX_PRESET_RADIUS, this.preset.valueProperty())
 		);
@@ -415,26 +418,25 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	}
 
 	public void convolve(Sampler in, HDRImage out, PackedWeightList weights) {
-		if (this.normalizeCustomWeights.isSelected()) {
-			weights.normalize();
-		}
+		float totalWeight = this.normalizeCustomWeights.isSelected() ? 1.0F : weights.getTotalWeight();
 		boolean linear = this.linear.isSelected();
 		boolean alphaWeighting = this.alphaWeighting.isSelected();
+		DualBoundsHandling edgeHandling = this.bounds.dualHandling.get();
 		IntStream.range(0, out.height).parallel().forEach((int y) -> {
+			if (this.getLayer().redrawRequested) return;
 			for (int x = 0; x < out.width; x++) {
-				float alphaSum = 0.0F;
+				float weightSum = 0.0F;
 				FloatVector sum = FloatVector.zero(FloatVector.SPECIES_128);
 				for (int index = 0, size = weights.size(); index < size; index++) {
-					FloatVector color = in.getColor(Math.floorMod(x + weights.getX(index), out.width), Math.floorMod(y + weights.getY(index), out.height));
-					float weight = weights.getWeight(index);
-					if (alphaWeighting) {
-						alphaSum += weight *= color.lane(HDRImage.ALPHA_OFFSET);
+					FloatVector color = edgeHandling.sample(in, x + weights.getX(index), y + weights.getY(index), out.width, out.height);
+					if (color != null) {
+						float weight = weights.getWeight(index);
+						if (alphaWeighting) weight *= color.lane(HDRImage.ALPHA_OFFSET);
+						weightSum += weight;
+						sum = sum.add(maybeSquare(color, linear).mul(weight));
 					}
-					sum = sum.add(maybeSquare(color, linear).mul(weight));
 				}
-				if (alphaWeighting) {
-					if (alphaSum != 0.0F) sum = sum.div(alphaSum);
-				}
+				if (weightSum != 0.0F) sum = sum.mul(totalWeight / weightSum);
 				out.setColor(x, y, maybeSqrt(sum, linear));
 			}
 			this.incrementProgress();
@@ -447,21 +449,6 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 
 	public static FloatVector maybeSqrt(FloatVector color, boolean linear) {
 		return linear ? color.lanewise(VectorOperators.SQRT, Util.RGB_MASK) : color;
-	}
-
-	public static float[] box(int radius) {
-		class Cache {
-
-			public static final float[][] CACHE = new float[MAX_PRESET_RADIUS + 1][];
-		}
-		float[] result = Cache.CACHE[radius];
-		if (result == null) {
-			int diameter = radius * 2 + 1;
-			result = new float[diameter];
-			Arrays.fill(result, 1.0F / diameter);
-			Cache.CACHE[radius] = result;
-		}
-		return result;
 	}
 
 	public static float[] gaussian(int radius) {
@@ -646,12 +633,16 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 			this.values[index] = (((long)(y)) << 48) | ((x & 0xFFFFL) << 32) | Integer.toUnsignedLong(Float.floatToRawIntBits(value));
 		}
 
-		public void normalize() {
+		public float getTotalWeight() {
 			float totalWeight = 0.0F;
 			for (int index = 0; index < this.size; index++) {
 				totalWeight += this.getWeight(index);
 			}
-			float scalar = 1.0F / totalWeight;
+			return totalWeight;
+		}
+
+		public void normalize() {
+			float scalar = 1.0F / this.getTotalWeight();
 			for (int index = 0; index < this.size; index++) {
 				long packed = this.values[index];
 				int bits = (int)(packed);

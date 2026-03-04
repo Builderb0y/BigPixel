@@ -15,7 +15,7 @@ public class AverageLayerSource extends MultiInputLayerSource {
 
 	public AverageLayerSource(LayerSources sources) {
 		super(LayerSourceType.AVERAGE, sources);
-		this.extraSettings.getChildren().addAll(this.linear, this.alphaWeighting);
+		this.extraSettingsPane.getChildren().addAll(this.linear, this.alphaWeighting);
 	}
 
 	@Override

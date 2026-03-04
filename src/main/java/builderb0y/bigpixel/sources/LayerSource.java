@@ -8,12 +8,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import javafx.beans.value.ChangeListener;
-import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.VBox;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
+import org.controlsfx.control.PopOver;
 import org.jetbrains.annotations.Nullable;
 
 import builderb0y.bigpixel.ConfigParameters;
@@ -30,7 +30,8 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 	public final LayerSources sources;
 	public final ConfigParameters parameters;
 	public final CheckBox clampRGB, clampAlpha;
-	public final VBox extraSettings;
+	public final VBox extraSettingsPane;
+	public final PopOver extraSettingsPopOver;
 	public final AtomicInteger currentProgress = new AtomicInteger();
 	public int maxProgress = 0;
 
@@ -40,8 +41,9 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		this.parameters = new ConfigParameters(sources.layer.graph.openImage.parameterSet, Util.change(this::redrawLater));
 		this.clampRGB = this.parameters.addCheckbox("clampRGB", "Clamp RGB", true);
 		this.clampAlpha = this.parameters.addCheckbox("clampA", "Clamp Alpha", true);
-		this.extraSettings = new VBox(this.clampRGB, this.clampAlpha);
-		this.extraSettings.setSpacing(4.0D);
+		this.extraSettingsPane = new VBox(this.clampRGB, this.clampAlpha);
+		this.extraSettingsPane.setSpacing(4.0D);
+		this.extraSettingsPopOver = Util.setupPopOver(new PopOver(this.extraSettingsPane));
 		ChangeListener<Object> listener = Util.change(this::redrawLater);
 		this.clampRGB.selectedProperty().addListener(listener);
 		this.clampAlpha.selectedProperty().addListener(listener);

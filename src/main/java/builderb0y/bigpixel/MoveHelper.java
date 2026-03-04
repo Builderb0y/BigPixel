@@ -10,7 +10,7 @@ import javafx.beans.property.DoubleProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
-import javafx.scene.Node;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.util.Duration;
@@ -48,11 +48,12 @@ public class MoveHelper {
 				this.container = container;
 			}
 
-			public void install(Node node) {
-				node.setCursor(Cursor.MOVE);
-				node.setOnMouseDragged(this);
-				node.setOnMousePressed(this);
-				node.setOnMouseReleased(this);
+			public void install(ImageView view) {
+				view.setPickOnBounds(true);
+				view.setCursor(Cursor.MOVE);
+				view.setOnMouseDragged(this);
+				view.setOnMousePressed(this);
+				view.setOnMouseReleased(this);
 			}
 
 			@Override

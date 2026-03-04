@@ -11,7 +11,6 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
@@ -26,7 +25,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
-import org.controlsfx.control.PopOver;
 
 import builderb0y.bigpixel.json.JsonMap;
 import builderb0y.bigpixel.sources.LayerSource;
@@ -38,7 +36,6 @@ import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.util.RateLimiter;
 import builderb0y.bigpixel.util.RateLimiter.AsyncPeriodicRateLimiter;
-import builderb0y.bigpixel.util.Util;
 import builderb0y.bigpixel.views.LayerView;
 import builderb0y.bigpixel.views.LayerViews;
 
@@ -99,8 +96,6 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	{
 		this.extraSettingsButton.setFont(new Font(20.0D));
 	}
-	public PopOver
-		extraSettingsPopOver = new PopOver();
 	public BorderPane
 		sourceAndNameEditor = new BorderPane();
 	{
@@ -192,15 +187,12 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 				this.nameEditor.setText(this.getDisplayName());
 			}
 		});
-		this.extraSettingsPopOver.getRoot().getStylesheets().clear();
-		this.extraSettingsPopOver.getRoot().setPadding(new Insets(10.0D));
-		this.extraSettingsPopOver.setDetachable(false);
 		this.extraSettingsButton.getStyleClass().remove("button");
 		this.extraSettingsButton.getStyleClass().add("phantom-button");
 		this.extraSettingsButton.setOnAction((ActionEvent _) -> {
-			if (!this.extraSettingsPopOver.isShowing()) {
-				this.extraSettingsPopOver.setContentNode(this.sources.currentSource().extraSettings);
-				this.extraSettingsPopOver.show(this.extraSettingsButton);
+			LayerSource source = this.sources.currentSource();
+			if (!source.extraSettingsPopOver.isShowing()) {
+				source.extraSettingsPopOver.show(this.extraSettingsButton);
 			}
 		});
 		this.sourceConfigPane.setTop(this.sourceAndNameEditor);

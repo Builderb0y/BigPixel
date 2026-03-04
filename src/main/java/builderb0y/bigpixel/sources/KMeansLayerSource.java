@@ -57,6 +57,7 @@ public class KMeansLayerSource extends PerPixelLayerSource {
 		int[] counts = new int[colorCount];
 		for (int iteration = 0; iteration < iterations; iteration++) {
 			for (int y = 0; y < dstHeight; y++) {
+				if (this.getLayer().redrawRequested) throw new RedrawException("Canceled");
 				for (int x = 0; x < dstWidth; x++) {
 					FloatVector pixel = main.getColor(x, y);
 					if (linear) pixel = pixel.mul(pixel);

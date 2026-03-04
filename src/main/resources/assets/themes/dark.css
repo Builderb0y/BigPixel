@@ -13,6 +13,25 @@
     -fx-background-repeat: repeat;
 }
 
+.bounds-handling-preview {
+	-fx-border-insets: 2;
+	-fx-border-width: 4;
+	-fx-border-radius: 4;
+	-fx-border-color: -fx-background;
+}
+
+.bounds-handling-preview:hover {
+	-fx-border-color: #5F6F7F;
+}
+
+.bounds-handling-preview:selected {
+	-fx-border-color: #0077BF;
+}
+
+.bounds-handling-preview:hover:selected {
+	-fx-border-color: #0077BF;
+}
+
 .text {
 	-fx-tab-size: 4;
 }

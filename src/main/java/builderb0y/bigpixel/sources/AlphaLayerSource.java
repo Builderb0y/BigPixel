@@ -17,7 +17,7 @@ public class AlphaLayerSource extends MultiInputLayerSource {
 
 	public AlphaLayerSource(LayerSources sources) {
 		super(LayerSourceType.ALPHA, sources);
-		this.extraSettings.getChildren().add(this.linear);
+		this.extraSettingsPane.getChildren().add(this.linear);
 	}
 
 	@Override
