@@ -52,11 +52,10 @@ public class ColorSelector {
 			ColorSelector.this.redrawGradient();
 		}
 	}
-	.checkerboard()
 	.popIn()
 	.fixedSize(257.0D, 257.0D);
 	public ColorHelper currentColor = new ColorHelper();
-	public RectangleHelper rectangle = new RectangleHelper().checkerboard().popIn().fixedSize(96, 96);
+	public RectangleHelper rectangle = new RectangleHelper().popIn().fixedSize(96, 96);
 	public CheckBox fractionalDisplay = new CheckBox("/256");
 	public Button colorPickerButton = new Button();
 	public ColorSlider
@@ -195,7 +194,10 @@ public class ColorSelector {
 		public TextField numberBox = new TextField();
 
 		public ColorSlider(ColorComponent component) {
-			this.checkerboard().popIn().fixedSize(257.0D, 16.0D);
+			if (component == ColorComponent.ALPHA) {
+				this.checkerboard();
+			}
+			this.popIn().fixedSize(257.0D, 16.0D);
 			this.component = component;
 			this.label.setText(component.name.charAt(0) + ":");
 			this.numberBox.setPrefWidth(96.0D);
