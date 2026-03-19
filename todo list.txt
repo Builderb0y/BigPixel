@@ -13,7 +13,7 @@ cullface.
 tintIndex.
 export model to minecraft-formatted json file.
 use UI component builders for everything?
-	maybe use manifold extensions?
+	maybe use manifold extension methods?
 lwjgl for some complex layer sources?
 
 layer sources:

@@ -5,7 +5,7 @@ plugins() {
 }
 
 group('builderb0y')
-version('1.0-SNAPSHOT')
+version('0.0.0')
 
 repositories() {
 	mavenCentral()
@@ -29,6 +29,8 @@ compileJava() {
 		'--add-exports', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED',
 		'--add-exports', 'javafx.base/com.sun.javafx.binding=ALL-UNNAMED',
 	])
+	sourceCompatibility = '25'
+	targetCompatibility = '25'
 }
 
 configurations() {
@@ -37,23 +39,36 @@ configurations() {
 	}
 }
 
-dependencies() {
-	implementation('net.synedra:validatorfx:0.5.0') {
-		exclude(group: 'org.openjfx')
-	}
-	copyImplementation('net.synedra:validatorfx:0.5.0') {
-		exclude(group: 'org.openjfx')
-	}
+enum OS {
+	WINDOWS,
+	MAC,
+	LINUX;
 
+	public static final OS CURRENT
+	static {
+		String name = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+		if (name.contains('linux')) CURRENT = LINUX
+		else if (name.contains('win')) CURRENT = WINDOWS
+		else if (name.contains('mac')) CURRENT = MAC
+		else throw new UnsupportedOperationException('Unsupported platform')
+	}
+}
+
+dependencies() {
 	int jfxVersion = 25
+	String platform = switch (OS.CURRENT) {
+		case OS.WINDOWS -> 'win'
+		case OS.MAC     -> 'mac'
+		case OS.LINUX   -> 'linux'
+	}
 	for (String spec : [
 		'org.controlsfx:controlsfx:11.2.1',
 		"org.openjfx:javafx-base:${jfxVersion}",
+		"org.openjfx:javafx-base:${jfxVersion}:${platform}",
 		"org.openjfx:javafx-controls:${jfxVersion}",
+		"org.openjfx:javafx-controls:${jfxVersion}:${platform}",
 		"org.openjfx:javafx-graphics:${jfxVersion}",
-		"org.openjfx:javafx-base:${jfxVersion}:linux",
-		"org.openjfx:javafx-controls:${jfxVersion}:linux",
-		"org.openjfx:javafx-graphics:${jfxVersion}:linux",
+		"org.openjfx:javafx-graphics:${jfxVersion}:${platform}",
 		'org.jetbrains:annotations:25.0.0',
 		'org.ow2.asm:asm:9.9',
 		'org.ow2.asm:asm-commons:9.9',
@@ -76,6 +91,47 @@ dependencies() {
 		File to = new File(dependencies, fileName)
 		if (!to.exists()) Files.copy(from.toPath(), to.toPath())
 	}
+}
+
+tasks.register('generateLaunchScript') {
+	doFirst() {
+		String projectDir = project.projectDir.getAbsolutePath()
+		StringBuilder builder = new StringBuilder(1024)
+		if (OS.CURRENT != OS.WINDOWS) builder.append('#!/bin/sh').append('\n\n')
+		builder.append('"').append(System.getProperty('java.home')).append(File.separatorChar).append('bin').append(File.separatorChar).append('java').append('"')
+		if (OS.CURRENT != OS.WINDOWS) builder.append(' "-Dbuilderb0y.bigpixel.openQueue=').append(projectDir).append(File.separatorChar).append('open_queue"')
+		builder.append(' --enable-preview')
+		builder.append(' --add-modules jdk.incubator.vector,javafx.base,javafx.controls,javafx.graphics,org.controlsfx.controls')
+		builder.append(' --module-path "').append(projectDir).append(File.separatorChar).append('dependencies"')
+		builder.append(' --add-exports javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED')
+		builder.append(' --add-exports javafx.base/com.sun.javafx.binding=ALL-UNNAMED')
+		builder.append(' --enable-native-access=javafx.graphics')
+		builder.append(' -classpath "').append(projectDir).append(File.separatorChar).append('build').append(File.separatorChar).append('libs').append(File.separatorChar).append('BigPixel-').append(project.version).append('.jar"')
+		builder.append(' builderb0y.bigpixel.BigPixel')
+		if (OS.CURRENT == OS.WINDOWS) {
+			builder.append(' %*') //this is what gradle.bat uses, so one would assume it works?
+			File script = file('BigPixel.bat')
+			script.text = builder.toString()
+			script.setExecutable(true)
+			println("Successfully generated ${script.getAbsolutePath()}")
+			println('I hope this file is correct. I don\'t have a windows machine to test it on.')
+		}
+		else {
+			builder.append(' "$@"')
+			File script = file('BigPixel.sh')
+			script.text = builder.toString()
+			script.setExecutable(true)
+			println("Successfully generated ${script.getAbsolutePath()}")
+			if (OS.CURRENT == OS.MAC) {
+				println('I hope this file is correct. I don\'t have a mac to test it on.')
+			}
+		}
+	}
+}
+
+tasks.register('buildAndGenerateLaunchScript') {
+	dependsOn(build)
+	dependsOn(generateLaunchScript)
 }
 
 test() {

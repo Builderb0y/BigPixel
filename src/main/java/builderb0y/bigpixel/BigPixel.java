@@ -5,6 +5,7 @@ import java.lang.ProcessHandle.Info;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,6 +17,8 @@ import org.jetbrains.annotations.NotNull;
 
 public class BigPixel extends Application {
 
+	//no idea if mac supports named pipe files or not, but I'm pretty sure windows doesn't.
+	public static final boolean openQueueSupported = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux");
 	public static final String openQueueProperty = "builderb0y.bigpixel.openQueue";
 	public static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor((Runnable task) -> {
 		Thread thread = new Thread(task, "Scheduler Thread");
@@ -36,7 +39,7 @@ public class BigPixel extends Application {
 				else System.err.println("File not found or not normal: " + file.getAbsolutePath());
 			}
 		}
-		new Thread("Open Queue Reader Thread") {
+		if (openQueueSupported) new Thread("Open Queue Reader Thread") {
 
 			{
 				this.setDaemon(true);
@@ -76,67 +79,69 @@ public class BigPixel extends Application {
 	}
 
 	public static void main(String[] args) {
-		String ourQueue = System.getProperty(openQueueProperty);
-		if (ourQueue == null) {
-			System.err.println("Must run with -D" + openQueueProperty + "=/path/to/pipe");
-			System.exit(1);
-		}
-		File ourQueueFile = new File("open_queue");
-		if (!ourQueueFile.exists()) try {
-			new ProcessBuilder("mkfifo", "open_queue").start().waitFor();
-		}
-		catch (Exception exception) {
-			exception.printStackTrace();
-		}
-		record ProcessQueueLocation(ProcessHandle handle, Info info, File openQueue) implements Comparable<ProcessQueueLocation> {
-
-			@Override
-			public int compareTo(@NotNull ProcessQueueLocation that) {
-				int compare = this.info.startInstant().orElseThrow().compareTo(that.info.startInstant().orElseThrow());
-				if (compare != 0) return compare;
-				return Long.compare(this.handle.pid(), that.handle.pid());
+		if (openQueueSupported) {
+			String ourQueue = System.getProperty(openQueueProperty);
+			if (ourQueue == null) {
+				System.err.println("Must run with -D" + openQueueProperty + "=/path/to/pipe");
+				System.exit(1);
 			}
-		}
-		ProcessHandle current = ProcessHandle.current();
-		ProcessQueueLocation self = new ProcessQueueLocation(current, current.info(), ourQueueFile);
-		ProcessQueueLocation first = (
-			ProcessHandle.allProcesses().map((ProcessHandle handle) -> {
-				Info info = handle.info();
-				if (info.startInstant().isPresent()) {
-					String command = info.command().orElse(null);
-					if (command != null && (command.equals("java") || command.endsWith("/java"))) {
-						String[] arguments = info.arguments().orElse(null);
-						if (arguments != null) {
-							for (String argument : arguments) {
-								final String start = "-D" + openQueueProperty + "=";
-								if (argument.startsWith(start)) {
-									argument = argument.substring(start.length());
-									File openQueue = new File(argument);
-									if (openQueue.exists()) {
-										return new ProcessQueueLocation(handle, info, openQueue);
+			File ourQueueFile = new File("open_queue");
+			if (!ourQueueFile.exists()) try {
+				new ProcessBuilder("mkfifo", "open_queue").start().waitFor();
+			}
+			catch (Exception exception) {
+				exception.printStackTrace();
+			}
+			record ProcessQueueLocation(ProcessHandle handle, Info info, File openQueue) implements Comparable<ProcessQueueLocation> {
+
+				@Override
+				public int compareTo(@NotNull ProcessQueueLocation that) {
+					int compare = this.info.startInstant().orElseThrow().compareTo(that.info.startInstant().orElseThrow());
+					if (compare != 0) return compare;
+					return Long.compare(this.handle.pid(), that.handle.pid());
+				}
+			}
+			ProcessHandle current = ProcessHandle.current();
+			ProcessQueueLocation self = new ProcessQueueLocation(current, current.info(), ourQueueFile);
+			ProcessQueueLocation first = (
+				ProcessHandle.allProcesses().map((ProcessHandle handle) -> {
+					Info info = handle.info();
+					if (info.startInstant().isPresent()) {
+						String command = info.command().orElse(null);
+						if (command != null && (command.equals("java") || command.endsWith("/java"))) {
+							String[] arguments = info.arguments().orElse(null);
+							if (arguments != null) {
+								for (String argument : arguments) {
+									final String start = "-D" + openQueueProperty + "=";
+									if (argument.startsWith(start)) {
+										argument = argument.substring(start.length());
+										File openQueue = new File(argument);
+										if (openQueue.exists()) {
+											return new ProcessQueueLocation(handle, info, openQueue);
+										}
 									}
 								}
 							}
 						}
 					}
+					return null;
+				})
+				.filter(Objects::nonNull)
+				.min(Comparator.naturalOrder())
+				.orElse(null)
+			);
+			if (first != null && first.compareTo(self) < 0) {
+				System.out.println("Found existing process: " + first.handle.pid());
+				try (Writer writer = new OutputStreamWriter(new FileOutputStream(first.openQueue), StandardCharsets.UTF_8)) {
+					for (String arg : args) {
+						writer.append(arg).write(0);
+					}
 				}
-				return null;
-			})
-			.filter(Objects::nonNull)
-			.min(Comparator.naturalOrder())
-			.orElse(null)
-		);
-		if (first != null && first.compareTo(self) < 0) {
-			System.out.println("Found existing process: " + first.handle.pid());
-			try (Writer writer = new OutputStreamWriter(new FileOutputStream(first.openQueue), StandardCharsets.UTF_8)) {
-				for (String arg : args) {
-					writer.append(arg).write(0);
+				catch (IOException exception) {
+					exception.printStackTrace();
 				}
+				System.exit(0);
 			}
-			catch (IOException exception) {
-				exception.printStackTrace();
-			}
-			System.exit(0);
 		}
 		launch(args);
 	}
