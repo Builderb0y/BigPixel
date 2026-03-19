@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import javafx.scene.Node;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextArea;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -63,6 +64,7 @@ public class DerivedLayerSource extends LayerSource {
 	public static boolean loading;
 
 	public TextArea textArea = this.parameters.addCode("code");
+	public CheckBox autoSize = this.parameters.addCheckbox("autoSize", "Auto Size", false);
 	public RateLimiter recompiler = new NonPeriodicRateLimiter(500L, () -> this.doRecompile(true));
 	public DerivedLayerDependencies dependencies = new DerivedLayerDependencies(this);
 	public @Nullable Result<DerivedImageScriptFactory, ScriptParsingException> scriptFactory;
@@ -80,6 +82,7 @@ public class DerivedLayerSource extends LayerSource {
 
 	public DerivedLayerSource(LayerSources sources) {
 		super(LayerSourceType.DERIVED, sources);
+		this.extraSettingsPane.getChildren().add(this.autoSize);
 		this.textArea.textProperty().addListener(Util.change(this::recompile));
 	}
 
@@ -91,6 +94,23 @@ public class DerivedLayerSource extends LayerSource {
 	@Override
 	public LayerDependencies getDependencies() {
 		return this.dependencies;
+	}
+
+	@Override
+	public void resizeIfNecessary() throws RedrawException {
+		Set<LayerNode> dependencies = this.dependencies.actualDependencies;
+		if (dependencies.isEmpty()) return;
+		Iterator<LayerNode> iterator = dependencies.iterator();
+		LayerNode layer = iterator.next();
+		int width = layer.imageWidth(), height = layer.imageHeight();
+		while (iterator.hasNext()) {
+			layer = iterator.next();
+			int nextWidth = layer.imageWidth(), nextHeight = layer.imageHeight();
+			if (width != nextWidth || height != nextHeight) {
+				throw new RedrawException("Not all input layers are the same size");
+			}
+		}
+		this.sources.layer.animation.checkSize(width, height, false);
 	}
 
 	@Override

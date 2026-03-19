@@ -14,7 +14,7 @@ public abstract class CommonReader<X extends Throwable> {
 
 	/** replaces "\r" and "\r\n" with "\n". */
 	public static String canonicalizeLineEndings(String input) {
-		if (input.indexOf('\0') >= 0) throw new IllegalArgumentException("NUl character in input");
+		if (input.indexOf('\0') >= 0) throw new IllegalArgumentException("NUL character in input");
 		int start = input.indexOf('\r');
 		if (start < 0) return input;
 

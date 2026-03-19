@@ -16,6 +16,8 @@ use UI component builders for everything?
 	maybe use manifold extension methods?
 lwjgl for some complex layer sources?
 
+gradient map and unmap layer sources (each doing half the work of remap).
+
 layer sources:
 	no inputs:
 		blue noise pixels.
