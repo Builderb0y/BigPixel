@@ -85,9 +85,9 @@ public class BigPixel extends Application {
 				System.err.println("Must run with -D" + openQueueProperty + "=/path/to/pipe");
 				System.exit(1);
 			}
-			File ourQueueFile = new File("open_queue");
+			File ourQueueFile = new File(ourQueue);
 			if (!ourQueueFile.exists()) try {
-				new ProcessBuilder("mkfifo", "open_queue").start().waitFor();
+				new ProcessBuilder("mkfifo", ourQueueFile.getAbsolutePath()).start().waitFor();
 			}
 			catch (Exception exception) {
 				exception.printStackTrace();
