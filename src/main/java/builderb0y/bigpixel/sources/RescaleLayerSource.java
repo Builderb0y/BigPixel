@@ -11,6 +11,8 @@ import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MainDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.util.Util;
 
 public class RescaleLayerSource extends LayerSource {
@@ -31,6 +33,14 @@ public class RescaleLayerSource extends LayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(int width, int height) {
+		return switch (this.dependencies.main.getCurrent()) {
+			case UniformSamplerProvider _ -> 0;
+			case VaryingSamplerProvider _ -> height;
+		};
+	}
+
+	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		HDRImage destination = this.sources.layer.getFrame(frame);
 		boolean clampRGB = this.clampRGB.isSelected();
@@ -48,7 +58,6 @@ public class RescaleLayerSource extends LayerSource {
 				int toHeight = destination.height;
 				int fromWidth = varying.getBackingLayer().imageWidth();
 				int fromHeight = varying.getBackingLayer().imageHeight();
-				this.startProgressing(toHeight);
 				IntStream.range(0, toHeight).parallel().forEach((int toY) -> {
 					for (int toX = 0; toX < toWidth; toX++) {
 						double fromMinX = ((double)(toX    )) * ((double)(fromWidth )) / ((double)(toWidth ));

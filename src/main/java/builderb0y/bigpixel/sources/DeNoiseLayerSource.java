@@ -18,6 +18,9 @@ import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.util.FastExp;
 
 public class DeNoiseLayerSource extends MainMaskLayerSource {
@@ -43,6 +46,14 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(SamplerProvider main, SamplerProvider mask, int width, int height) {
+		return switch (main) {
+			case UniformSamplerProvider _ -> 0;
+			case VaryingSamplerProvider _ -> height;
+		};
+	}
+
+	@Override
 	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
 		switch (main) {
 			case UniformSampler uniform -> {
@@ -63,7 +74,6 @@ public class DeNoiseLayerSource extends MainMaskLayerSource {
 				int width = varying.getBackingLayer().imageWidth();
 				int height = varying.getBackingLayer().imageHeight();
 				DualBoundsHandling boundsHandling = this.bounds.dualHandling.get();
-				this.startProgressing(destination.height);
 				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					if (this.getLayer().redrawRequested) return;
 					for (int x = 0; x < destination.width; x++) {

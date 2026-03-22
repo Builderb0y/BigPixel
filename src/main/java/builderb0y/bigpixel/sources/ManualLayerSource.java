@@ -112,6 +112,11 @@ public class ManualLayerSource extends LayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(int width, int height) {
+		return 0;
+	}
+
+	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		HDRImage source = this.getToollessImage();
 		HDRImage destination = this.sources.layer.getOnlyFrame();

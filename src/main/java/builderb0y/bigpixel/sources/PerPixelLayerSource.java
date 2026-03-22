@@ -10,6 +10,7 @@ import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 
 public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 
@@ -19,7 +20,7 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 
 	@Override
 	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
-		PerPixelApplicator applicator = this.initProgressAndGetApplicator(main, mask, destination, frame);
+		PerPixelApplicator applicator = this.getApplicator(main, mask, frame);
 		switch (mask) {
 			case UniformSampler uniform -> {
 				FloatVector maskColor = uniform.getColor();
@@ -92,9 +93,9 @@ public abstract class PerPixelLayerSource extends MainMaskLayerSource {
 		this.clampImage(destination);
 	}
 
-	public PerPixelApplicator initProgressAndGetApplicator(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
-		this.startProgressing(destination.height);
-		return this.getApplicator(main, mask, frame);
+	@Override
+	public int computeMaxProgress(SamplerProvider main, SamplerProvider mask, int width, int height) {
+		return height;
 	}
 
 	public abstract PerPixelApplicator getApplicator(Sampler main, Sampler mask, int frame) throws RedrawException;

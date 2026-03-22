@@ -1,5 +1,7 @@
 package builderb0y.bigpixel.sources;
 
+import java.util.stream.IntStream;
+
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.layout.HBox;
@@ -10,6 +12,8 @@ import builderb0y.bigpixel.sources.dependencies.LayerDependencies;
 import builderb0y.bigpixel.sources.dependencies.MainDependencies;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 
 public class TileLayerSource extends LayerSource {
 
@@ -31,6 +35,14 @@ public class TileLayerSource extends LayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(int width, int height) {
+		return switch (this.dependencies.main.getCurrent()) {
+			case UniformSamplerProvider _ -> 0;
+			case VaryingSamplerProvider _ -> height;
+		};
+	}
+
+	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		HDRImage destination = this.sources.layer.getFrame(frame);
 		boolean clampRGB = this.clampRGB.isSelected();
@@ -47,13 +59,14 @@ public class TileLayerSource extends LayerSource {
 				int offsetY = this.offsetY.getValue();
 				int srcWidth = varying.getBackingLayer().imageWidth();
 				int srcHeight = varying.getBackingLayer().imageHeight();
-				for (int y = 0; y < destination.height; y++) {
+				IntStream.range(0, destination.height).parallel().forEach((int y) -> {
 					int modY = Math.floorMod(y - offsetY, srcHeight);
 					for (int x = 0; x < destination.width; x++) {
 						int modX = Math.floorMod(x - offsetX, srcWidth);
 						destination.setColor(x, y, clamp(varying.getColor(modX, modY), clampRGB, clampA));
 					}
-				}
+					this.incrementProgress();
+				});
 			}
 		}
 	}

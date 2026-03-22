@@ -49,9 +49,15 @@ public abstract class LayerSource implements OrganizedSelection.Value<LayerSourc
 		this.clampAlpha.selectedProperty().addListener(listener);
 	}
 
-	public void startProgressing(int maxProgress) {
+	public abstract int computeMaxProgress(int width, int height);
+
+	public void startProgressing() {
+		LayerNode layer = this.sources.layer;
 		this.currentProgress.set(0);
-		this.maxProgress = maxProgress;
+		this.maxProgress = this.computeMaxProgress(layer.imageWidth(), layer.imageHeight());
+		if (this.getDependencies().animatedProperty().get()) {
+			this.maxProgress *= layer.animation.getFrameCount();
+		}
 		this.getLayer().progressChangedAsync();
 	}
 

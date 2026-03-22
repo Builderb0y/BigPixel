@@ -12,6 +12,7 @@ import builderb0y.bigpixel.sources.dependencies.inputs.InputBinding;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 
 public abstract class MainMaskLayerSource extends LayerSource {
@@ -128,6 +129,18 @@ public abstract class MainMaskLayerSource extends LayerSource {
 			frame
 		);
 	}
+
+	@Override
+	public int computeMaxProgress(int width, int height) {
+		return this.computeMaxProgress(
+			this.dependencies.main.getCurrent(),
+			this.dependencies.mask.getCurrent(),
+			width,
+			height
+		);
+	}
+
+	public abstract int computeMaxProgress(SamplerProvider main, SamplerProvider mask, int width, int height);
 
 	public abstract void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException;
 

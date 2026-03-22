@@ -114,6 +114,11 @@ public class DerivedLayerSource extends LayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(int width, int height) {
+		return height;
+	}
+
+	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		DerivedImageScriptFactory factory = switch (this.scriptFactory) {
 			case Success(DerivedImageScriptFactory result) -> result;
@@ -135,7 +140,6 @@ public class DerivedLayerSource extends LayerSource {
 		float fraction = animation.getFraction(frame);
 		boolean clampRGB = this.clampRGB.isSelected();
 		boolean clampA = this.clampAlpha.isSelected();
-		this.startProgressing(height);
 		IntStream.range(0, height).parallel().forEach((int y) -> {
 			for (int x = 0; x < width; x++) {
 				IntVector UV = VectorOperations.int2_from_int_int(x, height + ~y);

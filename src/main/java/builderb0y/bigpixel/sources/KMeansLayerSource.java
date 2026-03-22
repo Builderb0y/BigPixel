@@ -10,6 +10,7 @@ import jdk.incubator.vector.VectorOperators;
 
 import builderb0y.bigpixel.HDRImage;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
 import builderb0y.bigpixel.util.FastRandom;
 
 public class KMeansLayerSource extends PerPixelLayerSource {
@@ -34,9 +35,8 @@ public class KMeansLayerSource extends PerPixelLayerSource {
 	}
 
 	@Override
-	public PerPixelApplicator initProgressAndGetApplicator(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
-		this.startProgressing(destination.height * (this.iterations.getValue() + 1));
-		return this.getApplicator(main, mask, frame);
+	public int computeMaxProgress(SamplerProvider main, SamplerProvider mask, int width, int height) {
+		return height * (this.iterations.getValue() + 1);
 	}
 
 	@Override

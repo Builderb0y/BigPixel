@@ -256,6 +256,7 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	public void redrawOffThread() {
 		try {
 			LayerSource source = this.sources.currentSource();
+			source.startProgressing();
 			int frameCount = this.animation.getFrameCount();
 			Set<String> messages = new HashSet<>(2);
 			if (frameCount == 1) {

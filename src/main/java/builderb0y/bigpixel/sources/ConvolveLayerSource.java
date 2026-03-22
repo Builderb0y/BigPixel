@@ -45,6 +45,9 @@ import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 import builderb0y.bigpixel.tools.FreehandTool;
 import builderb0y.bigpixel.util.AggregateProperty;
 import builderb0y.bigpixel.util.Result;
@@ -240,6 +243,14 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(SamplerProvider main, SamplerProvider mask, int width, int height) {
+		return switch (main) {
+			case UniformSamplerProvider _ -> 0;
+			case VaryingSamplerProvider _ -> this.shape.getValue() == ConvolveShape.SEPARABLE ? height << 1 : height;
+		};
+	}
+
+	@Override
 	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
 		switch (main) {
 			case UniformSampler uniform -> {
@@ -249,7 +260,6 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 				}
 			}
 			case VaryingSampler varying -> {
-				this.startProgressing(destination.height);
 				ConvolveWeightType type = this.preset.getValue();
 				WeightProvider weightProvider = type != ConvolveWeightType.SCRIPTED ? null : switch (this.scriptedWeightProvider.getValue()) {
 					case Success(WeightProvider provider) -> provider;
@@ -290,7 +300,6 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 						this.convolve(main, destination, helper.weights);
 					}
 					case SEPARABLE -> {
-						this.startProgressing(destination.height * 2);
 						int diameter = radius * 2 + 1;
 						Helper helper = new Helper(diameter);
 						HDRImage scratch = new HDRImage(destination.width, destination.height);

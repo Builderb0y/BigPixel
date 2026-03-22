@@ -15,6 +15,9 @@ import builderb0y.bigpixel.sources.BoundsHandling.DualBoundsHandling;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.UniformSampler;
 import builderb0y.bigpixel.sources.dependencies.inputs.Sampler.VaryingSampler;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.UniformSamplerProvider;
+import builderb0y.bigpixel.sources.dependencies.inputs.SamplerProvider.VaryingSamplerProvider;
 
 public class ModeBlurLayerSource extends MainMaskLayerSource {
 
@@ -25,6 +28,14 @@ public class ModeBlurLayerSource extends MainMaskLayerSource {
 		super(LayerSourceType.MODE_BLUR, sources);
 		this.dependencies.addBoundsHandlingButton(this.bounds.showButton);
 		this.dependencies.addExtraNodeRow(new HBox(new Label("Iterations: "), this.iterations));
+	}
+
+	@Override
+	public int computeMaxProgress(SamplerProvider main, SamplerProvider mask, int width, int height) {
+		return switch (main) {
+			case UniformSamplerProvider _ -> 0;
+			case VaryingSamplerProvider _ -> height * this.iterations.getValue();
+		};
 	}
 
 	@Override
@@ -39,7 +50,6 @@ public class ModeBlurLayerSource extends MainMaskLayerSource {
 			case VaryingSampler varying -> {
 				int iterations = this.iterations.getValue();
 				HDRImage tmp = iterations != 1 ? new HDRImage(destination.width, destination.height) : null;
-				this.startProgressing(destination.height * iterations);
 				this.apply(main, (iterations & 1) != 0 ? destination : tmp);
 				for (int iteration = 1; iteration < iterations; iteration++) {
 					boolean flip = (iteration & 1) == (iterations & 1);

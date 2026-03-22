@@ -106,6 +106,11 @@ public class WFCLayerSource extends LayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(int width, int height) {
+		return width * height;
+	}
+
+	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		new WorkerThread(this, frame).run();
 	}
@@ -402,7 +407,6 @@ public class WFCLayerSource extends LayerSource {
 				}
 			}
 			if (this.shouldAbort()) return;
-			this.layerSource.startProgressing(this.tileLists.length);
 			this.processList(this.tileLists[this.random.nextInt(this.tileLists.length)]);
 			this.layerSource.incrementProgress();
 			//this.processList(this.nextList());

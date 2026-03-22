@@ -16,7 +16,10 @@ use UI component builders for everything?
 	maybe use manifold extension methods?
 lwjgl for some complex layer sources?
 
-gradient map and unmap layer sources (each doing half the work of remap).
+gradient remap "curve" parameter.
+	applies to the mix level after converting to grayscale,
+	and before mixing between 2 other colors.
+	scripted.
 
 layer sources:
 	no inputs:

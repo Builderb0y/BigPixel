@@ -64,7 +64,25 @@ public abstract class MultiInputLayerSource extends LayerSource {
 		return filtered;
 	}
 
+	public int countInputs() {
+		int count = 0;
+		List<MoveableInputBinding> inputs = this.dependencies.inputs;
+		if (!inputs.isEmpty()) {
+			for (MoveableInputBinding input : inputs) {
+				if (input.enabled.isSelected()) {
+					count++;
+				}
+			}
+		}
+		return count;
+	}
+
 	public abstract MultiInputAccumulator getAccumulator();
+
+	@Override
+	public int computeMaxProgress(int width, int height) {
+		return height * this.countInputs();
+	}
 
 	@Override
 	public void doRedraw(int frame) throws RedrawException {
@@ -72,7 +90,6 @@ public abstract class MultiInputLayerSource extends LayerSource {
 		MultiInputAccumulator accumulator = this.getAccumulator();
 		HDRImage destination = this.sources.layer.getFrame(frame);
 		accumulator.preprocess(destination, bindings);
-		this.startProgressing(bindings.size() * destination.height);
 		for (int index = bindings.size(); --index >= 0;) {
 			Sampler next = bindings.get(index).getCurrent().createSamplerForFrame(frame);
 			IntStream.range(0, destination.height).parallel().forEach((int y) -> {

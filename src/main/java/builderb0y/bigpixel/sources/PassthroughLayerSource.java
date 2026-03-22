@@ -26,6 +26,11 @@ public class PassthroughLayerSource extends LayerSource {
 	}
 
 	@Override
+	public int computeMaxProgress(int width, int height) {
+		return 0;
+	}
+
+	@Override
 	public void doRedraw(int frame) throws RedrawException {
 		Sampler source = this.dependencies.main.getCurrent().createSamplerForFrame(frame);
 		HDRImage destination = this.sources.layer.getFrame(frame);
