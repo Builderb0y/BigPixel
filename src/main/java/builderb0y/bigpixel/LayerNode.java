@@ -290,7 +290,8 @@ public class LayerNode implements LayerPosition, VaryingSamplerProvider {
 	}
 
 	public void afterRedraw() {
-		if (this.graph.getVisibleLayer() == this) {
+		LayerNode visible = this.graph.getVisibleLayer();
+		if (visible == this || visible.views.currentView().getDependencies().dependsOn(this)) {
 			this.graph.openImage.imageDisplay.displayRenderer.invalidateAll();
 		}
 		this.bigThumbnail.invalidateAll();

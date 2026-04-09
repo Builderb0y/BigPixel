@@ -98,19 +98,21 @@ public class DerivedLayerSource extends LayerSource {
 
 	@Override
 	public void resizeIfNecessary() throws RedrawException {
-		Set<LayerNode> dependencies = this.dependencies.actualDependencies;
-		if (dependencies.isEmpty()) return;
-		Iterator<LayerNode> iterator = dependencies.iterator();
-		LayerNode layer = iterator.next();
-		int width = layer.imageWidth(), height = layer.imageHeight();
-		while (iterator.hasNext()) {
-			layer = iterator.next();
-			int nextWidth = layer.imageWidth(), nextHeight = layer.imageHeight();
-			if (width != nextWidth || height != nextHeight) {
-				throw new RedrawException("Not all input layers are the same size");
+		if (this.autoSize.isSelected()) {
+			Set<LayerNode> dependencies = this.dependencies.actualDependencies;
+			if (dependencies.isEmpty()) return;
+			Iterator<LayerNode> iterator = dependencies.iterator();
+			LayerNode layer = iterator.next();
+			int width = layer.imageWidth(), height = layer.imageHeight();
+			while (iterator.hasNext()) {
+				layer = iterator.next();
+				int nextWidth = layer.imageWidth(), nextHeight = layer.imageHeight();
+				if (width != nextWidth || height != nextHeight) {
+					throw new RedrawException("Not all input layers are the same size");
+				}
 			}
+			this.sources.layer.animation.checkSize(width, height, false);
 		}
-		this.sources.layer.animation.checkSize(width, height, false);
 	}
 
 	@Override

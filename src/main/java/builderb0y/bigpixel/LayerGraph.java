@@ -292,7 +292,7 @@ public class LayerGraph {
 		int index = this.indexOfPosition(layer.getGridX() + 1, 0);
 		if (index < 0) index = ~index;
 		return this.layerList.subList(index, this.layerList.size()).stream().filter((LayerNode other) -> {
-			return other.getDependencies().dependsOn(layer);
+			return other.getDependencies().dependsOn(layer) || other.views.currentView().getDependencies().dependsOn(layer);
 		});
 	}
 

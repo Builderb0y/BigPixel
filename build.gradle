@@ -94,6 +94,7 @@ dependencies() {
 }
 
 tasks.register('generateLaunchScript') {
+	group('build')
 	doFirst() {
 		String projectDir = project.projectDir.getAbsolutePath()
 		StringBuilder builder = new StringBuilder(1024)
@@ -130,6 +131,7 @@ tasks.register('generateLaunchScript') {
 }
 
 tasks.register('buildAndGenerateLaunchScript') {
+	group('build')
 	dependsOn(build)
 	dependsOn(generateLaunchScript)
 }

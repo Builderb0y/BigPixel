@@ -16,6 +16,9 @@ use UI component builders for everything?
 	maybe use manifold extension methods?
 lwjgl for some complex layer sources?
 
+cubic view doesn't update when dependencies change.
+view splines don't update when moving the layer.
+
 gradient remap "curve" parameter.
 	applies to the mix level after converting to grayscale,
 	and before mixing between 2 other colors.

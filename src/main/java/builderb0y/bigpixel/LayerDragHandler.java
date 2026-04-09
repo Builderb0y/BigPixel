@@ -10,6 +10,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.util.Duration;
 
+import builderb0y.bigpixel.sources.dependencies.CurveHelper;
 import builderb0y.bigpixel.util.Util;
 
 public class LayerDragHandler {
