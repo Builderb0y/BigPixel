@@ -58,7 +58,7 @@ public class BucketTool extends Tool<BucketTool.Work> {
 
 	@Override
 	public void onMouseDragged(ProjectionResult position, MouseButton button) {
-		if (this.work != null && this.work.start != null) {
+		if (this.work != null && this.work.start != null) synchronized (this.work) {
 			this.work.start = this.work.start.withBorder(this.source.getToollessImage().getColor(position.x(), position.y()));
 			this.spreadAutoAndRedraw(this.fillAll.isSelected());
 		}
@@ -139,8 +139,10 @@ public class BucketTool extends Tool<BucketTool.Work> {
 		FloatVector from = this.work.start.borderColor;
 		if (from == null) from = to;
 		HDRImage image = layer.getOnlyFrame();
-		for (Map.Entry<Point, Float> entry : work.endingPoints.entrySet()) {
-			image.setColor(entry.getKey().x, entry.getKey().y, VectorOperations.mix_float3_float3_float(from, to, entry.getValue()));
+		synchronized (work) {
+			for (Map.Entry<Point, Float> entry : work.endingPoints.entrySet()) {
+				image.setColor(entry.getKey().x, entry.getKey().y, VectorOperations.mix_float3_float3_float(from, to, entry.getValue()));
+			}
 		}
 	}
 
