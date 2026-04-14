@@ -101,6 +101,7 @@ public class SaveVersions {
 				new JsonMap()
 				.with("type", "flat_clamped")
 				.with("draw_outline", true)
+				.with("show_alpha", true)
 				.with("dependencies", new JsonMap(0))
 			);
 		}
@@ -213,9 +214,9 @@ public class SaveVersions {
 			}
 			sources.getMap("dependencies").replaceAll((String key, JsonValue value) -> bindDependenciesToDefaultParameterSet(value));
 			switch (views.getString("type")) {
-				case "flat_clamped" -> bindDefaultParameterSets(views, "draw_outline");
-				case "flat_tiling" -> bindDefaultParameterSets(views, "draw_outline", "darken_exterior");
-				case "cube" -> bindDefaultParameterSets(views, "draw_outline", "shade");
+				case "flat_clamped" -> bindDefaultParameterSets(views, "show_alpha", "draw_outline");
+				case "flat_tiling" -> bindDefaultParameterSets(views, "show_alpha", "draw_outline", "darken_exterior");
+				case "cube" -> bindDefaultParameterSets(views, "show_alpha", "draw_outline", "shade");
 			}
 			views.getMap("dependencies").replaceAll((String key, JsonValue value) -> bindDependenciesToDefaultParameterSet(value));
 		}
@@ -223,7 +224,7 @@ public class SaveVersions {
 
 	public static void bindDefaultParameterSets(JsonMap map, String... names) {
 		for (String name : names) {
-			map.put(name, wrapInParameterSet(map.get(name)));
+			map.put(name, wrapInParameterSet(map.require(name)));
 		}
 	}
 
