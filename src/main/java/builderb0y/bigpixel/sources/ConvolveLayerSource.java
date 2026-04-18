@@ -254,7 +254,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 	public void doRedraw(Sampler main, Sampler mask, HDRImage destination, int frame) throws RedrawException {
 		switch (main) {
 			case UniformSampler uniform -> {
-				FloatVector color = uniform.getColor();
+				FloatVector color = this.clampColor(uniform.getColor());
 				for (int index = 0; index < destination.pixels.length; index += 4) {
 					color.intoArray(destination.pixels, index);
 				}
@@ -397,6 +397,7 @@ public class ConvolveLayerSource extends MainMaskLayerSource {
 					}
 				}
 				this.applyMask(main, mask, destination);
+				this.clampImage(destination);
 			}
 		}
 	}
